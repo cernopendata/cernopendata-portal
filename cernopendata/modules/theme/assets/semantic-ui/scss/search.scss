@@ -12,6 +12,17 @@
       font-size: 0.9em;
       margin: 0;
     }
+    #clear_all {
+      margin-left: 50px;
+    }
+    .toggle {
+      label {
+        padding-left: 55px;
+      }
+    }
+    .image.label {
+    margin: 2px;
+    }
   }
 }
 
@@ -54,6 +65,7 @@
 }
 
 .twelve.wide.column {
+  padding-top: 13px;
   .ui.grid.relaxed {
     background-color: white;
     border: 1px solid $light-grey;
