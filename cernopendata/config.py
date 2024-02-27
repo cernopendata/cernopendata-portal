@@ -231,7 +231,10 @@ def _query_parser_and(qstr=None):
     """Parser that uses the Q() with AND from search engine dsl."""
     if qstr:
         _query = dsl.Q(
-            "query_string", query=qstr.replace("/", "\\/"), default_operator="AND"
+            "query_string",
+            query=qstr.replace("/", "\\/"),
+            default_operator="AND",
+            fields=["title.tokens^2", "*"],
         )
     else:
         _query = dsl.Q()
