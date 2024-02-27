@@ -32,10 +32,11 @@ const CODFacets = ({ aggs, updateQueryState, currentQueryState }) => {
     <>
       <div class="ui card" visibility="display">
         <div class="content">
-          <div class="header">Current parameters</div>
-          <tag class="ui button" primary onClick={() => updateQueryState({... currentQueryState, filters:[], })}>Clear all filters</tag>
-          <ActiveFilters />
+          <div class="header">Current parameters
+          <tag id="clear_all" class="ui" primary onClick={() => updateQueryState({... currentQueryState, filters:[], })}><a href >Clear all</a></tag>
+          </div>
         </div>
+        <div class="content"><ActiveFilters /></div>
       </div>
 
       <Toggle
