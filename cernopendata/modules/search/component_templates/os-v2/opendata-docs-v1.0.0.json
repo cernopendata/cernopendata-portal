@@ -3,7 +3,7 @@
     "mappings": {
       "properties": {
         "author": {
-          "type": "keyword"
+          "type": "text"
         },
         "id": {
           "type": "keyword"
