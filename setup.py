@@ -94,7 +94,7 @@ install_requires = [
     # Custom Invenio `postgresql` bundle
     "invenio-db[versioning,postgresql]==1.1.0",
     # Custom Invenio `opensearch` bundle
-    "invenio-search[opensearch2]>=2.1.0,<3.0.0",
+    "invenio-search[opensearch2]>=2.3.0,<3.0.0",
     # Specific Invenio dependencies
     "invenio-xrootd==2.0.0a1",
     "xrootdpyfs==2.0.0a1",
@@ -201,7 +201,13 @@ setup(
             "cernopendata_docid_fetcher",
         ],
         "invenio_search.mappings": [
-            "records = cernopendata.mappings",
+                "records = cernopendata.mappings",
+        ],
+        "invenio_search.index_templates": [
+            "records = cernopendata.modules.search.index_templates",
+        ],
+        "invenio_search.component_templates": [
+            "records = cernopendata.modules.search.component_templates",
         ],
         "invenio_jsonschemas.schemas": [
             "cernopendata_schemas = cernopendata.jsonschemas",
