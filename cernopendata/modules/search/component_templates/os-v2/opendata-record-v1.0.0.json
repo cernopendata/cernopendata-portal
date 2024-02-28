@@ -1,0 +1,99 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "doi": {
+          "type": "keyword"
+        },
+        "distribution": {
+          "properties": {
+            "formats": {
+              "type": "keyword"
+            },
+            "availability": {
+              "type": "keyword"
+            },
+            "number_events": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "authors": {
+          "properties": {
+            "affiliation": {
+              "type": "keyword"
+            },
+            "rorid": {
+              "type": "keyword"
+            },
+            "ccid": {
+              "type": "keyword"
+            },
+            "inspireid": {
+              "type": "keyword"
+            },
+            "orcid": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "keyword"
+            }
+          }
+        },
+        "abstract": {
+          "properties": {
+            "description": {
+              "type": "text"
+            }
+          }
+        },
+        "categories": {
+          "properties": {
+            "primary": {
+              "type": "keyword"
+            },
+            "secondary": {
+              "type": "keyword"
+            }
+          }
+        },
+        "collections": {
+          "type": "keyword"
+        },
+        "collision_information": {
+          "properties": {
+            "energy": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "keywords": {
+          "type": "keyword"
+        },
+        "magnet_polarity": {
+          "type": "keyword"
+        },
+        "publisher": {
+          "type": "keyword"
+        },
+        "signature": {
+          "type": "keyword"
+        },
+        "stripping": {
+          "properties": {
+            "stream": {
+              "type": "keyword"
+            },
+            "version": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  }
+}

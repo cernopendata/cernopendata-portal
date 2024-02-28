@@ -31,7 +31,7 @@ from cernopendata.config import _query_parser_and
 def _create_query(term):
     # Defines the skeleton of a query
     return dsl.query.Bool(
-        must=[dsl.query.QueryString(default_operator="AND", fields=['title.tokens^2', '*'], query=term)],
+        must=[dsl.query.QueryString(default_operator="AND", fields=['title^2', '*'], query=term)],
         must_not=[dsl.query.Match(distribution__availability="ondemand")])
 
 def test_cernopendata_query_parser(app):
@@ -44,5 +44,5 @@ def test_cernopendata_query_parser(app):
 
     with app.test_request_context("/?ondemand=true"):
         assert _query_parser_and("CMS AND /btau") == dsl.query.QueryString(
-            default_operator="AND", fields=['title.tokens^2', '*'], query="CMS AND \\/btau"
+            default_operator="AND", fields=['title^2', '*'], query="CMS AND \\/btau"
         )
