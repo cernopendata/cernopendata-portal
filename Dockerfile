@@ -44,7 +44,7 @@ RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
     yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
     yum clean -y all
 
-RUN pip uninstall pipenv -y && pip install --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
+RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
     npm install -g --unsafe-perm node-sass@6.0.1 clean-css@3.4.24 requirejs@2.3.6 uglify-js@3.12.1 jsonlint@1.6.3 d3@6.3.1
 
 # Change group to root to support OpenShift runtime
@@ -76,9 +76,9 @@ ARG DEBUG=""
 ENV DEBUG=${DEBUG:-""}
 
 # Install CERN Open Data Portal sources
-# hadolint ignore=DL3013
+# hadolint ignore=DL3013,SC2086
 RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
-    pip install --user ${FLAGS} ".[all]" && pip check
+    pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check
 # Create instance
 RUN scripts/create-instance.sh
 

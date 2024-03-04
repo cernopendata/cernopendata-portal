@@ -148,7 +148,7 @@ jobs:
           python-version: 3.9
 
       - name: Lint Dockerfile
-        run: docker run -i --rm hadolint/hadolint:v1.18.2 < Dockerfile
+        run: docker run -i --rm hadolint/hadolint:v2.12.0 < Dockerfile
 
       - name: Create certificates
         run: ./scripts/generate-localhost-certificate.sh

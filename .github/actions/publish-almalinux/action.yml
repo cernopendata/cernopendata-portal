@@ -38,7 +38,7 @@ runs:
         context: ./
         file: ./Dockerfile
         # support images for Intel and Apple Silicon processors
-        platforms: linux/amd64
+        platforms: linux/amd64, linux/arm64
         push: true
         tags: ${{ inputs.docker-tags }}
         labels: ${{ inputs.docker-labels }}
