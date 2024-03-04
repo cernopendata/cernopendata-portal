@@ -302,46 +302,31 @@ def glossary(files, mode):
                     data["collections"] = []
                 data["collections"].append({"primary": "Terms"})
 
-                record = None
-                action = None
-                if mode == "insert-or-replace":
-                    try:
-                        pid = PersistentIdentifier.get("termid", data["anchor"])
-                        if pid:
-                            record = update_glossary_term(pid, data)
-                            action = "updated"
-                    except PIDDoesNotExistError:
-                        record = create_glossary_term(data, schema)
-                        action = "inserted"
-                elif mode == "insert":
-                    try:
-                        pid = PersistentIdentifier.get("termid", data["anchor"])
-                        if pid:
-                            click.echo(
-                                "Glossary term termid {} exists already;"
-                                " cannot insert it.  ".format(data.get("anchor")),
-                                err=True,
-                            )
-                            return
-                    except PIDDoesNotExistError:
-                        record = create_glossary_term(data, schema)
-                        action = "inserted"
-                else:
-                    try:
-                        pid = PersistentIdentifier.get("termid", data["anchor"])
-                    except PIDDoesNotExistError:
+                try:
+                    pid = PersistentIdentifier.get("termid", data["anchor"])
+                    if mode == "insert":
                         click.echo(
-                            "Glossary term {} does not exist; "
-                            "cannot replace it.".format(data.get("anchor")),
+                            "Glossary term {} exists already; cannot insert it.".format(
+                                data.get("anchor")
+                            ),
                             err=True,
                         )
                         return
+
                     record = update_glossary_term(pid, data)
                     action = "updated"
-
-                if record:
-                    record.commit()
-
+                except PIDDoesNotExistError:
+                    if mode == "replace":
+                        click.echo(
+                            "Glossary term {} does not exist; cannot replace it.".format(
+                                data.get("anchor")
+                            ),
+                            err=True,
+                        )
+                        return
+                    record = create_glossary_term(data, schema)
+                    action = "inserted"
+                record.commit()
                 db.session.commit()
                 click.echo("Glossary term {0} {1}.".format(data.get("anchor"), action))
                 indexer.index(record)
@@ -380,11 +365,6 @@ def docs(files, mode):
         articles_json = get_jsons_from_dir(data)
 
     for filename in articles_json:
-        # name = filename.split('/')[-1]
-        # if name.startswith('opera'):
-        #     click.echo('Skipping opera records ...')
-        #     continue
-
         click.echo("Loading docs from {0} ...".format(filename))
         with open(filename, "rb") as source:
             for data in json.load(source):
@@ -408,50 +388,32 @@ def docs(files, mode):
                     data.get("collections", None), str
                 ):
                     data["collections"] = []
-                if mode == "insert-or-replace":
-                    try:
-                        pid = PersistentIdentifier.get(
-                            "docid", str(slugify(data.get("slug", data["title"])))
-                        )
-                        if pid:
-                            record = update_doc(pid, data)
-                            action = "updated"
-                    except PIDDoesNotExistError:
-                        record = create_doc(data, schema)
-                        action = "inserted"
-                elif mode == "insert":
-                    try:
-                        pid = PersistentIdentifier.get(
-                            "docid", str(slugify(data.get("slug", data["title"])))
-                        )
-                        if pid:
-                            click.echo(
-                                "Record docid {} exists already;"
-                                " cannot insert it.  ".format(
-                                    str(slugify(data.get("slug", data["title"])))
-                                ),
-                                err=True,
-                            )
-                            return
-                    except PIDDoesNotExistError:
-                        record = create_doc(data, schema)
-                        action = "inserted"
-                else:
-                    try:
-                        pid = PersistentIdentifier.get(
-                            "docid", str(slugify(data.get("slug", data["title"])))
-                        )
-                    except PIDDoesNotExistError:
+                try:
+                    pid = PersistentIdentifier.get(
+                        "docid", str(slugify(data.get("slug", data["title"])))
+                    )
+                    if mode == "insert":
                         click.echo(
-                            "Record docid {} does not exist; "
-                            "cannot replace it.".format(
+                            "Record docid {} exists already; cannot insert it.  ".format(
                                 str(slugify(data.get("slug", data["title"])))
                             ),
                             err=True,
                         )
                         return
-                    record = update_doc(pid, data)
-                    action = "updated"
+                    if pid:
+                        record = update_doc(pid, data)
+                        action = "updated"
+                except PIDDoesNotExistError:
+                    if mode == "replace":
+                        click.echo(
+                            "Record docid {} does not exist; cannot replace it.".format(
+                                str(slugify(data.get("slug", data["title"])))
+                            ),
+                            err=True,
+                        )
+                        return
+                    record = create_doc(data, schema)
+                    action = "inserted"
                 record.commit()
                 db.session.commit()
                 click.echo(
