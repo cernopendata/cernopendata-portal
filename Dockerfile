@@ -23,7 +23,8 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 # Use Invenio's alma image with Python-3.9
-FROM registry.cern.ch/inveniosoftware/almalinux:1
+ARG BUILDPLATFORM=linux/amd64
+FROM --platform=$BUILDPLATFORM registry.cern.ch/inveniosoftware/almalinux:1
 
 # Use XRootD 5.6.9
 ENV XROOTD_VERSION=5.6.9
