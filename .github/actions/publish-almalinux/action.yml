@@ -14,6 +14,10 @@ inputs:
   docker-labels:
     description: Docker image labels
     required: true
+  debug:
+    description: Install the python module in debug mode
+    required: false
+    default: ""
 
 runs:
   using: 'composite'

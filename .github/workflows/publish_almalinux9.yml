@@ -51,3 +51,4 @@ jobs:
           registry-password: ${{ secrets.CERN_REGISTRY_PASSWORD }}
           docker-tags: ${{ steps.meta.outputs.tags }}
           docker-labels: ${{ steps.meta.outputs.labels }}
+          debug: ${{ steps.meta.outputs.debug}}
