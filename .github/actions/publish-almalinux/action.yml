@@ -20,7 +20,7 @@ inputs:
 
 strategy:
   matrix:
-    debug: ["",'1']
+    DEBUG: ["",'1']
 
 runs:
   using: 'composite'
@@ -49,4 +49,4 @@ runs:
         push: true
         tags: ${{ inputs.docker-tags }}
         labels: ${{ inputs.docker-labels }}
-        build-args: ${{ inputs.debug }}
+        build-args: ${{ inputs.DEBUG }}

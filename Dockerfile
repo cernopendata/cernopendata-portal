@@ -25,9 +25,6 @@
 # Use Invenio's alma image with Python-3.9
 FROM registry.cern.ch/inveniosoftware/almalinux:1
 
-# Use XRootD 5.6.8
-ENV XROOTD_VERSION=5.6.8
-
 # Install CERN Open Data Portal web node pre-requisites
 # hadolint ignore=DL3033
 RUN yum install -y \
@@ -40,12 +37,12 @@ RUN yum install -y \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 
-RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
-    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
-    yum clean -y all
+#RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
+#    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
+#    yum clean -y all
 
-RUN pip uninstall pipenv -y && pip install --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
-    npm install -g --unsafe-perm node-sass@6.0.1 clean-css@3.4.24 requirejs@2.3.6 uglify-js@3.12.1 jsonlint@1.6.3 d3@6.3.1
+#RUN pip uninstall pipenv -y && pip install --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
+#    npm install -g --unsafe-perm node-sass@6.0.1 clean-css@3.4.24 requirejs@2.3.6 uglify-js@3.12.1 jsonlint@1.6.3 d3@6.3.1
 
 # Change group to root to support OpenShift runtime
 RUN chgrp -R 0 "${INVENIO_INSTANCE_PATH}" && \
