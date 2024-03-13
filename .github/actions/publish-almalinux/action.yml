@@ -16,8 +16,11 @@ inputs:
     required: true
   debug:
     description: Install the python module in debug mode
-    required: false
-    default: ""
+    required: true
+
+strategy:
+  matrix:
+    debug: ["",'1']
 
 runs:
   using: 'composite'
@@ -46,3 +49,4 @@ runs:
         push: true
         tags: ${{ inputs.docker-tags }}
         labels: ${{ inputs.docker-labels }}
+        build-args: ${{ inputs.debug }}
