@@ -18,10 +18,7 @@
     "slug": "cod-portal-upgrade-2024-01-31",
     "title": "Upgrade of the CERN Open Data portal",
     "type": {
-      "primary": "Documentation",
-      "secondary": [
-        "News"
-      ]
+      "primary": "News"
     }
   }
 ]
