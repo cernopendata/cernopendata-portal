@@ -31,10 +31,10 @@ services:
       context: .
     image: cernopendata/web
     depends_on:
-      - opensearch
-      - postgresql
-      - rabbitmq
-      - redis
+      opensearch:
+        condition: service_healthy
+      postgresql:
+        condition: service_started
     environment:
       - DEBUG=False
       - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@postgresql:5432/cernopendata
@@ -44,7 +44,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
@@ -58,9 +58,7 @@ services:
       - web_data:/opt/invenio/var/instance/static
     links:
       - postgresql
-      - redis
       - opensearch
-      - rabbitmq
     ports:
       - "5000"
 
@@ -83,7 +81,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_ACCOUNTS_REGISTER_BLUEPRINT=None
 #      - SENTRY_DSN=http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@sentry:9000/2
@@ -102,10 +100,14 @@ services:
       context: .
     image: cernopendata/web
     depends_on:
-      - opensearch
-      - postgresql
-      - rabbitmq
-      - redis
+      opensearch:
+        condition: service_healthy
+      postgresql:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
     environment:
       - DEBUG=False
       - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@postgresql:5432/cernopendata
@@ -115,7 +117,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
@@ -158,18 +160,18 @@ services:
     image: docker.io/opensearchproject/opensearch:2
     environment:
       - bootstrap.memory_lock=true
-      # set to reasonable values on production
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=4DFc4Gaa4LZ3
     volumes:
       - opensearch_data:/usr/share/opensearch/data/
-    # ulimits:
-    #   memlock:
-    #     soft: -1
-    #     hard: -1
-    # mem_limit: 1g
     ports:
       - 9200:9200
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -u admin:4DFc4Gaa4LZ3 --silent --fail https://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   opensearch-dashboards:
     image: docker.io/opensearchproject/opensearch-dashboards:2 # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
