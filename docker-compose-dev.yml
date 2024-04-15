@@ -44,7 +44,12 @@ services:
     restart: "unless-stopped"
     image: cernopendata/static # Use this to make sure that COD3 Python-code image is built only once.
     depends_on:
-      - static # Just to make sure that latest cernopendata/static -image is build before creating this container.
+      opensearch:
+        condition: service_healthy
+      postgresql:
+        condition: service_started
+      static:
+        condition: service_started
     command: bash -c "cernopendata run -h 0.0.0.0 --reload" # In case one needs to test/work with uWSGI comment out this CMD override.
     environment:
       - DEBUG=True
@@ -58,7 +63,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
@@ -71,6 +76,7 @@ services:
     volumes:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
+      - ./tests:/code/tests
     volumes_from:
       - static
     links:
@@ -100,7 +106,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_ACCOUNTS_REGISTER_BLUEPRINT=None
 #      - SENTRY_DSN=http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@sentry:9000/2
@@ -136,7 +142,7 @@ services:
       - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
       - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
       - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:admin"}
+      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
       - INVENIO_SEARCH_HOSTS=https://opensearch:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
@@ -179,22 +185,22 @@ services:
 
   opensearch:
     restart: "unless-stopped"
-    image: docker.io/opensearchproject/opensearch:2.11.1
+    image: docker.io/opensearchproject/opensearch:2
     environment:
       - bootstrap.memory_lock=true
-      # set to reasonable values on production
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - discovery.type=single-node
-    # ulimits:
-    #   memlock:
-    #     soft: -1
-    #     hard: -1
-    # mem_limit: 1g
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=4DFc4Gaa4LZ3
     ports:
       - 9200:9200
+    healthcheck:
+      test: ["CMD-SHELL", "curl -k -u admin:4DFc4Gaa4LZ3 --silent --fail https://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   opensearch-dashboards:
-    image: docker.io/opensearchproject/opensearch-dashboards:2.11.1 # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    image: docker.io/opensearchproject/opensearch-dashboards:2 # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
     ports:
       - 5601:5601 # Map host port 5601 to container port 5601
     expose:
