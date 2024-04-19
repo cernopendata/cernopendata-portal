@@ -1,12 +1,10 @@
 {
   "template": {
     "mappings": {
+      "dynamic": "strict",
       "properties": {
         "author": {
           "type": "text"
-        },
-        "id": {
-          "type": "keyword"
         },
         "body": {
           "properties": {
@@ -39,6 +37,9 @@
             }
           }
         },
+        "featured": {
+          "type": "integer"
+        },
         "files": {
           "properties": {
             "name": {
@@ -49,8 +50,21 @@
             }
           }
         },
-        "featured": {
-          "type": "integer"
+        "id": {
+          "type": "keyword"
+        },
+        "related": {
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "screenshot": {
+          "type": "text"
         },
         "short_description": {
           "properties": {
@@ -61,6 +75,9 @@
               "type": "keyword"
             }
           }
+        },
+        "slug": {
+          "type": "keyword"
         },
         "stripping": {
           "properties": {

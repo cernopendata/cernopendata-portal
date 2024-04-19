@@ -1,41 +1,62 @@
 {
   "template": {
     "mappings": {
-    "properties": {
-      "id": {
-        "type": "keyword"
-      },
-      "anchor": {
-        "type": "keyword"
-      },
-      "category": {
-        "type": "keyword"
-      },
-      "collections": {
-        "properties": {
-          "facet_collections_primary": {
-            "index": true,
-            "type": "keyword"
-          },
-          "primary": {
-            "copy_to": "collections.facet_collections_primary",
-            "type": "keyword"
-          },
-          "secondary": {
-            "type": "text"
+      "dynamic": "strict",
+      "properties": {
+        "anchor": {
+          "type": "keyword"
+        },
+        "category": {
+          "type": "keyword"
+        },
+        "collections": {
+          "properties": {
+            "facet_collections_primary": {
+              "index": true,
+              "type": "keyword"
+            },
+            "primary": {
+              "copy_to": "collections.facet_collections_primary",
+              "type": "keyword"
+            },
+            "secondary": {
+              "type": "text"
+            }
           }
+        },
+        "definition": {
+          "type": "text"
+        },
+        "id": {
+          "type": "keyword"
+        },
+        "links": {
+          "enabled": false,
+          "properties": {
+            "text": {
+              "type": "text"
+            },
+            "url": {
+              "type": "text"
+            }
+          },
+          "type": "object"
+        },
+        "see_also": {
+          "properties": {
+            "term": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "short_definition": {
+          "type": "text"
+        },
+        "term": {
+          "type": "keyword"
         }
-      },
-      "definition": {
-        "type": "text"
-      },
-      "short_definition": {
-        "type": "text"
-      },
-      "term": {
-        "type": "keyword"
       }
     }
   }
-}
 }
