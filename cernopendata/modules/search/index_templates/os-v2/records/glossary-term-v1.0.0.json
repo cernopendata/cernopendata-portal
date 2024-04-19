@@ -1,7 +1,9 @@
 {
-  "index_patterns": ["__SEARCH_INDEX_PREFIX__records-glossary-term-*"],
   "composed_of": [
     "__SEARCH_INDEX_PREFIX__opendata-common-v1.0.0",
     "__SEARCH_INDEX_PREFIX__opendata-glossary-term-v1.0.0"
+  ],
+  "index_patterns": [
+    "__SEARCH_INDEX_PREFIX__records-glossary-term*"
   ]
 }

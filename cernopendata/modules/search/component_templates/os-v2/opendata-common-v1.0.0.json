@@ -1,10 +1,22 @@
 {
   "template": {
+    "aliases": {
+      "__SEARCH_INDEX_PREFIX__records": {}
+    },
     "mappings": {
       "properties": {
         "$schema": {
           "copy_to": "facet_schema",
           "type": "text"
+        },
+        "_created": {
+          "type": "date"
+        },
+        "_updated": {
+          "type": "date"
+        },
+        "control_number": {
+          "type": "keyword"
         },
         "date_created": {
           "type": "keyword"
@@ -20,12 +32,16 @@
           "type": "text"
         },
         "recid": {
-          "type": "integer",
-          "null_value": 0
+          "null_value": 0,
+          "type": "integer"
         },
         "title": {
-          "type": "keyword",
-          "fields": {"tokens":  {"type": "text"}}
+          "fields": {
+            "tokens": {
+              "type": "text"
+            }
+          },
+          "type": "keyword"
         },
         "type": {
           "properties": {
@@ -41,8 +57,6 @@
     },
     "settings": {
       "number_of_replicas": 1
-    },
-    "aliases": {"__SEARCH_INDEX_PREFIX__records": {}}
+    }
   }
-
 }
