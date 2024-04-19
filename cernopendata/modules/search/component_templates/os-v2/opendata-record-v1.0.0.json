@@ -1,30 +1,46 @@
 {
   "template": {
     "mappings": {
+      "dynamic": "strict",
       "properties": {
-        "doi": {
-          "type": "keyword"
-        },
-        "distribution": {
-          "properties": {
-            "formats": {
-              "type": "keyword"
-            },
-            "availability": {
-              "type": "keyword"
-            },
-            "number_events": {
-              "type": "integer"
-            }
-          },
+        "_bucket": {
+          "enabled": false,
           "type": "object"
+        },
+        "_files": {
+          "enabled": false,
+          "type": "object"
+        },
+        "abstract": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "recid": {
+                  "type": "keyword"
+                },
+                "title": {
+                  "type": "text"
+                },
+                "url": {
+                  "type": "text"
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "accelerator": {
+          "type": "keyword"
         },
         "authors": {
           "properties": {
             "affiliation": {
-              "type": "keyword"
-            },
-            "rorid": {
               "type": "keyword"
             },
             "ccid": {
@@ -33,18 +49,14 @@
             "inspireid": {
               "type": "keyword"
             },
+            "name": {
+              "type": "text"
+            },
             "orcid": {
               "type": "keyword"
             },
-            "name": {
-              "type": "text"
-            }
-          }
-        },
-        "abstract": {
-          "properties": {
-            "description": {
-              "type": "text"
+            "rorid": {
+              "type": "keyword"
             }
           }
         },
@@ -55,8 +67,28 @@
             },
             "secondary": {
               "type": "keyword"
+            },
+            "source": {
+              "type": "keyword"
             }
           }
+        },
+        "cms_confdb_id": {
+          "enabled": false
+        },
+        "collaboration": {
+          "properties": {
+            "group": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "recid": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
         },
         "collections": {
           "type": "keyword"
@@ -71,17 +103,310 @@
             }
           }
         },
+        "cross_section": {
+          "properties": {
+            "filter_efficiency": {
+              "type": "long"
+            },
+            "filter_efficiency_error": {
+              "type": "long"
+            },
+            "matching_efficiency": {
+              "type": "long"
+            },
+            "matching_efficiency_error": {
+              "type": "long"
+            },
+            "neg_weight_fraction": {
+              "type": "long"
+            },
+            "total_value": {
+              "type": "long"
+            },
+            "total_value_uncertainty": {
+              "type": "long"
+            }
+          },
+          "type": "object"
+        },
+        "dataset_semantics": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "type": {
+              "type": "keyword"
+            },
+            "variable": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "dataset_semantics_files": {
+          "properties": {
+            "json": {
+              "type": "text"
+            },
+            "url": {
+              "type": "text"
+            }
+          },
+          "type": "object"
+        },
+        "date_reprocessed": {
+          "type": "date"
+        },
+        "description": {
+          "type": "text"
+        },
+        "distribution": {
+          "properties": {
+            "availability": {
+              "type": "keyword"
+            },
+            "formats": {
+              "type": "keyword"
+            },
+            "number_entries": {
+              "type": "integer"
+            },
+            "number_events": {
+              "type": "integer"
+            },
+            "number_files": {
+              "type": "integer"
+            },
+            "size": {
+              "type": "unsigned_long"
+            }
+          },
+          "type": "object"
+        },
+        "doi": {
+          "type": "keyword"
+        },
+        "files": {
+          "properties": {
+            "bucket": {
+              "type": "text"
+            },
+            "checksum": {
+              "type": "keyword"
+            },
+            "description": {
+              "type": "text"
+            },
+            "key": {
+              "type": "keyword"
+            },
+            "size": {
+              "type": "unsigned_long"
+            },
+            "type": {
+              "type": "keyword"
+            },
+            "uri": {
+              "type": "text"
+            },
+            "version_id": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
         "keywords": {
           "type": "keyword"
+        },
+        "language": {
+          "type": "keyword"
+        },
+        "license": {
+          "properties": {
+            "attribution": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "links": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "recid": {
+              "type": "keyword"
+            },
+            "title": {
+              "type": "text"
+            },
+            "url": {
+              "type": "text"
+            }
+          },
+          "type": "object"
         },
         "magnet_polarity": {
           "type": "keyword"
         },
+        "methodology": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "recid": {
+                  "type": "keyword"
+                }
+              },
+              "type": "object"
+            },
+            "steps": {
+              "properties": {
+                "configuration_files": {
+                  "properties": {
+                    "cms_confdb_id": {
+                      "type": "keyword"
+                    },
+                    "process": {
+                      "type": "keyword"
+                    },
+                    "recid": {
+                      "type": "keyword"
+                    },
+                    "script": {
+                      "type": "text"
+                    },
+                    "title": {
+                      "type": "text"
+                    },
+                    "url": {
+                      "type": "text"
+                    }
+                  },
+                  "type": "object"
+                },
+                "generators": {
+                  "type": "keyword"
+                },
+                "global_tag": {
+                  "type": "keyword"
+                },
+                "note": {
+                  "type": "text"
+                },
+                "output_dataset": {
+                  "type": "text"
+                },
+                "release": {
+                  "type": "text"
+                },
+                "type": {
+                  "type": "keyword"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "note": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "recid": {
+                  "type": "keyword"
+                }
+              }
+            }
+          },
+          "type": "object"
+        },
+        "pileup": {
+          "properties": {
+            "description": {
+              "type": "keyword"
+            },
+            "links": {
+              "properties": {
+                "recid": {
+                  "type": "keyword"
+                },
+                "title": {
+                  "type": "text"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "prepublication": {
+          "properties": {
+            "date": {
+              "type": "date"
+            },
+            "place": {
+              "type": "text"
+            },
+            "publisher": {
+              "type": "keyword"
+            },
+            "report_number": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
         "publisher": {
+          "type": "keyword"
+        },
+        "relations": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "doi": {
+              "type": "keyword"
+            },
+            "recid": {
+              "type": "keyword"
+            },
+            "title": {
+              "type": "text"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "run_numbers": {
+          "type": "keyword"
+        },
+        "run_period": {
           "type": "keyword"
         },
         "signature": {
           "type": "keyword"
+        },
+        "source_code_repository": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "url": {
+              "type": "text"
+            }
+          },
+          "type": "object"
         },
         "stripping": {
           "properties": {
@@ -92,6 +417,103 @@
               "type": "keyword"
             }
           }
+        },
+        "system_details": {
+          "properties": {
+            "container_images": {
+              "properties": {
+                "name": {
+                  "type": "text"
+                },
+                "registry": {
+                  "type": "keyword"
+                }
+              },
+              "type": "object"
+            },
+            "description": {
+              "type": "text"
+            },
+            "global_tag": {
+              "type": "keyword"
+            },
+            "recid": {
+              "type": "keyword"
+            },
+            "release": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
+        "title_additional": {
+          "type": "text"
+        },
+        "usage": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "recid": {
+                  "type": "keyword"
+                },
+                "url": {
+                  "type": "text"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "use_with": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "recid": {
+                  "type": "keyword"
+                },
+                "url": {
+                  "type": "text"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "validation": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "links": {
+              "properties": {
+                "description": {
+                  "type": "text"
+                },
+                "recid": {
+                  "type": "keyword"
+                },
+                "url": {
+                  "type": "text"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
         }
       }
     }
