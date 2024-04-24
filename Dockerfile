@@ -96,6 +96,8 @@ ARG UWSGI_PORT=5000
 ENV UWSGI_PORT ${UWSGI_PORT:-5000}
 ARG UWSGI_PROCESSES=4
 ENV UWSGI_PROCESSES ${UWSGI_PROCESSES:-4}
+ARG UWSGI_SOCKET_TIMEOUT=600
+ENV UWSGI_SOCKET_TIMEOUT ${UWSGI_SOCKET_TIMEOUT:-600}
 ARG UWSGI_THREADS=1
 ENV UWSGI_THREADS ${UWSGI_THREADS:-1}
 ARG UWSGI_WSGI_MODULE=cernopendata.wsgi:application
@@ -122,4 +124,5 @@ CMD uwsgi \
         --stats /tmp/stats.socket \
         --threads ${UWSGI_THREADS} \
         --vacuum \
-        --wsgi-disable-file-wrapper
+        --wsgi-disable-file-wrapper \
+        --socket-timeout ${UWSGI_SOCKET_TIMEOUT}
