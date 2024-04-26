@@ -26,13 +26,15 @@ ExperimentLabel.defaultProps = {
 const ListItemLabels = ({ metadata }) => {
   return (
     <>
+     {metadata.type?.primary &&
       <Label
         className="tiny blue"
         href={`/search?f=type:${metadata.type.primary}`}
       >
         {metadata.type.primary}
       </Label>
-      {metadata.type.secondary &&
+      }
+      {metadata.type?.secondary &&
         metadata.type.secondary.map((subtype) => (
           <Label
             key={subtype}

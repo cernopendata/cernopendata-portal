@@ -42,7 +42,7 @@ RUN yum install -y \
     yum clean -y all
 
 RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
-    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
+    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" swig && \
     yum clean -y all
 
 RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
