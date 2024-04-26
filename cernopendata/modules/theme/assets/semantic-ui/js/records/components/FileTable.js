@@ -86,6 +86,10 @@ export default function FileTable({ items, table_type }) {
                 <Button as="a" icon size="mini" primary {...downloadProp}>
                   <Icon name="download" /> Download {label}
                 </Button>
+                { file.uri &&  ( <Button as="a" icon size="mini" primary {...downloadProp}>
+                                    <Icon name="download" /> Download {label}
+                                 </Button>)
+                }
               </Table.Cell>
             </Table.Row>
           );
