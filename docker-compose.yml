@@ -22,7 +22,24 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-version: "2"
+version: "3"
+
+x-common-variables: &common-variables
+  INVENIO_ACCOUNTS_REGISTER_BLUEPRINT: None
+  INVENIO_ACCOUNTS_SESSION_REDIS_URL: redis://cache:6379/1
+  INVENIO_BROKER_URL: amqp://guest:guest@mq:5672/ # Celery 3
+  INVENIO_CACHE_REDIS_HOST: cache
+  INVENIO_CACHE_REDIS_URL: redis://cache:6379/0
+  INVENIO_CELERY_BROKER_URL: amqp://guest:guest@mq:5672/ # Celery 4
+  INVENIO_CELERY_RESULT_BACKEND: redis://cache:6379/2
+  INVENIO_SEARCH_CLIENT_CONFIG: '{"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}'
+  INVENIO_SEARCH_HOSTS: https://search:9200
+  INVENIO_SQLALCHEMY_DATABASE_URI: postgresql+psycopg2://cernopendata:dbpass123@db:5432/cernopendata
+  INVENIO_PIDSTORE_DATACITE_DOI_PREFIX: 10.5072
+  INVENIO_PIDSTORE_DATACITE_PASSWORD: CHANGE_ME
+  INVENIO_PIDSTORE_DATACITE_TESTMODE: None
+  INVENIO_PIDSTORE_DATACITE_USERNAME: CERN.OPENDATA
+  INVENIO_PIDSTORE_LANDING_BASE_URL: http://opendata.cern.ch/record/
 
 services:
   web:
@@ -35,25 +52,7 @@ services:
         condition: service_healthy
       db:
         condition: service_started
-    environment:
-      - DEBUG=False
-      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@db:5432/cernopendata
-      - INVENIO_CACHE_REDIS_HOST=cache
-      - INVENIO_CACHE_REDIS_URL=redis://cache:6379/0
-      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://cache:6379/1
-      - INVENIO_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 3
-      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 4
-      - INVENIO_CELERY_RESULT_BACKEND=redis://cache:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
-      - INVENIO_SEARCH_HOSTS=https://search:9200
-      - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
-      - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
-      - INVENIO_PIDSTORE_DATACITE_USERNAME=CERN.OPENDATA
-      - INVENIO_PIDSTORE_DATACITE_PASSWORD=CHANGE_ME
-      - INVENIO_PIDSTORE_LANDING_BASE_URL=http://opendata.cern.ch/record/
-      - INVENIO_ACCOUNTS_REGISTER_BLUEPRINT=None
-#      - SENTRY_DSN=https://<INPUT_CORRECT_DSN_FOR_YOUR_SENTRY_INSTANCE>@<INPUT_YOUR_SENTRY_URL>
-#      - LOGGING_SENTRY_CELERY=True
+    environment: *common-variables
     volumes:
       - web_data:/opt/invenio/var/instance/static
     links:
@@ -61,6 +60,12 @@ services:
       - search
     ports:
       - 5000:5000
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:5000 || exit -1"]
+      interval: 600s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   web-files:
     restart: "always"
@@ -69,25 +74,7 @@ services:
       - web
       - mq
       - cache
-    environment:
-      - DEBUG=False
-      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@db:5432/cernopendata
-      - INVENIO_CACHE_REDIS_HOST=cache
-      - INVENIO_CACHE_REDIS_URL=redis://cache:6379/0
-      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://cache:6379/1
-      - INVENIO_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 3
-      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 4
-      - INVENIO_CELERY_RESULT_BACKEND=redis://cache:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
-      - INVENIO_SEARCH_HOSTS=https://search:9200
-      - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
-      - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
-      - INVENIO_PIDSTORE_DATACITE_USERNAME=CERN.OPENDATA
-      - INVENIO_PIDSTORE_DATACITE_PASSWORD=CHANGE_ME
-      - INVENIO_PIDSTORE_LANDING_BASE_URL=http://opendata.cern.ch/record/
-      - INVENIO_ACCOUNTS_REGISTER_BLUEPRINT=None
-#      - SENTRY_DSN=https://<INPUT_CORRECT_DSN_FOR_YOUR_SENTRY_INSTANCE>@<INPUT_YOUR_SENTRY_URL>
-#      - LOGGING_SENTRY_CELERY=True
+    environment: *common-variables
     volumes:
       - web_data:/opt/invenio/var/instance/static
     links:
@@ -97,6 +84,12 @@ services:
       - mq
     ports:
       - 5001:5000
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:5000 || exit -1"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   db:
     restart: "always"
@@ -121,6 +114,8 @@ services:
     image: docker.io/library/redis:7
     ports:
       - "6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
 
   search:
     restart: "always"
@@ -169,6 +164,11 @@ services:
     ports:
       - "4369"
       - "5672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   proxy:
     restart: "always"
@@ -182,6 +182,25 @@ services:
     links:
       - web
       - web-files
+
+  worker:
+    restart: "unless-stopped"
+    image: cernopendata/web
+    depends_on:
+      - web
+      - mq
+      - cache
+    command: bash -c "celery -A cernopendata.celery worker --beat --loglevel=INFO --concurrency=1"
+    environment: *common-variables
+    volumes:
+      - ./cernopendata:/code/cernopendata
+      - ./scripts:/code/scripts
+      - web_data:/opt/invenio/var/instance/static
+    links:
+      - db
+      - cache
+      - search
+      - mq
 
 volumes:
   web_data:
