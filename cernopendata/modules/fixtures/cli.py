@@ -44,10 +44,11 @@ from invenio_pidstore.models import PersistentIdentifier
 from invenio_records import Record
 from sqlalchemy.orm.attributes import flag_modified
 
-from cernopendata.api import FileIndexMetadata, RecordFilesWithIndex
+from cernopendata.api import FileIndexMetadata, MultiURIFileObject, RecordFilesWithIndex
 from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
+
 
 MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
 
@@ -67,9 +68,13 @@ def _handle_record_files(record, data):
     # let's make a copy of files, since we might change it
     real_files = []
     if "files" not in data:
+        if "distribution" in record and "availability" in record["distribution"]:
+            record["availability"] = record["distribution"]["availability"]
         return
     data["_file_indices"] = []
     record["_file_indices"] = []
+    if data["files"]:
+        print(f"  The record has {len(data['files'])} files")
     for file in data["files"]:
         assert "uri" in file
         assert "size" in file
@@ -80,14 +85,13 @@ def _handle_record_files(record, data):
         if "type" in file and file["type"] == "index.json":
             print(
                 datetime.now(),
-                "This is an index file. Let's check the entries that it has:",
-                file.get("uri"),
+                "    This is an index file. Let's check the entries that it has.",
+                end=" ",
             )
             # We don't need to store the index
             FileIndexMetadata.create(
                 record, f, description=file.get("description", filename)
             )
-            print("File index created")
             f.delete()
         elif "type" in file and file["type"] == "index.txt":
             # The txt indexes should be ignored. Just delete the file
@@ -95,12 +99,13 @@ def _handle_record_files(record, data):
         else:
             real_files.append(file)
             try:
-                obj = ObjectVersion.create(record.bucket, filename, _file_id=f.id)
+                obj = MultiURIFileObject.create_version(record.bucket, filename, f.id)
                 file_info = {
                     "bucket": str(obj.bucket_id),
                     "checksum": obj.file.checksum,
                     "key": obj.key,
                     "version_id": str(obj.version_id),
+                    "availability": "online",
                 }
                 file.update(file_info)
             except Exception as e:
@@ -117,6 +122,7 @@ def _handle_record_files(record, data):
     if record.file_indices:
         record.file_indices.flush()
         data["_file_indices"] = record["_file_indices"]
+    record.check_availability()
 
 
 def create_record(data, skip_files):
