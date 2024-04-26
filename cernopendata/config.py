@@ -26,6 +26,7 @@
 
 import os
 import warnings
+from datetime import timedelta
 
 from flask import request
 from invenio_records_files.api import _Record
@@ -38,6 +39,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from cernopendata.modules.pages.config import *
 from cernopendata.modules.search_ui.helpers import CODSearchAppInvenioRestConfigHelper
 from cernopendata.modules.theme.config import *
+#from  invenio_cold_storage.tasks import check_transfers
 
 from .views import search_legacy
 
@@ -129,6 +131,12 @@ CACHE_TYPE = "redis"
 # Celery
 CELERY_ACCEPT_CONTENT = ["json", "msgpack", "yaml"]
 
+CELERYBEAT_SCHEDULE = {
+    "check_cold_transfers": {
+        "task": "invenio_cold_storage.tasks.check_transfers",
+        "schedule": timedelta(seconds=10),
+    },
+}
 # JSONSchemas
 JSONSCHEMAS_ENDPOINT = "/schema"
 JSONSCHEMAS_HOST = "opendata.cern.ch"
@@ -182,6 +190,24 @@ RECORDS_UI_ENDPOINTS = dict(
     recid_files=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/<path:filename>",
+        view_imp="cernopendata.modules.records.utils:file_download_ui",
+        record_class="invenio_records_files.api:Record",
+    ),
+    recid_file_index=dict(
+        pid_type="recid",
+        route="/record/<pid_value>/file_index/<path:filename>",
+        view_imp="cernopendata.modules.records.utils:file_index_download_ui",
+        record_class="invenio_records_files.api:Record",
+    ),
+    recid_file_index_item=dict(
+        pid_type="recid",
+        route="/record/<pid_value>/file_index/<path:filename>/<int:num_element>",
+        view_imp="cernopendata.modules.records.utils:file_index_download_element",
+        record_class="invenio_records_files.api:Record",
+    ),
+    recid_files_qos=dict(
+        pid_type="recid",
+        route="/record/<pid_value>/files/<path:filename>/<string:qos>",
         view_imp="cernopendata.modules.records.utils:file_download_ui",
         record_class="invenio_records_files.api:Record",
     ),

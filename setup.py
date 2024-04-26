@@ -212,6 +212,9 @@ setup(
         "invenio_jsonschemas.schemas": [
             "cernopendata_schemas = cernopendata.jsonschemas",
         ],
+       'invenio_celery.tasks' : [
+            'invenio_cold_storage = invenio_cold_storage.tasks'
+       ]
     },
     extras_require=extras_require,
     install_requires=install_requires,

@@ -23,9 +23,12 @@
           "type": {
             "type": "string"
           },
+          "copies": { "type": "array",
+            "items": {"type":"object","properties" : {
           "uri": {
             "type": "string"
           },
+              "qos": {"type": "string"}}}},
           "version_id": {
             "type": "string"
           }
@@ -202,6 +205,34 @@
         }
       },
       "type": "object"
+    },
+    "dataset": {
+
+      "additionalProperties" : {
+          "type": "array",
+          "items": {
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string"
+              },
+              "uri": {
+                 "type": "string"
+                },
+              "uri_cold": {
+                "type": "string"
+              },
+              "version_id": {
+                "type": "string"
+              }
+            }
+          }
+      }
     },
     "dataset_semantics": {
       "items": {

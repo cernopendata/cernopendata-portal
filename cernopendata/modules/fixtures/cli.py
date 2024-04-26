@@ -34,14 +34,20 @@ from invenio_files_rest.models import Bucket, FileInstance, ObjectVersion
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
-from invenio_records_files.api import Record
+from invenio_cold_storage.api import Record as RecordFileIndex
 from invenio_records_files.models import RecordsBuckets
 from sqlalchemy.orm.attributes import flag_modified
+from invenio_records import Record
 
+from datetime import datetime
+from re import sub
 from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
+from os.path import exists, isdir
+
+from invenio_cold_storage.models import FileIndex
 
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
@@ -53,89 +59,129 @@ def get_jsons_from_dir(dir):
     return res
 
 
-def _handle_record_files(data, bucket, files):
+def _handle_record_files(record, data, bucket):
     """Handles record files."""
-    for file in files:
+    #let's make a copy of files, since we might change it
+    real_files=[]
+    if "files" not in data:
+        return
+    for file in data["files"]:
         assert "uri" in file
         assert "size" in file
         assert "checksum" in file
+        f = FileInstance.create()
+        filename = file.get("uri").split("/")[-1:][0]
+        f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
+        if "type" in file and file["type"] == "index.json":
+            print(
+                datetime.now(),
+                "This is an index file. Let's check the entries that it has:",
+                file.get("uri"),
+            )
+            my_file = f.storage().open()
+            index_content = json.load(my_file)
+            my_file.close()
+            #We don't need to store the index
+            f.delete()
+            fileIndex = FileIndex.create(record.model, filename, index_content )
+            print(datetime.now(), "File read")
+            if "_file_indexes" not in record:
+                record["_file_indexes"] = []
+            record["_file_indexes"].append(fileIndex.print())
+        elif "type" in file and file["type"] == "index.txt":
+            #The txt indexes should be ignored. Just delete the file
+            f.delete()
+        else:
+            real_files.append(file)
+            try:
 
-        try:
-            f = FileInstance.create()
-            filename = file.get("uri").split("/")[-1:][0]
-            f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
-            obj = ObjectVersion.create(bucket, filename, _file_id=f.id)
-            file.update(
-                {
+                obj = ObjectVersion.create(bucket, filename, _file_id=f.id)
+                print("CREATED ObjectVersion")
+                file_info = {
                     "bucket": str(obj.bucket_id),
                     "checksum": obj.file.checksum,
                     "key": obj.key,
                     "version_id": str(obj.version_id),
                 }
-            )
+                file.update(file_info)
+                print("AND UPDATED")
+            except Exception as e:
+                click.secho(
+                    "Recid {0} file {1} could not be loaded due "
+                    "to {2}.".format(data.get("recid"), filename, str(e)),
+                    fg="red",
+                    err=True,
+                )
+    record["files"]=real_files
+    if record.files:
+        record.files.flush()
 
-        except Exception as e:
-            click.echo(
-                "Recid {0} file {1} could not be loaded due "
-                "to {2}.".format(data.get("recid"), filename, str(e))
-            )
-            continue
 
-
-def create_record(data, files, skip_files):
+def create_record(data, skip_files):
     """Creates a new record."""
     id = uuid.uuid4()
     cernopendata_recid_minter(id, data)
-    record = Record.create(data, id_=id, with_bucket=not skip_files)
+    record = RecordFileIndex.create(data, id_=id, with_bucket=not skip_files)
     if not skip_files:
-        _handle_record_files(data, record.bucket, files)
+        _handle_record_files(record, data, record.bucket)
 
     return record
 
 
-def update_record(pid, data, files, skip_files):
+def update_record(pid, data, skip_files):
     """Updates the given record."""
-    record = Record.get_record(pid.object_uuid)
+    record = RecordFileIndex.get_record(pid.object_uuid)
+
     if not skip_files:
+        buckets = []
         if record.files:
             for file in record.files:
                 bucket = Bucket.get(file.bucket.id)
-                for o in ObjectVersion.get_by_bucket(bucket).all():
-                    o.remove()
-                    FileInstance.query.filter_by(id=o.file_id).delete()
+                if bucket not in buckets:
+                    buckets.append(bucket)
 
+        print("let's delete the entries")
         RecordsBuckets.query.filter_by(record=record.model).delete()
+        for bucket in buckets:
+            print("Deleting ", bucket)
+            for o in ObjectVersion.get_by_bucket(bucket).all():
+                print(" and the objects inside", o )
+                o.remove()
+                FileInstance.query.filter_by(id=o.file_id).delete()
+            bucket.remove()
+        FileIndex.delete_by_record(record=record)
+        if "_file_indexes" in record:
+            del(record["_file_indexes"])
+        print("buckets deleted")
+        db.session.commit()
     record.update(data)
     if not skip_files:
         bucket = Bucket.create()
-        _handle_record_files(data, bucket, files)
+        _handle_record_files(record, data, bucket)
         RecordsBuckets.create(record=record.model, bucket=bucket)
+        record.update(data)
+        db.session.commit()
+
     return record
 
 
-def create_doc(data, files, skip_files):
+def create_doc(data, skip_files):
     """Creates a new doc record."""
-    from invenio_records import Record
-
     id = uuid.uuid4()
     cernopendata_docid_minter(id, data)
     record = Record.create(data, id_=id)
     return record
 
 
-def update_doc_or_glossary(pid, data, files, skip_files):
+def update_doc_or_glossary(pid, data, skip_files):
     """Updates the given doc/glossary record."""
-    from invenio_records import Record
-
     record = Record.get_record(pid.object_uuid)
     record.update(data)
     return record
 
 
-def create_glossary_term(data, files, skip_files):
+def create_glossary_term(data, skip_files):
     """Creates a new glossary term record."""
-    from invenio_records import Record
-
     id = uuid.uuid4()
     cernopendata_termid_minter(id, data)
     record = Record.create(data, id_=id)
@@ -193,16 +239,20 @@ def _process_fixture_files(
 
     record_json = _get_list_of_fixture_files(files, entry_type)
 
+    i = 1
+    total_files = len(record_json)
     for filename in record_json:
-        click.echo("Loading records from {0} ...".format(filename))
-
+        click.echo(f"Loading records from {filename} ({i}/{total_files})...")
+        i += 1
         with open(filename, "rb") as source:
-            for data in json.load(source):
+            j = 1
+            json_data = json.load(source)
+            records_file = len(json_data)
+            for data in json_data:
                 pid = load_entry_data(data, filename)
                 if not pid:
                     continue
                 data["$schema"] = schema
-                files = data.get("files", [])
                 try:
                     pid_object = PersistentIdentifier.get(pid_field, pid)
                     if mode == "insert":
@@ -212,7 +262,7 @@ def _process_fixture_files(
                             err=True,
                         )
                         return
-                    record = update_function(pid_object, data, files, skip_files)
+                    record = update_function(pid_object, data, skip_files)
                     action = "updated"
                 except PIDDoesNotExistError:
                     if mode == "replace":
@@ -222,10 +272,8 @@ def _process_fixture_files(
                             err=True,
                         )
                         return
-                    record = create_function(data, files, skip_files)
+                    record = create_function(data, skip_files)
                     action = "inserted"
-                if not skip_files:
-                    record.files.flush()
                 try:
                     record.commit()
                     db.session.commit()
@@ -379,8 +427,8 @@ def docs(files, mode):
         files,
         entry_type="docs",
         schema_name="records/docs-v1.0.0.json",
-        mode=mode,
         skip_files=True,
+        mode=mode,
         load_entry_data=read_doc_content,
         pid_field="docid",
         update_function=update_doc_or_glossary,
