@@ -29,14 +29,18 @@ services:
     restart: "unless-stopped"
     command: bash -c "/code/scripts/start-server-debug.sh"
     environment:
-      - DEBUG=True
-      - FLASK_DEBUG=1
+      #- DEBUG=True
+      #- FLASK_DEBUG=1
       - WDB_SOCKET_SERVER=wdb
       - WDB_NO_BROWSER_AUTO_OPEN=True
+      - INVENIO_FTS_ENDPOINT=https://fts3-public.cern.ch:8446
     volumes:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
       - ./tests:/code/tests
+      - ../opendata.cern.ch:/content
+      - ../invenio-cold-storage:/cold
+      - kerberos-credentials-cache:/tmp
 
   web-files:
     profiles:
@@ -64,5 +68,18 @@ services:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
       - ./tests:/code/tests
+      - ../invenio-cold-storage:/cold
+      - ../opendata.cern.ch:/content
     profiles:
       - donotstart
+  krb:
+      volumes:
+        - kerberos-credentials-cache:/tmp
+      environment:
+        - KEYTAB_PWD=eeshohNgotie2soowoh5leeF6aebooKi
+        - KEYTAB_USER=cernod
+      image: 'gitlab-registry.cern.ch/paas-tools/kerberos-ticket-manager:RELEASE.2023.11.30T16-47-18Z'
+#      args:
+#        - daemon
+volumes:
+  kerberos-credentials-cache:

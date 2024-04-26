@@ -129,6 +129,9 @@
           },
           "type": "object"
         },
+        "dataset": {
+          "enabled": false
+        },
         "dataset_semantics": {
           "properties": {
             "description": {
@@ -207,6 +210,9 @@
               "type": "keyword"
             },
             "uri": {
+              "type": "text"
+            },
+            "uri_cold": {
               "type": "text"
             },
             "version_id": {

@@ -11,7 +11,8 @@ from invenio_files_rest.models import (
     ObjectVersion,
     ObjectVersionTag,
 )
-from invenio_records_files.api import FileObject, FilesIterator, Record
+from invenio_records_files.api import FilesIterator, Record
+from invenio_cold_storage.api import FileObjectCold
 
 
 class FileIndexIterator(object):
@@ -50,27 +51,43 @@ class RecordFilesWithIndex(Record):
     def __init__(self, *args, **kwargs):
         """Initialize the record."""
         super(RecordFilesWithIndex, self).__init__(*args, **kwargs)
-        self.file_cls = FileObject
+        self.file_cls = FileObjectCold
 
     @property
     def file_indices(self):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
 
+    @classmethod
+    def get_record(self, record):
+        """Get a record and all the file indices from the database"""
+        entry=super(RecordFilesWithIndex, self).get_record(record)
+        entry["_file_indices"]=[]
+        for tag in BucketTag.query.filter_by(key="record", value=str(record)).all():
+            entry["_file_indices"].append(FileIndexMetadata.get(tag.bucket_id))
+        return entry
 
 class FileIndexMetadata:
     """Class for the FileIndexMetadata."""
-
-    index_file_name = ""
-    size = 0
-    number_files = 0
-    _record = None
-    _bucket = None
 
     def __repr__(self):
         """Representation of the object."""
         return str(self.dumps())
 
+    @classmethod
+    def get(cls, bucket):
+        """Get a file index from the bucket """
+        rb = cls()
+        rb._index_file_name = BucketTag.query.filter_by(key="index_name", bucket_id=bucket).one().value
+        rb._files = []
+        rb._size=0
+        rb._number_files=0
+        for ov in ObjectVersion.get_by_bucket(bucket).all():
+            rb._size += ov.file.size
+            rb._number_files+=1
+            f = FileObjectCold(ov, {})
+            rb._files.append(f)
+        return rb.dumps()
     @classmethod
     def create(cls, record, file_object):
         """Method to create a FileIndex."""
@@ -98,7 +115,7 @@ class FileIndexMetadata:
                 f"{index_file_name}_{rb._number_files}",
                 _file_id=entry_file.id,
             )
-            f = FileObject(o, entry)
+            f = FileObjectCold(o, entry)
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
             rb._size += entry["size"]
@@ -119,8 +136,8 @@ class FileIndexMetadata:
 
     def dumps(self):
         """Dumping."""
-        files = [o.dumps() for o in self._files]
-        return {
+        files = [ o.dumps() for o in self._files ]
+        return  {
             "key": self._index_file_name,
             "number_files": self._number_files,
             "size": self._size,
