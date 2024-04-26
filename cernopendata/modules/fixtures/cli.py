@@ -41,6 +41,7 @@ from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
+from os.path import exists, isdir
 
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
@@ -162,6 +163,22 @@ def fixtures():
     """Automate site bootstrap process and testing."""
 
 
+def _get_list_of_fixture_files(files, type):
+    """Return the list of files that should be loaded"""
+    data_dir = pkg_resources.resource_filename(
+        "cernopendata", f"modules/fixtures/data/{type}"
+    )
+    if files:
+        if not exists(files[0]):
+            click.secho(f"The path {files[0]} does not exist", fg="red", err=True,)
+            return
+        if isdir(files[0]):
+            data_dir = files[0]
+        else:
+            return files
+
+    return get_jsons_from_dir(data_dir)
+
 @fixtures.command()
 @click.option("--skip-files", is_flag=True, default=False, help="Skip loading of files")
 @click.option(
@@ -178,6 +195,7 @@ def fixtures():
     "--mode",
     required=True,
     type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    default="insert-or-replace",
 )
 @with_appcontext
 def records(skip_files, files, profile, mode):
@@ -194,22 +212,11 @@ def records(skip_files, files, profile, mode):
     schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
         "records/record-v1.0.0.json"
     )
-    data = pkg_resources.resource_filename(
-        "cernopendata", "modules/fixtures/data/records"
-    )
-    action = None
-
-    if files:
-        record_json = files
-    else:
-        record_json = glob.glob(os.path.join(data, "*.json"))
+    record_json = _get_list_of_fixture_files(files, "records")
 
     for filename in record_json:
-        # name = filename.split('/')[-1]
-        # if name.startswith('opera'):
-        #     click.echo('Skipping opera records ...')
-        #     continue
         click.echo("Loading records from {0} ...".format(filename))
+
         with open(filename, "rb") as source:
             for data in json.load(source):
                 if not data:
@@ -277,6 +284,7 @@ def records(skip_files, files, profile, mode):
     "--mode",
     required=True,
     type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    default="insert-or-replace",
 )
 def glossary(files, mode):
     """Load glossary term records."""
@@ -341,6 +349,7 @@ def glossary(files, mode):
     "--mode",
     required=True,
     type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    default="insert-or-replace",
 )
 @with_appcontext
 def docs(files, mode):
@@ -351,13 +360,8 @@ def docs(files, mode):
     schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
         "records/docs-v1.0.0.json"
     )
-    data = pkg_resources.resource_filename("cernopendata", "modules/fixtures/data/docs")
-
-    if files:
-        articles_json = files
-    else:
-        articles_json = get_jsons_from_dir(data)
-
+    articles_json = _get_list_of_fixture_files(files, "docs")
+    print("READING DOCS??", articles_json)
     for filename in articles_json:
         click.echo("Loading docs from {0} ...".format(filename))
         with open(filename, "rb") as source:
@@ -411,6 +415,7 @@ def docs(files, mode):
                         str(slugify(data.get("slug", data["title"]))), action
                     )
                 )
+                print(record)
                 indexer.index(record)
                 db.session.expunge_all()
 

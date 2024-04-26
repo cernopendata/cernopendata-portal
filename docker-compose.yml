@@ -31,21 +31,21 @@ services:
       context: .
     image: cernopendata/web
     depends_on:
-      opensearch:
+      search:
         condition: service_healthy
-      postgresql:
+      db:
         condition: service_started
     environment:
       - DEBUG=False
-      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@postgresql:5432/cernopendata
-      - INVENIO_CACHE_REDIS_HOST=redis
-      - INVENIO_CACHE_REDIS_URL=redis://redis:6379/0
-      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://redis:6379/1
-      - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
-      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
-      - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@db:5432/cernopendata
+      - INVENIO_CACHE_REDIS_HOST=cache
+      - INVENIO_CACHE_REDIS_URL=redis://cache:6379/0
+      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://cache:6379/1
+      - INVENIO_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 3
+      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 4
+      - INVENIO_CELERY_RESULT_BACKEND=redis://cache:6379/2
       - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
-      - INVENIO_SEARCH_HOSTS=https://opensearch:9200
+      - INVENIO_SEARCH_HOSTS=https://search:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
       - INVENIO_PIDSTORE_DATACITE_USERNAME=CERN.OPENDATA
@@ -57,68 +57,29 @@ services:
     volumes:
       - web_data:/opt/invenio/var/instance/static
     links:
-      - postgresql
-      - opensearch
+      - db
+      - search
     ports:
-      - "5000"
-
-  worker:
-    restart: "always"
-    image: cernopendata/web # Use this to make sure that COD3 Python-code image is built only once.
-    depends_on:
-      - opensearch
-      - postgresql
-      - rabbitmq
-      - redis
-      - web # Added to make sure that cernopendata/web -image is build before starting this one.
-    command: bash -c "celery -A cernopendata.celery worker --loglevel=INFO"
-    environment:
-      - DEBUG=False
-      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@postgresql:5432/cernopendata
-      - INVENIO_CACHE_REDIS_HOST=redis
-      - INVENIO_CACHE_REDIS_URL=redis://redis:6379/0
-      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://redis:6379/1
-      - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
-      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
-      - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
-      - INVENIO_SEARCH_HOSTS=https://opensearch:9200
-      - INVENIO_ACCOUNTS_REGISTER_BLUEPRINT=None
-#      - SENTRY_DSN=http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@sentry:9000/2
-#      - LOGGING_SENTRY_CELERY=True
-    volumes:
-      - web_data:/opt/invenio/var/instance/static
-    links:
-      - postgresql
-      - redis
-      - opensearch
-      - rabbitmq
+      - 5000:5000
 
   web-files:
     restart: "always"
-    build:
-      context: .
     image: cernopendata/web
     depends_on:
-      opensearch:
-        condition: service_healthy
-      postgresql:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
-      redis:
-        condition: service_started
+      - web
+      - mq
+      - cache
     environment:
       - DEBUG=False
-      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@postgresql:5432/cernopendata
-      - INVENIO_CACHE_REDIS_HOST=redis
-      - INVENIO_CACHE_REDIS_URL=redis://redis:6379/0
-      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://redis:6379/1
-      - INVENIO_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 3
-      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ # Celery 4
-      - INVENIO_CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://cernopendata:dbpass123@db:5432/cernopendata
+      - INVENIO_CACHE_REDIS_HOST=cache
+      - INVENIO_CACHE_REDIS_URL=redis://cache:6379/0
+      - INVENIO_ACCOUNTS_SESSION_REDIS_URL=redis://cache:6379/1
+      - INVENIO_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 3
+      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:5672/ # Celery 4
+      - INVENIO_CELERY_RESULT_BACKEND=redis://cache:6379/2
       - INVENIO_SEARCH_CLIENT_CONFIG={"use_ssl":True, "verify_certs":False, "http_auth":"admin:4DFc4Gaa4LZ3"}
-      - INVENIO_SEARCH_HOSTS=https://opensearch:9200
+      - INVENIO_SEARCH_HOSTS=https://search:9200
       - INVENIO_PIDSTORE_DATACITE_TESTMODE=False
       - INVENIO_PIDSTORE_DATACITE_DOI_PREFIX=10.5072
       - INVENIO_PIDSTORE_DATACITE_USERNAME=CERN.OPENDATA
@@ -130,14 +91,14 @@ services:
     volumes:
       - web_data:/opt/invenio/var/instance/static
     links:
-      - postgresql
-      - redis
-      - opensearch
-      - rabbitmq
+      - db
+      - cache
+      - search
+      - mq
     ports:
-      - "5000"
+      - 5001:5000
 
-  postgresql:
+  db:
     restart: "always"
     image: docker.io/library/postgres:14.8
     environment:
@@ -148,14 +109,20 @@ services:
       - "5432"
     volumes:
       - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d cernopendata -U cernopendata || exit -1"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
-  redis:
+  cache:
     restart: "always"
     image: docker.io/library/redis:7
     ports:
       - "6379"
 
-  opensearch:
+  search:
     restart: "always"
     image: docker.io/opensearchproject/opensearch:2
     environment:
@@ -163,6 +130,15 @@ services:
       - discovery.type=single-node
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=4DFc4Gaa4LZ3
+      - reindex.remote.whitelist=os-opendata-sandbox.cern.ch:443
+      - reindex.ssl.verification_mode=none
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
     volumes:
       - opensearch_data:/usr/share/opensearch/data/
     ports:
@@ -180,18 +156,21 @@ services:
     expose:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      OPENSEARCH_HOSTS: '["https://search:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+    depends_on:
+      search:
+        condition: service_healthy
 
-  rabbitmq:
+  mq:
     restart: "always"
     image: docker.io/library/rabbitmq:3.12
     depends_on:
-     - redis
+     - cache
     ports:
       - "4369"
       - "5672"
 
-  nginx:
+  proxy:
     restart: "always"
     build: ./nginx
     image: cernopendata/nginx:1.22
