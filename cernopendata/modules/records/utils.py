@@ -107,6 +107,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     # Check permissions
     ObjectResource.check_object_permission(obj)
+    search_record = _get_record_from_index(record.get("recid"))["files"]
 
     return ObjectResource.send_object(
         obj.bucket,
@@ -154,6 +155,21 @@ def get_paged_files(files, page, items_per_page=5):
     return files[start:end]
 
 
+def _get_record_from_index(recid):
+    prefix = current_app.config["SEARCH_INDEX_PREFIX"]
+    results = (
+        dsl.Search(
+            using=current_search_client,
+            index=f"{prefix}records-record-v1.0.0",
+        )
+        .filter("term", recid=recid)
+        .extra(size=1)
+        .execute()
+    )
+
+    return results["hits"]["hits"][0]["_source"].to_dict()
+
+
 def record_file_page(pid, record, page=1, **kwargs):
     """Record view - get files for current page."""
     items_per_page = request.args.get("perPage", 5)
@@ -163,7 +179,7 @@ def record_file_page(pid, record, page=1, **kwargs):
         items_per_page = 5
 
     _files = record.files
-    index_files = record._file_indices
+    index_files = record.file_indices
     if request.args.get("group"):
         grouped_files = {
             "index_files": {

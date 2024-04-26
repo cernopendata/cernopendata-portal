@@ -41,8 +41,12 @@ RUN yum install -y \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 
+COPY docker/carepo.repo /etc/yum.repos.d/
+
+RUN yum install -y ca_CERN-Root-2 && yum clean -y all
+
 RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
-    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
+    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" xrootd-client-"$XROOTD_VERSION" swig  python3-gfal2-util gfal2-plugin-http python3-gfal2 && \
     yum clean -y all
 
 RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
@@ -89,44 +93,43 @@ RUN scripts/create-instance.sh
 
 # Configure uWSGI
 ARG UWSGI_BUFFER_SIZE=8192
-ENV UWSGI_BUFFER_SIZE ${UWSGI_BUFFER_SIZE:-8192}
+ENV UWSGI_BUFFER_SIZE=${UWSGI_BUFFER_SIZE:-8192}
 ARG UWSGI_IDLE=60
-ENV UWSGI_IDLE ${UWSGI_IDLE:-60}
+ENV UWSGI_IDLE=${UWSGI_IDLE:-60}
 ARG UWSGI_MAX_REQUESTS=1000
-ENV UWSGI_MAX_REQUESTS ${UWSGI_MAX_REQUESTS:-1000}
+ENV UWSGI_MAX_REQUESTS=${UWSGI_MAX_REQUESTS:-1000}
 ARG UWSGI_MAX_WORKER_LIFETIME=1800
-ENV UWSGI_MAX_WORKER_LIFETIME ${UWSGI_MAX_WORKER_LIFETIME:-1800}
+ENV UWSGI_MAX_WORKER_LIFETIME=${UWSGI_MAX_WORKER_LIFETIME:-1800}
 ARG UWSGI_PORT=5000
-ENV UWSGI_PORT ${UWSGI_PORT:-5000}
+ENV UWSGI_PORT=${UWSGI_PORT:-5000}
 ARG UWSGI_PROCESSES=4
-ENV UWSGI_PROCESSES ${UWSGI_PROCESSES:-4}
+ENV UWSGI_PROCESSES=${UWSGI_PROCESSES:-4}
 ARG UWSGI_SOCKET_TIMEOUT=600
-ENV UWSGI_SOCKET_TIMEOUT ${UWSGI_SOCKET_TIMEOUT:-600}
+ENV UWSGI_SOCKET_TIMEOUT=${UWSGI_SOCKET_TIMEOUT:-600}
 ARG UWSGI_THREADS=1
-ENV UWSGI_THREADS ${UWSGI_THREADS:-1}
+ENV UWSGI_THREADS=${UWSGI_THREADS:-1}
 ARG UWSGI_WSGI_MODULE=cernopendata.wsgi:application
-ENV UWSGI_WSGI_MODULE ${UWSGI_WSGI_MODULE:-cernopendata.wsgi:application}
+ENV UWSGI_WSGI_MODULE=${UWSGI_WSGI_MODULE:-cernopendata.wsgi:application}
 
 # Start the CERN Open Data Portal application
-# hadolint ignore=DL3025
-CMD uwsgi \
-        --buffer-size ${UWSGI_BUFFER_SIZE} \
-        --cheap \
-        --die-on-term \
-        --enable-threads \
-        --idle ${UWSGI_IDLE} \
-        --master \
-        --max-requests ${UWSGI_MAX_REQUESTS} \
-        --max-worker-lifetime ${UWSGI_MAX_WORKER_LIFETIME} \
-        --memory-report \
-        --module ${UWSGI_WSGI_MODULE} \
-        --need-app \
-        --processes ${UWSGI_PROCESSES} \
-        --py-call-osafterfork \
-        --single-interpreter \
-        --socket 0.0.0.0:${UWSGI_PORT} \
-        --stats /tmp/stats.socket \
-        --threads ${UWSGI_THREADS} \
-        --vacuum \
-        --wsgi-disable-file-wrapper \
-        --socket-timeout ${UWSGI_SOCKET_TIMEOUT}
+CMD ["uwsgi", \
+        "--buffer-size", "${UWSGI_BUFFER_SIZE}", \
+        "--cheap", \
+        "--die-on-term", \
+        "--enable-threads", \
+        "--idle", "${UWSGI_IDLE}", \
+        "--master", \
+        "--max-requests", "${UWSGI_MAX_REQUESTS}", \
+        "--max-worker-lifetime", "${UWSGI_MAX_WORKER_LIFETIME}", \
+        "--memory-report", \
+        "--module", "${UWSGI_WSGI_MODULE}", \
+        "--need-app", \
+        "--processes", "${UWSGI_PROCESSES}", \
+        "--py-call-osafterfork", \
+        "--single-interpreter", \
+        "--socket", "0.0.0.0:${UWSGI_PORT}", \
+        "--stats", "/tmp/stats.socket", \
+        "--threads", "${UWSGI_THREADS}", \
+        "--vacuum", \
+        "--wsgi-disable-file-wrapper", \
+        "--socket-timeout", "${UWSGI_SOCKET_TIMEOUT}"]
