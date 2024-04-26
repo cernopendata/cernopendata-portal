@@ -37,7 +37,7 @@ def test_insert(app, database, search):
             "records/glossary-term-v1.0.0.json"
         ),
     }
-    record = create_glossary_term(data, None, True)
+    record = create_glossary_term(data, True)
 
     indexer = RecordIndexer()
     done = indexer.index(record)
@@ -53,11 +53,11 @@ def test_insert_twice(app, database, search):
             "records/glossary-term-v1.0.0.json"
         ),
     }
-    record1 = create_glossary_term(data, files=None, skip_files=True)
+    record1 = create_glossary_term(data, skip_files=True)
 
     indexer = RecordIndexer()
     indexer.index(record1)
     with pytest.raises(PIDAlreadyExists):
-        record2 = create_glossary_term(data, files=None, skip_files=True)
+        record2 = create_glossary_term(data, skip_files=True)
         indexer.index(record2)
         print("This was not supposed to work. It is a duplicate :(")

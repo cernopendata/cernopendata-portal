@@ -20,18 +20,44 @@
 """Implementention of various utility functions."""
 
 import json
-
+from re import sub
 import six
 from flask import abort, current_app, jsonify, render_template, request
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
 
+from invenio_files_rest.models import FileInstance
+
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
 from invenio_records_ui.utils import obj_or_import_string
 from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
+
+from invenio_search import current_search_client
+from invenio_search.engine import dsl, search
+
+import sys
+import flask
+import re
+
+
+def get_file_index(pid, record, file_index, **kwargs):
+    """Return the list of entries."""
+    entry_name = file_index.replace(".txt", ".json")
+    file_indices = record.get("_file_indices", [])
+    for entry in file_indices:
+        if entry["key"] == entry_name:
+            if entry_name == file_index:
+                return entry
+            to_return = []
+            for file in entry["files"]:
+                to_return.append(file["uri"] + "\n")
+            resp = flask.Response(to_return)
+            resp.headers["Content-Type"] = "text/plain"
+            return resp
+    abort(404)
 
 
 def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
@@ -57,7 +83,6 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
     _record_file_factory = _record_file_factory or record_file_factory
     # Extract file from record.
     filename = kwargs.get("filename")
-
     if filename == "configFile.py":
         rf = record.files.dumps()
         for file in rf:
@@ -66,16 +91,21 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
                 break
 
     fileobj = _record_file_factory(pid, record, filename)
-
     if not fileobj:
-        abort(404)
-
-    obj = fileobj.obj
+        for index in record.file_indices:
+            for file in index["files"]:
+                if file["key"] == filename:
+                    obj = ObjectResource.get_object(
+                        file["bucket"], file["key"], file["version_id"]
+                    )
+        if not obj:
+            abort(404)
+    else:
+        obj = fileobj.obj
 
     # Check permissions
     ObjectResource.check_object_permission(obj)
 
-    # Send file.
     return ObjectResource.send_object(
         obj.bucket,
         obj,
@@ -124,22 +154,15 @@ def get_paged_files(files, page, items_per_page=5):
 
 def record_file_page(pid, record, page=1, **kwargs):
     """Record view - get files for current page."""
-    rf = record.get("files", [])
-
     items_per_page = request.args.get("perPage", 5)
     try:
         items_per_page = int(items_per_page)
     except Exception:
         items_per_page = 5
 
+    _files = record.files
+    index_files = record._file_indices
     if request.args.get("group"):
-        # grouped = groupby(rf, lambda x: x.get('type'))
-        index_files = [d for d in rf if (d.get("type", "") in ["index", "index.txt"])]
-        _files = [
-            d
-            for d in rf
-            if (d.get("type", "") not in ["index", "index.txt", "index.json"])
-        ]
         grouped_files = {
             "index_files": {
                 "total": len(index_files),
@@ -147,31 +170,16 @@ def record_file_page(pid, record, page=1, **kwargs):
             },
             "files": {"total": len(_files), "files": _files[:items_per_page]},
         }
-
         return jsonify(grouped_files)
 
     file_type_filter = request.args.get("type")
 
     if file_type_filter == "index_files":
-        filtered_files = [
-            d for d in rf if (d.get("type", "") in ["index", "index.txt"])
-        ]
-        rf_len = len(filtered_files)
-        paged_files = get_paged_files(filtered_files, page, items_per_page)
-        return jsonify({"total": rf_len, "files": paged_files})
+        filtered_files = index_files
     else:
-        filtered_files = [
-            d
-            for d in rf
-            if (d.get("type", "") not in ["index", "index.txt", "index.json"])
-        ]
-        rf_len = len(filtered_files)
-        paged_files = get_paged_files(filtered_files, page, items_per_page)
-        return jsonify({"total": rf_len, "files": paged_files})
-
-    rf_len = len(rf)
-    paged_files = get_paged_files(rf, page, items_per_page)
-
+        filtered_files = _files
+    rf_len = len(filtered_files)
+    paged_files = get_paged_files(filtered_files, page, items_per_page)
     return jsonify({"total": rf_len, "files": paged_files})
 
 

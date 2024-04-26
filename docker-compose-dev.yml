@@ -22,7 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-version: "2"
+version: "3"
 
 services:
   web:
@@ -37,7 +37,6 @@ services:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
       - ./tests:/code/tests
-      - ../invenio-cold-storage:/cold
 
   web-files:
     profiles:
@@ -46,10 +45,6 @@ services:
   proxy:
       profiles:
         - donotstart
-
-  mq:
-    profiles:
-      - donotstart
 
   pgadmin:
     image: dpage/pgadmin4
@@ -60,5 +55,14 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
       PGADMIN_DEFAULT_PASSWORD: strong-password
+    profiles:
+      - donotstart
+
+  worker:
+    command: bash -c "/code/scripts/start-server-debug.sh worker"
+    volumes:
+      - ./cernopendata:/code/cernopendata
+      - ./scripts:/code/scripts
+      - ./tests:/code/tests
     profiles:
       - donotstart

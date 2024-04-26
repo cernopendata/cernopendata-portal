@@ -1,0 +1,47 @@
+{
+  "template": {
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "files": {
+          "properties": {
+            "dataset": {
+              "properties": {
+                "files": {
+                  "properties": {
+                    "bucket": {
+                      "type": "keyword"
+                    },
+                    "checksum": {
+                      "type": "keyword"
+                    },
+                    "file_id": {
+                      "type": "keyword"
+                    },
+                    "filename": {
+                      "type": "keyword"
+                    },
+                    "key": {
+                      "type": "keyword"
+                    },
+                    "size": {
+                      "type": "unsigned_long"
+                    },
+                    "uri": {
+                      "type": "text"
+                    },
+                    "version_id": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  }
+}
