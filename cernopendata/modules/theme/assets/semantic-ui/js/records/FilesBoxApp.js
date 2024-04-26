@@ -65,12 +65,12 @@ const FilesBoxApp = () => {
     setPage(activePage);
   };
 
-  const renderFileTable = (items, title) => (
+  const renderFileTable = (items, title, table_type) => (
     <>
       {items.total > 0 && (
         <>
           <h3>{title}</h3>
-          <FileTable items={items} pidValue={pidValue} />
+          <FileTable items={items} pidValue={pidValue} table_type={table_type}/>
         </>
       )}
       {items.total > ITEMS_PER_PAGE && (
@@ -85,8 +85,8 @@ const FilesBoxApp = () => {
 
   return (
     <>
-      {renderFileTable(files, "Files")}
-      {renderFileTable(indexFiles, "File Indexes")}
+      {renderFileTable(files, "Files", "files")}
+      {renderFileTable(indexFiles, "File Indexes", "file_index")}
     </>
   );
 };

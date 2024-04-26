@@ -44,39 +44,17 @@ import { toHumanReadableSize } from "../utils";
 import "./IndexFilesModal.scss";
 
 export default function IndexFilesModal({ open, setOpen, indexFile }) {
-  const [error, setError] = useState();
-  const [files, setFiles] = useState([]);
+  const files = indexFile.files;
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [openDownloadModal, setOpenDownloadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState();
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(INDEX_FILES_URL(config.pidValue, indexFile.key))
-      .then((response) => {
-        setLoading(false);
-        if (response.ok) {
-          return response.json();
-        } else {
-          setError("Files are unavailable at the moment");
-        }
-      })
-      .then((data) => {
-        setFiles(data);
-      });
-  }, [indexFile]);
-
   const getPageFiles = () => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = page * ITEMS_PER_PAGE;
     return files.slice(start, end);
   };
-
-  const getFileUri = (fileUri) =>
-    `/record/${config.pidValue}/files/assets/${
-      fileUri.split("/eos/opendata/")[1]
-    }`;
+  var file_counter = 0;
+  const getFileUri = (position) => `/record/${config.pidValue}/files/${indexFile.key}_${position}`;
 
   return (
     <>
@@ -84,8 +62,6 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
         onClose={() => {
           setOpen(false);
           setPage(1);
-          setFiles([]);
-          setError(null);
         }}
         onOpen={() => setOpen(true)}
         open={open}
@@ -93,17 +69,8 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
       >
         <Modal.Header>List of files</Modal.Header>
         <Modal.Content>
-          {loading ? (
+
             <div>
-              <Dimmer active inverted>
-                <Loader inline="centered" />
-              </Dimmer>
-            </div>
-          ) : (
-            <div>
-              {error ? (
-                <Message error>{error}</Message>
-              ) : (
                 <Table singleLine>
                   <Table.Header>
                     <Table.Row>
@@ -114,17 +81,19 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                   </Table.Header>
                   <Table.Body>
                     {getPageFiles().map((file) => {
+                      var my_counter=file_counter;
                       const downloadProp =
                         file.size > config.downloadThreshold
                           ? {
                               onClick: () => {
-                                setSelectedFile(file);
+                                setSelectedFile(my_counter);
                                 setOpenDownloadModal(true);
                               },
                             }
                           : {
-                              href: getFileUri(file.uri),
+                              href: getFileUri(my_counter),
                             };
+                         file_counter +=1;
                       return (
                         <Table.Row key={file.checksum}>
                           <Table.Cell>{file.filename}</Table.Cell>
@@ -132,6 +101,7 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                             {toHumanReadableSize(file.size)}
                           </Table.Cell>
                           <Table.Cell collapsing>
+                          {file.uri && (
                             <Button
                               as="a"
                               icon
@@ -140,16 +110,15 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                               {...downloadProp}
                             >
                               <Icon name="download" />
-                            </Button>
+                            </Button>)}
                           </Table.Cell>
                         </Table.Row>
                       );
                     })}
                   </Table.Body>
                 </Table>
-              )}
             </div>
-          )}
+
           {files.length > ITEMS_PER_PAGE && (
             <Pagination
               className="index-files-pagination"
@@ -166,7 +135,7 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
           setOpen={setOpenDownloadModal}
           filename={selectedFile.filename}
           size={selectedFile.size}
-          uri={getFileUri(selectedFile.uri)}
+          uri={getFileUri(selectedFile)}
         />
       )}
     </>

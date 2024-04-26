@@ -33,13 +33,16 @@ import config from "../config";
 
 import "./FileTable.scss";
 
-export default function FileTable({ items }) {
+export default function FileTable({ items, table_type }) {
   const [openModal, setOpenModal] = useState(false);
   const [openDownloadModal, setOpenDownloadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState();
 
-  const getFileUri = (fileKey) => `/record/${config.pidValue}/files/${fileKey}`;
-
+  const getFileUri = (table_type, fileKey) => {
+    var  url= `/record/${config.pidValue}/${table_type}/${fileKey}`;
+    if (table_type=='file_index')
+           url = url.replace('.json', '.txt');
+    return url};
   return (
     <Table singleLine>
       <Table.Header>
@@ -52,15 +55,15 @@ export default function FileTable({ items }) {
       <Table.Body>
         {items.files.map((file) => {
           const downloadProp =
-            file.size > config.downloadThreshold
+            table_type != 'file_index' && file.size > config.downloadThreshold
               ? {
                   onClick: () => {
                     setSelectedFile(file);
                     setOpenDownloadModal(true);
                   },
                 }
-              : { href: getFileUri(file.key) };
-          const label= file.type=='index.txt' ? 'Download index' : 'Download';
+              : { href: getFileUri(table_type, file.key) };
+          const label= table_type=='file_index' ? 'index' : '';
           return (
             <Table.Row key={file.version_id}>
               <Table.Cell className="filename-cell">{file.key}</Table.Cell>
@@ -68,7 +71,7 @@ export default function FileTable({ items }) {
                 {toHumanReadableSize(file.size)}
               </Table.Cell>
               <Table.Cell collapsing>
-                {file.type === "index.txt" && (
+                {table_type === "file_index" && (
                   <Button
                     icon
                     size="mini"
@@ -81,7 +84,7 @@ export default function FileTable({ items }) {
                   </Button>
                 )}
                 <Button as="a" icon size="mini" primary {...downloadProp}>
-                  <Icon name="download" /> {label}
+                  <Icon name="download" /> Download {label}
                 </Button>
               </Table.Cell>
             </Table.Row>

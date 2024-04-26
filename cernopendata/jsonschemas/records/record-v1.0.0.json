@@ -203,6 +203,30 @@
       },
       "type": "object"
     },
+    "dataset": {
+      "additionalProperties" : {
+          "type": "array",
+          "items": {
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "type": {
+                "type": "string"
+              },
+              "uri": {
+                 "type": "string"
+                },
+              "version_id": {
+                "type": "string"
+              }
+            }
+          }
+      }
+    },
     "dataset_semantics": {
       "items": {
         "properties": {
