@@ -188,6 +188,9 @@
         },
         "files": {
           "properties": {
+            "availability": {
+              "type": "keyword"
+            },
             "bucket": {
               "type": "text"
             },
@@ -207,6 +210,9 @@
               "type": "keyword"
             },
             "uri": {
+              "type": "text"
+            },
+            "uri_cold": {
               "type": "text"
             },
             "version_id": {

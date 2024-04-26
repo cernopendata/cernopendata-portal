@@ -71,12 +71,32 @@ class RecordFilesWithIndex(Record):
     def __init__(self, *args, **kwargs):
         """Initialize the record."""
         super(RecordFilesWithIndex, self).__init__(*args, **kwargs)
-        self.file_cls = FileObject
+        self.file_cls = MultiURIFileObject
 
     @property
     def file_indices(self):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
+
+    def check_availability(self):
+        """Calculate the availability of the record based on the files and file indices."""
+        self._avl = {}
+        for index in self.file_indices:
+            # And let's propagate the availability to the record
+            for avl in index["availability"]:
+                if avl not in self._avl:
+                    self._avl[avl] = 0
+                self._avl[avl] += index["availability"][avl]
+        for file in self.files:
+            avl = file["availability"]
+            if avl not in self._avl:
+                self._avl[avl] = 0
+            self._avl[avl] += 1
+        self["_availability_details"] = self._avl
+        if len(self._avl.keys()) == 1:
+            self["availability"] = list(self._avl.keys())[0]
+        else:
+            self["availability"] = "sample files"
 
 
 class FileIndexMetadata:
@@ -84,6 +104,7 @@ class FileIndexMetadata:
 
     def __init__(self):
         """Initialize an object."""
+        self._avl = {}
         self._number_files = 0
         self._size = 0
         self._files = []
@@ -119,7 +140,10 @@ class FileIndexMetadata:
                 f"{index_file_name}_{rb._number_files}",
                 _file_id=entry_file.id,
             )
-            f = FileObject(o, entry)
+            f = MultiURIFileObject(o, entry)
+            if f.availability not in rb._avl:
+                rb._avl[f.availability] = 0
+            rb._avl[f.availability] += 1
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
             if not rb._number_files % 1000:
@@ -127,7 +151,6 @@ class FileIndexMetadata:
             rb._size += entry["size"]
             rb._files.append(f)
         record["_file_indices"].append(rb.dumps())
-        rb._record = record
         return rb
 
     @classmethod
@@ -148,6 +171,9 @@ class FileIndexMetadata:
             obj._files.append(f)
             obj._size += f.obj.file.size
             obj._number_files += 1
+            if f.availability not in obj._avl:
+                obj._avl[f["availability"]] = 0
+            obj._avl[f["availability"]] += 1
         return obj
 
     @classmethod
@@ -164,6 +190,7 @@ class FileIndexMetadata:
         """Dumping."""
         files = [o.dumps() for o in self._files]
         return {
+            "availability": self._avl,
             "key": self._index_file_name,
             "number_files": self._number_files,
             "size": self._size,
@@ -174,3 +201,45 @@ class FileIndexMetadata:
     def flush(self):
         """Flushing the information into the object."""
         return self.dumps()
+
+
+class MultiURIFileObject(FileObject):
+    """Overwrite the fileobject to offer multiple locations to store the file.
+
+    The extra URI will be stored in ObjectVersionTags.
+
+    Files will have an availability, depending on the locations that are available.
+    For instance, if a file is only stored on tape, the availability will be `ondemand`, since the file
+    needs to be staged before users can access it. If the file is available, the availability will be `online`
+    """
+
+    @classmethod
+    def create_version(self, bucket, filename, file_id):
+        """Create a MultiURIFileObject."""
+        return ObjectVersion.create(bucket, filename, file_id)
+
+    def dumps(self):
+        """This one has the information about the cold URI stored in a ObjectVersionTag."""
+        info = super(MultiURIFileObject, self).dumps()
+        info["tags"] = {}
+        for tagName in ("uri_cold", "hot_deleted"):
+            tag = ObjectVersionTag.get(str(self.obj.version_id), tagName)
+            if tag:
+                info["tags"][tagName] = tag.value
+        if "availability" in self.data:
+            del self.data["availability"]
+        info["availability"] = self.availability
+        if "uri" not in info:
+            file = FileInstance.get(str(self.obj.file_id))
+            info["uri"] = file.uri
+        return info
+
+    @property
+    def availability(self):
+        """Defines the availability of a file: online (disk) or ondemand (tape)."""
+        if "availability" not in self.data:
+            if ObjectVersionTag.get(str(self.obj.version_id), "hot_deleted"):
+                self.data["availability"] = "ondemand"
+            else:
+                self.data["availability"] = "online"
+        return self.data["availability"]
