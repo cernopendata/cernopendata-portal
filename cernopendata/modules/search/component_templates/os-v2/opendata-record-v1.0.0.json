@@ -129,6 +129,9 @@
           },
           "type": "object"
         },
+        "dataset": {
+          "enabled": false
+        },
         "dataset_semantics": {
           "properties": {
             "description": {
