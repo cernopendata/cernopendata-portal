@@ -23,6 +23,7 @@ import glob
 import json
 import os
 import uuid
+from os.path import exists, isdir
 
 import click
 import pkg_resources
@@ -41,7 +42,6 @@ from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
-from os.path import exists, isdir
 
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
@@ -53,11 +53,9 @@ def get_jsons_from_dir(dir):
     return res
 
 
-def handle_record_files(data, bucket, files, skip_files):
+def _handle_record_files(data, bucket, files):
     """Handles record files."""
     for file in files:
-        if skip_files:
-            break
         assert "uri" in file
         assert "size" in file
         assert "checksum" in file
@@ -67,7 +65,6 @@ def handle_record_files(data, bucket, files, skip_files):
             filename = file.get("uri").split("/")[-1:][0]
             f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
             obj = ObjectVersion.create(bucket, filename, _file_id=f.id)
-
             file.update(
                 {
                     "bucket": str(obj.bucket_id),
@@ -85,52 +82,49 @@ def handle_record_files(data, bucket, files, skip_files):
             continue
 
 
-def create_record(schema, data, files, skip_files):
+def create_record(data, files, skip_files):
     """Creates a new record."""
     id = uuid.uuid4()
     cernopendata_recid_minter(id, data)
-    data["$schema"] = schema
     record = Record.create(data, id_=id, with_bucket=not skip_files)
     if not skip_files:
-        handle_record_files(data, record.bucket, files, skip_files)
+        _handle_record_files(data, record.bucket, files)
 
     return record
 
 
-def update_record(pid, schema, data, files, skip_files):
+def update_record(pid, data, files, skip_files):
     """Updates the given record."""
     record = Record.get_record(pid.object_uuid)
-    with db.session.begin_nested():
-        if record.files and not skip_files:
-            bucket_id = record.files.bucket
-            bucket = Bucket.get(bucket_id.id)
-            for o in ObjectVersion.get_by_bucket(bucket).all():
-                o.remove()
-                o.file.delete()
-            RecordsBuckets.query.filter_by(record=record.model, bucket=bucket).delete()
-            bucket_id.remove()
-    db.session.commit()
+    if not skip_files:
+        if record.files:
+            for file in record.files:
+                bucket = Bucket.get(file.bucket.id)
+                for o in ObjectVersion.get_by_bucket(bucket).all():
+                    o.remove()
+                    FileInstance.query.filter_by(id=o.file_id).delete()
+
+        RecordsBuckets.query.filter_by(record=record.model).delete()
     record.update(data)
     if not skip_files:
         bucket = Bucket.create()
-        handle_record_files(data, bucket, files, skip_files)
+        _handle_record_files(data, bucket, files)
         RecordsBuckets.create(record=record.model, bucket=bucket)
     return record
 
 
-def create_doc(data, schema):
+def create_doc(data, files, skip_files):
     """Creates a new doc record."""
     from invenio_records import Record
 
     id = uuid.uuid4()
     cernopendata_docid_minter(id, data)
-    data["$schema"] = schema
     record = Record.create(data, id_=id)
     return record
 
 
-def update_doc(pid, data):
-    """Updates the given doc record."""
+def update_doc_or_glossary(pid, data, files, skip_files):
+    """Updates the given doc/glossary record."""
     from invenio_records import Record
 
     record = Record.get_record(pid.object_uuid)
@@ -138,23 +132,13 @@ def update_doc(pid, data):
     return record
 
 
-def create_glossary_term(data, schema):
+def create_glossary_term(data, files, skip_files):
     """Creates a new glossary term record."""
     from invenio_records import Record
 
     id = uuid.uuid4()
     cernopendata_termid_minter(id, data)
-    data["$schema"] = schema
     record = Record.create(data, id_=id)
-    return record
-
-
-def update_glossary_term(pid, data):
-    """Updates the given glossary term record."""
-    from invenio_records import Record
-
-    record = Record.get_record(pid.object_uuid)
-    record.update(data)
     return record
 
 
@@ -164,20 +148,98 @@ def fixtures():
 
 
 def _get_list_of_fixture_files(files, type):
-    """Return the list of files that should be loaded"""
-    data_dir = pkg_resources.resource_filename(
-        "cernopendata", f"modules/fixtures/data/{type}"
-    )
+    """Return the list of files that should be loaded."""
+    data_dir = None
     if files:
         if not exists(files[0]):
-            click.secho(f"The path {files[0]} does not exist", fg="red", err=True,)
+            click.secho(
+                f"The path {files[0]} does not exist",
+                fg="red",
+                err=True,
+            )
             return
         if isdir(files[0]):
             data_dir = files[0]
         else:
             return files
+    if not data_dir:
+        data_dir = pkg_resources.resource_filename(
+            "cernopendata", f"modules/fixtures/data/{type}"
+        )
 
     return get_jsons_from_dir(data_dir)
+
+
+def _process_fixture_files(
+    files,
+    entry_type,
+    schema_name,
+    skip_files,
+    mode,
+    load_entry_data,
+    pid_field,
+    update_function=update_record,
+    create_function=create_record,
+):
+    if mode not in ["insert", "replace", "insert-or-replace"]:
+        click.secho(
+            f"Error: mode '{mode}' not understood. Available options are 'insert, replace, insert-or-replace",
+            fg="red",
+            err=True,
+        )
+        return
+    indexer = RecordIndexer()
+    schema = current_app.extensions["invenio-jsonschemas"].path_to_url(schema_name)
+
+    record_json = _get_list_of_fixture_files(files, entry_type)
+
+    for filename in record_json:
+        click.echo("Loading records from {0} ...".format(filename))
+
+        with open(filename, "rb") as source:
+            for data in json.load(source):
+                pid = load_entry_data(data, filename)
+                if not pid:
+                    continue
+                data["$schema"] = schema
+                files = data.get("files", [])
+                try:
+                    pid_object = PersistentIdentifier.get(pid_field, pid)
+                    if mode == "insert":
+                        click.secho(
+                            f"{entry_type} {pid} exists already; cannot insert it.",
+                            fg="red",
+                            err=True,
+                        )
+                        return
+                    record = update_function(pid_object, data, files, skip_files)
+                    action = "updated"
+                except PIDDoesNotExistError:
+                    if mode == "replace":
+                        click.secho(
+                            f"{entry_type} {pid} does not exist; cannot replace it.",
+                            fg="red",
+                            err=True,
+                        )
+                        return
+                    record = create_function(data, files, skip_files)
+                    action = "inserted"
+                if not skip_files:
+                    record.files.flush()
+                try:
+                    record.commit()
+                    db.session.commit()
+                except Exception as e:
+                    click.secho(
+                        f"There was an exception during the commit: {e}",
+                        fg="red",
+                        err=True,
+                    )
+                    return
+                click.echo(f"{entry_type} {pid} {action}")
+                indexer.index(record)
+                db.session.expunge_all()
+
 
 @fixtures.command()
 @click.option("--skip-files", is_flag=True, default=False, help="Skip loading of files")
@@ -208,57 +270,26 @@ def records(skip_files, files, profile, mode):
         pr = cProfile.Profile()
         pr.enable()
 
-    indexer = RecordIndexer()
-    schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
-        "records/record-v1.0.0.json"
+    def load_record_data(data, filename):
+        if not data:
+            click.echo(
+                "IGNORING a possibly broken or corrupted "
+                "record entry in file {0} ...".format(filename)
+            )
+            return False
+        return data["recid"]
+
+    _process_fixture_files(
+        files,
+        "record",
+        "records/record-v1.0.0.json",
+        skip_files=skip_files,
+        mode=mode,
+        load_entry_data=load_record_data,
+        pid_field="recid",
+        update_function=update_record,
+        create_function=create_record,
     )
-    record_json = _get_list_of_fixture_files(files, "records")
-
-    for filename in record_json:
-        click.echo("Loading records from {0} ...".format(filename))
-
-        with open(filename, "rb") as source:
-            for data in json.load(source):
-                if not data:
-                    click.echo(
-                        "IGNORING a possibly broken or corrupted "
-                        "record entry in file {0} ...".format(filename)
-                    )
-                    continue
-
-                files = data.get("files", [])
-
-                try:
-                    pid = PersistentIdentifier.get("recid", data["recid"])
-                    if mode == "insert":
-                        click.secho(
-                            "Record recid {} exists already;"
-                            " cannot insert it.  ".format(data.get("recid")),
-                            fg="red",
-                            err=True,
-                        )
-                        return
-                    record = update_record(pid, schema, data, files, skip_files)
-                    action = "updated"
-                except PIDDoesNotExistError:
-                    if mode == "replace":
-                        click.secho(
-                            "Record recid {} does not exist; "
-                            "cannot replace it.".format(data.get("recid")),
-                            fg="red",
-                            err=True,
-                        )
-                        return
-                    record = create_record(schema, data, files, skip_files)
-                    action = "inserted"
-
-                if not skip_files:
-                    record.files.flush()
-                record.commit()
-                db.session.commit()
-                click.echo("Record recid {0} {1}.".format(data.get("recid"), action))
-                indexer.index(record)
-                db.session.expunge_all()
 
     if profile:
         pr.disable()
@@ -288,51 +319,21 @@ def records(skip_files, files, profile, mode):
 )
 def glossary(files, mode):
     """Load glossary term records."""
-    indexer = RecordIndexer()
-    schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
-        "records/glossary-term-v1.0.0.json"
+
+    def load_glossary_data(data, filename):
+        return data["anchor"]
+
+    _process_fixture_files(
+        files,
+        "terms",
+        "records/glossary-term-v1.0.0.json",
+        True,
+        mode,
+        load_glossary_data,
+        "termid",
+        update_doc_or_glossary,
+        create_glossary_term,
     )
-    data = pkg_resources.resource_filename("cernopendata", "modules/fixtures/data")
-
-    if files:
-        glossary_terms_json = files
-    else:
-        glossary_terms_json = glob.glob(os.path.join(data, "terms", "*.json"))
-
-    for filename in glossary_terms_json:
-        click.echo("Loading glossary terms from {0} ...".format(filename))
-
-        with open(filename, "rb") as source:
-            for data in json.load(source):
-                try:
-                    pid = PersistentIdentifier.get("termid", data["anchor"])
-                    if mode == "insert":
-                        click.echo(
-                            "Glossary term {} exists already; cannot insert it.".format(
-                                data.get("anchor")
-                            ),
-                            err=True,
-                        )
-                        return
-
-                    record = update_glossary_term(pid, data)
-                    action = "updated"
-                except PIDDoesNotExistError:
-                    if mode == "replace":
-                        click.echo(
-                            "Glossary term {} does not exist; cannot replace it.".format(
-                                data.get("anchor")
-                            ),
-                            err=True,
-                        )
-                        return
-                    record = create_glossary_term(data, schema)
-                    action = "inserted"
-                record.commit()
-                db.session.commit()
-                click.echo("Glossary term {0} {1}.".format(data.get("anchor"), action))
-                indexer.index(record)
-                db.session.expunge_all()
 
 
 @fixtures.command()
@@ -356,68 +357,35 @@ def docs(files, mode):
     """Load demo article records."""
     from slugify import slugify
 
-    indexer = RecordIndexer()
-    schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
-        "records/docs-v1.0.0.json"
-    )
-    articles_json = _get_list_of_fixture_files(files, "docs")
-    print("READING DOCS??", articles_json)
-    for filename in articles_json:
-        click.echo("Loading docs from {0} ...".format(filename))
-        with open(filename, "rb") as source:
-            for data in json.load(source):
-                # Replace body with responding content
-                assert data["body"]["content"]
-                content_filename = os.path.join(
-                    *(
-                        [
-                            "/",
-                        ]
-                        + filename.split("/")[:-1]
-                        + [
-                            data["body"]["content"],
-                        ]
-                    )
-                )
+    def read_doc_content(data, filename):
+        assert data["body"]["content"]
+        content_filename = os.path.join(
+            *(
+                [
+                    "/",
+                ]
+                + filename.split("/")[:-1]
+                + [
+                    data["body"]["content"],
+                ]
+            )
+        )
 
-                with open(content_filename) as body_field:
-                    data["body"]["content"] = body_field.read()
-                try:
-                    pid = PersistentIdentifier.get(
-                        "docid", str(slugify(data.get("slug", data["title"])))
-                    )
-                    if mode == "insert":
-                        click.echo(
-                            "Record docid {} exists already; cannot insert it.  ".format(
-                                str(slugify(data.get("slug", data["title"])))
-                            ),
-                            err=True,
-                        )
-                        return
-                    if pid:
-                        record = update_doc(pid, data)
-                        action = "updated"
-                except PIDDoesNotExistError:
-                    if mode == "replace":
-                        click.echo(
-                            "Record docid {} does not exist; cannot replace it.".format(
-                                str(slugify(data.get("slug", data["title"])))
-                            ),
-                            err=True,
-                        )
-                        return
-                    record = create_doc(data, schema)
-                    action = "inserted"
-                record.commit()
-                db.session.commit()
-                click.echo(
-                    " Record docid {0} {1}.".format(
-                        str(slugify(data.get("slug", data["title"]))), action
-                    )
-                )
-                print(record)
-                indexer.index(record)
-                db.session.expunge_all()
+        with open(content_filename) as body_field:
+            data["body"]["content"] = body_field.read()
+        return str(slugify(data.get("slug", data["title"])))
+
+    _process_fixture_files(
+        files,
+        entry_type="docs",
+        schema_name="records/docs-v1.0.0.json",
+        mode=mode,
+        skip_files=True,
+        load_entry_data=read_doc_content,
+        pid_field="docid",
+        update_function=update_doc_or_glossary,
+        create_function=create_doc,
+    )
 
 
 @fixtures.command()
