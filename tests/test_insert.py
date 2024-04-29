@@ -22,7 +22,9 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
+import pytest
 from invenio_indexer.api import RecordIndexer
+from invenio_pidstore.errors import PIDAlreadyExists
 
 from cernopendata.modules.fixtures.cli import create_glossary_term
 
@@ -31,13 +33,31 @@ def test_insert(app, database, search):
     """Checking that records can be inserted"""
     data = {
         "anchor": "dummy_test",
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/glossary-term-v1.0.0.json"
+        ),
     }
-    schema = app.extensions["invenio-jsonschemas"].path_to_url(
-        "records/glossary-term-v1.0.0.json"
-    )
-    record = create_glossary_term(data, schema)
+    record = create_glossary_term(data, None, True)
 
     indexer = RecordIndexer()
     done = indexer.index(record)
 
     assert done["_index"] == "records-glossary-term-v1.0.0"
+
+
+def test_insert_twice(app, database, search):
+    """Checking what happens if the same record is inserted twice"""
+    data = {
+        "anchor": "dummy_test_duplicate",
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/glossary-term-v1.0.0.json"
+        ),
+    }
+    record1 = create_glossary_term(data, files=None, skip_files=True)
+
+    indexer = RecordIndexer()
+    indexer.index(record1)
+    with pytest.raises(PIDAlreadyExists):
+        record2 = create_glossary_term(data, files=None, skip_files=True)
+        indexer.index(record2)
+        print("This was not supposed to work. It is a duplicate :(")
