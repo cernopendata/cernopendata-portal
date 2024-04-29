@@ -157,6 +157,7 @@ setup(
             "cernopendata.modules.theme.webpack:records_file_box",
         ],
         "invenio_base.apps": [
+            "invenio_records_rest = invenio_records_rest:InvenioRecordsREST",
             "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD",
             "cernopendata_sitemap = "
             "cernopendata.modules.sitemap:CERNOpenDataSitemap",
