@@ -6,9 +6,7 @@
       "format": "md"
     },
     "collections": [
-      {
-        "primary": "News"
-      }
+      "News"
     ],
     "date_published": "2020-12-11",
     "experiment": [
