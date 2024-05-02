@@ -296,12 +296,6 @@ def glossary(files, mode):
 
         with open(filename, "rb") as source:
             for data in json.load(source):
-                if "collections" not in data and not isinstance(
-                    data.get("collections", None), str
-                ):
-                    data["collections"] = []
-                data["collections"].append({"primary": "Terms"})
-
                 try:
                     pid = PersistentIdentifier.get("termid", data["anchor"])
                     if mode == "insert":
@@ -384,10 +378,6 @@ def docs(files, mode):
 
                 with open(content_filename) as body_field:
                     data["body"]["content"] = body_field.read()
-                if "collections" not in data and not isinstance(
-                    data.get("collections", None), str
-                ):
-                    data["collections"] = []
                 try:
                     pid = PersistentIdentifier.get(
                         "docid", str(slugify(data.get("slug", data["title"])))
