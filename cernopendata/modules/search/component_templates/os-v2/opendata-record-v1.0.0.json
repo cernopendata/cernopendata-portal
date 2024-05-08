@@ -169,10 +169,10 @@
               "type": "keyword"
             },
             "number_entries": {
-              "type": "integer"
+              "type": "unsigned_long"
             },
             "number_events": {
-              "type": "integer"
+              "type": "unsigned_long"
             },
             "number_files": {
               "type": "integer"
