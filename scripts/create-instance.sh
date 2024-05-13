@@ -28,17 +28,8 @@ set -o nounset
 mkdir -p "${INVENIO_INSTANCE_PATH}"
 cd "${INVENIO_INSTANCE_PATH}"/static
 
-npm install git+https://github.com/cernopendata/demobbed-viewer.git --prefix $INVENIO_INSTANCE_PATH/static
-npm install ispy-webgl@0.9.8-COD3.11 --prefix $INVENIO_INSTANCE_PATH/static
-
-cd node_modules/demobbed-viewer \
-    && rm index.html LICENCE README.md package.json \
-    && cd "${INVENIO_INSTANCE_PATH}"/static
-
-cd node_modules/ispy-webgl \
-    && rm index.html LICENSE README.md package.json \
-    && cd "${INVENIO_INSTANCE_PATH}"/static \
-    && rm package-lock.json
+# cleanup the previous installation
+rm -rf "${INVENIO_INSTANCE_PATH}"/static/*
 
 cernopendata collect -v
 # The collect takes the files in order. Some files, like the favicon, are provided by invenio_theme, and they should
