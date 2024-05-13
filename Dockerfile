@@ -46,7 +46,8 @@ RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
     yum clean -y all
 
 RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==20.2.4 setuptools==68.2.2 wheel==0.36.2 && \
-    npm install -g --unsafe-perm node-sass@6.0.1 clean-css@3.4.24 requirejs@2.3.6 uglify-js@3.12.1 jsonlint@1.6.3 d3@6.3.1
+    npm install -g --unsafe-perm node-sass@6.0.1 clean-css@3.4.24 requirejs@2.3.6 uglify-js@3.12.1 jsonlint@1.6.3 d3@6.3.1 \
+    @cernopendata/demobbed-viewer@v1.3.0 ispy-webgl@0.9.8-COD3.11
 
 # Change group to root to support OpenShift runtime
 RUN chgrp -R 0 "${INVENIO_INSTANCE_PATH}" && \
