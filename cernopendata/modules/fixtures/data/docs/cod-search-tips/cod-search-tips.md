@@ -24,6 +24,12 @@ On top of that, it is also possible to search on specific fields. For instance, 
 * `doi:10.7483/OPENDATA.CMS.W26R.J96R`: returns the document with that Digital Object Identifier (doi)
 * `doi:10.7483*`: returns all the documents with a doi starting with those values.
 
+Searches based on the title are a bit trickier, since the title is stored in two formats (one for searching
+and a different one for sorting). Here you have a couple of examples searching in the title:
+
+* `title.tokens:muon`: returns all the documents where the title contains that word. Note that words are delimited by spaces or special symbols (like '-'). Therefore, `di-moun` will also match. `dimoun` will not.
+* `title.tokens:*muon`: similar to the previous one. It will return the documents where the title contains a word finishing with `muon` (`di-muon`, `dimuon` and `muon` will match).
+* `title.tokens:*muon*`: documents where any word in the title contains the sequence `muon` will be returned (`DoubleMuon`, `MuonEG`, ...).
 
 The syntax for these queries is defined by the OpenSearch query_string, which is based in the [Apache Lucene syntax](https://lucene.apache.org/core/2_9_4/queryparsersyntax.html)
 
