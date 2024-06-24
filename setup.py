@@ -93,6 +93,7 @@ install_requires = [
     "pluggy==0.13.1",
     # Custom Invenio `postgresql` bundle
     "invenio-db[versioning,postgresql]==1.1.0",
+    "invenio-mail>=2.1.1",
     # Custom Invenio `opensearch` bundle
     "invenio-search[opensearch2]>=2.3.1,<3.0.0",
     # Specific Invenio dependencies
