@@ -32,7 +32,7 @@ cd "${INVENIO_INSTANCE_PATH}"/static
 rm -rf "${INVENIO_INSTANCE_PATH}"/static/*
 
 # The modules have been installed during the docker installation. Let's ensure that they are available here
-ln -s /usr/lib/node_modules/  "${INVENIO_INSTANCE_PATH}"/static/
+cp -r /usr/lib/node_modules/ "${INVENIO_INSTANCE_PATH}"/static/
 
 cernopendata collect -v
 # The collect takes the files in order. Some files, like the favicon, are provided by invenio_theme, and they should
