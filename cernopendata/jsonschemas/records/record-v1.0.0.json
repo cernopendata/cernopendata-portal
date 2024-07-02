@@ -747,7 +747,6 @@
     }
   },
   "required": [
-    "collections",
     "date_published",
     "experiment",
     "publisher",
