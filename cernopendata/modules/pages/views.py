@@ -80,7 +80,7 @@ def index():
     """Home Page."""
     results = []
     try:
-        results = FeaturedArticlesSearch().sort("featured")[:6].execute().hits.hits
+        results = FeaturedArticlesSearch().sort("-date_published")[:6].execute().hits.hits
     except Exception:
         pass
     return render_template(
