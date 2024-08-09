@@ -47,6 +47,8 @@ from cernopendata.modules.records.minters.recid import \
 from cernopendata.modules.records.minters.termid import \
     cernopendata_termid_minter
 
+MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
+
 
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
@@ -202,9 +204,9 @@ def _process_fixture_files(
     update_function=update_record,
     create_function=create_record,
 ):
-    if mode not in ["insert", "replace", "insert-or-replace"]:
+    if mode not in MODE_OPTIONS:
         click.secho(
-            f"Error: mode '{mode}' not understood. Available options are 'insert, replace, insert-or-replace",
+            f"Error: mode '{mode}' not understood. Available options are '{MODE_OPTIONS}'",
             fg="red",
             err=True,
         )
@@ -237,6 +239,9 @@ def _process_fixture_files(
                             err=True,
                         )
                         return
+                    if mode == "insert-or-skip":
+                        click.secho(f"{entry_type} {pid} already exists... skipping")
+                        continue
                     record = update_function(pid_object, data, skip_files)
                     action = "updated"
                 except PIDDoesNotExistError:
@@ -279,7 +284,7 @@ def _process_fixture_files(
 @click.option(
     "--mode",
     required=True,
-    type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
 @with_appcontext
@@ -337,7 +342,7 @@ def records(skip_files, files, profile, mode):
 @click.option(
     "--mode",
     required=True,
-    type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
 def glossary(files, mode):
@@ -372,7 +377,7 @@ def glossary(files, mode):
 @click.option(
     "--mode",
     required=True,
-    type=click.Choice(["insert", "replace", "insert-or-replace"]),
+    type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
 @with_appcontext
