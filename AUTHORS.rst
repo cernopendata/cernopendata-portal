@@ -55,5 +55,6 @@ The list of contributors in alphabetical order:
 - `Thomas McCauley <https://github.com/tpmccauley>`_
 - `Tibor Šimko <https://orcid.org/0000-0001-7202-5803>`_
 - `Tim Smith <https://github.com/TimSmithCH>`_
+- `Ulrich Schwickerath <https://github.com/schwicke>`_
 - `Xiaohe Shen <https://github.com/Ari-mu-l>`_
 - `Zacharias Zacharodimos <https://github.com/zzacharo>`_
