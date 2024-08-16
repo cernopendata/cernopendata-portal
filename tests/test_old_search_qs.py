@@ -204,7 +204,7 @@ def mock_data():
             },
             "Supersymmetry": {"subcategory": set()},
         },
-        "number_of_events": {
+        "number_events": {
             "0 -- 999 ": {},
             "1000 -- 9999": {},
             "10000 -- 99999": {},

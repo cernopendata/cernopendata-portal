@@ -69,13 +69,13 @@ class CODJSONSerializer(JSONSerializer):
 
         aggregations = aggregations[0]
 
-        # Remove empty buckets in number_of_events facet
-        if "number_of_events" in aggregations.keys():
+        # Remove empty buckets in number_events facet
+        if "number_events" in aggregations.keys():
             new_event_list = []
-            for bucket in aggregations["number_of_events"]["buckets"]:
+            for bucket in aggregations["number_events"]["buckets"]:
                 if bucket["doc_count"] != 0:
                     new_event_list.append(bucket)
-            aggregations["number_of_events"]["buckets"] = new_event_list
+            aggregations["number_events"]["buckets"] = new_event_list
 
         return json.dumps(
             dict(
