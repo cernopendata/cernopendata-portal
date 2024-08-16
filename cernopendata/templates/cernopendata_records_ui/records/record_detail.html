@@ -46,6 +46,7 @@
             {% if record.date_published %} ({{ record.date_published }}). {% endif %}
             {{ record.title_additional or record.title }}. CERN Open Data Portal.
             DOI:<a href="http://doi.org/{{record.doi}}">{{record.doi}}</a>
+            <div id="citations-react-app" data-doi={{ record.doi }} data-recid={{record.recid}}></div>
         </span>
     </p>
     {% endif %}
