@@ -392,16 +392,16 @@ RECORDS_REST_FACETS = {
             stripping_version=dict(
                 terms=dict(field="stripping.version", order=dict(_term="asc"))
             ),
-            number_of_events={
+            number_events={
                 "range": {
                     "field": "distribution.number_events",
                     "ranges": [
-                        {"key": "0 -- 999 ", "from": 0, "to": 1000},
-                        {"key": "1000 -- 9999", "from": 1000, "to": 10000},
-                        {"key": "10000 -- 99999", "from": 10000, "to": 100000},
-                        {"key": "100000 -- 999999", "from": 100000, "to": 1000000},
-                        {"key": "1000000 -- 9999999", "from": 1000000, "to": 10000000},
-                        {"key": " 10000000 --", "from": 10000000},
+                        {"key": "0--999 ", "from": 0, "to": 1000},
+                        {"key": "1000--9999", "from": 1000, "to": 10000},
+                        {"key": "10000--99999", "from": 10000, "to": 100000},
+                        {"key": "100000--999999", "from": 100000, "to": 1000000},
+                        {"key": "1000000--9999999", "from": 1000000, "to": 10000000},
+                        {"key": " 10000000--", "from": 10000000},
                     ],
                 }
             },
@@ -420,7 +420,7 @@ RECORDS_REST_FACETS = {
             magnet_polarity=terms_filter("magnet_polarity"),
             stripping_stream=terms_filter("stripping.stream"),
             stripping_version=terms_filter("stripping.version"),
-            number_of_events=range_filter("distribution.number_events"),
+            number_events=range_filter("distribution.number_events"),
             collections=terms_filter("collections"),
             signature=terms_filter("signature"),
             keywords=terms_filter("keywords"),
