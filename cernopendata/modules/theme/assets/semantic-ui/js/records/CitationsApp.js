@@ -33,7 +33,7 @@ const CitationsApp = () => {
   const recid = document.querySelector("#citations-react-app").getAttribute("data-recid");
   
   const inspireHost = "https://inspirehep.net"
-  const inspireURL = `/literature?sort=mostrecent&size=25&page=1&q=references.reference.dois%3A${doi}%20or%20references.reference.urls.value%3Ahttps%3A%2F%2Fopendata.cern.ch%2Frecord%2F${recid}`;
+  const inspireURL = `/literature?sort=mostrecent&size=1&page=1&q=references.reference.dois%3A${doi}%20or%20references.reference.urls.value%3Ahttps%3A%2F%2Fopendata.cern.ch%2Frecord%2F${recid}`;
   const inspireFullPath = `${inspireHost}${inspireURL}`;
 
   useEffect(() => {
