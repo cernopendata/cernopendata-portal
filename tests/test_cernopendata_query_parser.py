@@ -33,7 +33,7 @@ def _create_query(term):
     return dsl.query.Bool(
         must=[
             dsl.query.QueryString(
-                default_operator="AND", fields=["title.tokens^2", "*"], query=term
+                default_operator="AND", fields=["title.tokens^2", "*"], query=term, type='cross_fields',
             )
         ],
         must_not=[dsl.query.Match(distribution__availability="ondemand")],
@@ -55,4 +55,5 @@ def test_cernopendata_query_parser(app):
             default_operator="AND",
             fields=["title.tokens^2", "*"],
             query="CMS AND \\/btau",
+            type='cross_fields',
         )

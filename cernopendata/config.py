@@ -236,6 +236,7 @@ def _query_parser_and(qstr=None):
             query=qstr.replace("/", "\\/"),
             default_operator="AND",
             fields=["title.tokens^2", "*"],
+            type="cross_fields",
         )
     else:
         _query = dsl.Q()
