@@ -51,10 +51,10 @@ export default function DownloadWarningModal({
           connection, it may take several hours to download it.
         </p>
         <p>
-          Moreover, if you use one of the provided{" "}
-          <a href="/VM/CMS">Virtual Machines</a> to perform your analyses, then
-          you don't need to download datasets manually, because the VM will
-          fetch all the necessary file chunks via the XRootD protocol.
+          Most collaborations provide container images or virtual machine images allowing to perform analyses.
+          If you use one of those, then you do not need to download datasets manually,
+          because all the necessary file chunks will be accessed via the XRootD protocol during the live analysis.
+          Please check the corresponding <a href="/search?q=getting%20started&f=type%3ADocumentation%2Bsubtype%3AGuide">getting started</a> guides for more details.
         </p>
         <p>
           Manual download of files via HTTP is only necessary if you would
