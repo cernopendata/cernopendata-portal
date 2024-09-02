@@ -32,8 +32,9 @@ import FilesBoxApp from "./FilesBoxApp";
 import CitationsApp from "./CitationsApp";
 
 const citeContainer = document.querySelector("#citations-react-app");
-ReactDOM.render(React.createElement(CitationsApp), citeContainer);
-
+if (citeContainer) {
+    ReactDOM.render(React.createElement(CitationsApp), citeContainer);
+};
 const domContainer = document.querySelector("#files-box-react-app");
 ReactDOM.render(React.createElement(FilesBoxApp), domContainer);
 
