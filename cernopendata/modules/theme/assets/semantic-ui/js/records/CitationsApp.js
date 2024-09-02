@@ -28,6 +28,7 @@
 import React, { useEffect, useState } from "react";
 const CitationsApp = () => {
   const [references, setReferences] = useState(0);
+  const [message, setMessage] = useState("");
 
   const doi = document.querySelector("#citations-react-app").getAttribute("data-doi");
   const recid = document.querySelector("#citations-react-app").getAttribute("data-recid");
@@ -41,13 +42,18 @@ const CitationsApp = () => {
       .then((response) => response.json())
       .then((data) => {
         setReferences(data.hits.total);
+        if (data.hits.total == 1) {
+           setMessage("There is one publication referring to these data");
+         } else {
+           setMessage("There are "+data.hits.total+" publications referring to these data");
+         }
       });
   }, []);
 
   return (
     <>
         { references > 0 &&
-          <a href={inspireFullPath}>There are {references} publications referring to these data</a>
+          <a href={inspireFullPath}>{message}</a>
         }
     </>
   );
