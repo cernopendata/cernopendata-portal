@@ -21,8 +21,6 @@ the system will be ready for "live editing". This is useful for active feature
 development or for pull request integration purposes. A usage example:
 
 .. code-block:: console
-
-   $ ./scripts/generate-localhost-certificate.sh
    $ docker compose -f docker-compose.yml -f docker-compose-dev.yml build
    $ docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d
    $ docker exec -i -t opendatacern-web /code/scripts/populate-instance.sh
@@ -35,7 +33,6 @@ system performance such as reverse proxy caching. The source code directory
 will not be mounted in the container in this case. A usage example:
 
 .. code-block:: console
-
    $ ./scripts/generate-localhost-certificate.sh
    $ docker compose build
    $ docker compose up -d
