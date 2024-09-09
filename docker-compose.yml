@@ -30,6 +30,7 @@ services:
     build:
       context: .
     image: cernopendata/web
+    container_name: opendatacern-web
     depends_on:
       search:
         condition: service_healthy
