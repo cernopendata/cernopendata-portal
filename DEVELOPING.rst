@@ -23,9 +23,9 @@ development or for pull request integration purposes. A usage example:
 .. code-block:: console
 
    $ ./scripts/generate-localhost-certificate.sh
-   $ docker compose -f docker-compose-dev.yml build
-   $ docker compose -f docker-compose-dev.yml up -d
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh
+   $ docker compose -f docker-compose.yml -f docker-compose-dev.yml build
+   $ docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d
+   $ docker exec -i -t opendatacern-web /code/scripts/populate-instance.sh
    $ firefox http://0.0.0.0:5000/
    $ docker compose -f docker-compose-dev.yml down -v
 
@@ -39,7 +39,7 @@ will not be mounted in the container in this case. A usage example:
    $ ./scripts/generate-localhost-certificate.sh
    $ docker compose build
    $ docker compose up -d
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh
+   $ docker exec -i -t opendatacern-web /code/scripts/populate-instance.sh
    $ firefox http://0.0.0.0/
    $ docker compose down -v
 
