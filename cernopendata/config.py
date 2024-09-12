@@ -398,7 +398,7 @@ RECORDS_REST_FACETS = {
                 "range": {
                     "field": "distribution.number_events",
                     "ranges": [
-                        {"key": "0--999 ", "from": 0, "to": 1000},
+                        {"key": "0--999", "from": 0, "to": 1000},
                         {"key": "1000--9999", "from": 1000, "to": 10000},
                         {"key": "10000--99999", "from": 10000, "to": 100000},
                         {"key": "100000--999999", "from": 100000, "to": 1000000},
