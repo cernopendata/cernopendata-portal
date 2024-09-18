@@ -177,38 +177,38 @@ RECORDS_UI_ENDPOINTS = dict(
         pid_type="recid",
         route="/record/<pid_value>",
         permission_factory_imp=None,
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
         view_imp="cernopendata.modules.records.utils:record_metadata_view",
     ),
     recid_files=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/<path:filename>",
         view_imp="cernopendata.modules.records.utils:file_download_ui",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_file_index=dict(
         pid_type="recid",
         route="/record/<pid_value>/file_index/<path:file_index>",
         view_imp="cernopendata.modules.records.utils:get_file_index",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_files_assets=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/assets/<path:filepath>",
         view_imp="cernopendata.modules.records.utils:eos_file_download_ui",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_files_page=dict(
         pid_type="recid",
         route="/record/<pid_value>/filepage/<int:page>",
         view_imp="cernopendata.modules.records.utils:record_file_page",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_export=dict(
         pid_type="recid",
         route="/record/<pid_value>/export/<format>",
         view_imp="cernopendata.modules.records.utils:export_json_view",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     termid=dict(
         pid_type="termid",
@@ -258,7 +258,7 @@ RECORDS_REST_ENDPOINTS["recid"].update(
     {
         "search_query_parser": _query_parser_and,
         "pid_minter": "cernopendata_recid_minter",
-        "pid_fetcher": "cernopendata_recid_fetcher",
+        "pid_fetcher": "cernopendata_generic_fetcher",
         "record_class": _Record,
         "links_factory_imp": "cernopendata.modules.records.links:links_factory",
         "record_serializers": {

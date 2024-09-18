@@ -202,6 +202,9 @@ setup(
             "cernopendata_docid_fetcher = "
             " cernopendata.modules.records.fetchers.docid:"
             "cernopendata_docid_fetcher",
+            "cernopendata_generic_fetcher = "
+            " cernopendata.modules.records.fetchers.recid:"
+            "cernopendata_generic_fetcher",
         ],
         "invenio_search.index_templates": [
             "records = cernopendata.modules.search.index_templates",
