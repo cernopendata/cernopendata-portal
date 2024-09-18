@@ -27,6 +27,27 @@ class FileIndexIterator(object):
             [(f["key"], f) for f in self.record.get("_file_indices", [])]
         )
 
+    def __len__(self):
+        """Get number of file indices."""
+        return len(self.file_indices)
+
+    def __iter__(self):
+        """Get iterator."""
+        self._it = iter(self.file_indices)
+        return self
+
+    def __next__(self):
+        """Get next file item."""
+        entry = next(self._it)
+        return self.file_indices[entry]
+
+    def __getitem__(self, key):
+        """Get a specific file."""
+        obj = FileIndexMetadata.get(self.record, key)
+        if obj:
+            return self.file_cls(obj, self.filesmap.get(obj.key, {}))
+        raise KeyError(key)
+
     def flush(self):
         """Flush changes to record."""
         file_indices = self.dumps()
@@ -57,15 +78,26 @@ class RecordFilesWithIndex(Record):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
 
+    @classmethod
+    def get_record(cls, id):
+        """Get a record."""
+        record = super(RecordFilesWithIndex, cls).get_record(id)
+        record["_file_indices"] = []
+        for buckettag in BucketTag.query.filter_by(key="record", value=str(record.id)):
+            record["_file_indices"].append(
+                FileIndexMetadata.get(record.id, buckettag.bucket_id).dumps()
+            )
+        return record
+
 
 class FileIndexMetadata:
     """Class for the FileIndexMetadata."""
 
-    index_file_name = ""
-    size = 0
-    number_files = 0
-    _record = None
-    _bucket = None
+    def __init__(self):
+        """Initialize an object."""
+        self._number_files = 0
+        self._size = 0
+        self._files = []
 
     def __repr__(self):
         """Representation of the object."""
@@ -87,9 +119,7 @@ class FileIndexMetadata:
         rb._bucket = Bucket.create()
         BucketTag.create(rb._bucket, "index_name", index_file_name)
         BucketTag.create(rb._bucket, "record", record.model.id)
-        rb._number_files = 0
-        rb._size = 0
-        rb._files = []
+        print(f"The file index contains {len(index_content)} entries.")
         for entry in index_content:
             entry_file = FileInstance.create()
             entry_file.set_uri(entry["uri"], entry["size"], entry["checksum"])
@@ -101,11 +131,33 @@ class FileIndexMetadata:
             f = FileObject(o, entry)
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
+            if not rb._number_files % 1000:
+                print(f"    {rb._number_files} done")
             rb._size += entry["size"]
             rb._files.append(f)
         record["_file_indices"].append(rb.dumps())
         rb._record = record
         return rb
+
+    @classmethod
+    def get(cls, record_id, bucket_id):
+        """Get a file index, based on the bucket."""
+        obj = cls()
+        obj._index_file_name = (
+            BucketTag.query.filter_by(key="index_name", bucket_id=str(bucket_id))
+            .one()
+            .value
+        )
+        bucket = Bucket.get(bucket_id)
+        for o in ObjectVersion.get_by_bucket(bucket).all():
+            f = FileObject(o, {})
+            # Let's put also the uri
+            f["uri"] = FileInstance.get(str(o.file_id)).uri
+            f["filename"] = f["uri"].split("/")[-1]
+            obj._files.append(f)
+            obj._size += f.obj.file.size
+            obj._number_files += 1
+        return obj
 
     @classmethod
     def delete_by_record(cls, record):

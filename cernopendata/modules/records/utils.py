@@ -48,8 +48,8 @@ import re
 def get_file_index(pid, record, file_index, **kwargs):
     """Return the list of entries."""
     entry_name = file_index.replace(".txt", ".json")
-    file_indices = record.get("_file_indices", [])
-    for entry in file_indices:
+
+    for entry in record.file_indices:
         if entry["key"] == entry_name:
             if entry_name == file_index:
                 return entry
@@ -162,8 +162,8 @@ def record_file_page(pid, record, page=1, **kwargs):
     except Exception:
         items_per_page = 5
 
-    _files = record.files
-    index_files = record._file_indices
+    _files = list(record.files)
+    index_files = list(record.file_indices)
     if request.args.get("group"):
         grouped_files = {
             "index_files": {
