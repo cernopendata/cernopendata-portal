@@ -161,7 +161,7 @@ def record_file_page(pid, record, page=1, **kwargs):
         items_per_page = 5
 
     _files = record.files
-    index_files = record._file_indices
+    index_files = record.file_indices
     if request.args.get("group"):
         grouped_files = {
             "index_files": {
