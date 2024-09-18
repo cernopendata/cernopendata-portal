@@ -118,7 +118,7 @@ install_requires = [
     # Pin Celery due to worker runtime issues
     "celery==5.2.7",
     # Pin XRootD consistently with Dockerfile
-    "xrootd==5.7.0",
+    "xrootd==5.7.1",
     # Pin Flask/gevent/greenlet/raven to make master work again
     "Flask==2.2.5",
     "Flask-Alembic==2.0.1",
