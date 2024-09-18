@@ -26,8 +26,8 @@
 ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM registry.cern.ch/inveniosoftware/almalinux:1
 
-# Use XRootD 5.7.0
-ENV XROOTD_VERSION=5.7.0
+# Use XRootD 5.7.1
+ENV XROOTD_VERSION=5.7.1
 
 # Install CERN Open Data Portal web node pre-requisites
 # hadolint ignore=DL3033
