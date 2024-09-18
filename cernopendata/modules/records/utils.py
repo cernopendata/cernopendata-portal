@@ -92,7 +92,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     fileobj = _record_file_factory(pid, record, filename)
     if not fileobj:
-        for index in record.file_indices:
+        for index in record.get("_file_indices", []):
             for file in index["files"]:
                 if file["key"] == filename:
                     obj = ObjectResource.get_object(
@@ -161,7 +161,7 @@ def record_file_page(pid, record, page=1, **kwargs):
         items_per_page = 5
 
     _files = record.files
-    index_files = record._file_indices
+    index_files = record.get("_file_indices", [])
     if request.args.get("group"):
         grouped_files = {
             "index_files": {
