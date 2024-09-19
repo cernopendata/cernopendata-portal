@@ -92,7 +92,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     fileobj = _record_file_factory(pid, record, filename)
     if not fileobj:
-        for index in record.file_indices:
+        for index in record.get("_file_indices", []):
             for file in index["files"]:
                 if file["key"] == filename:
                     obj = ObjectResource.get_object(
