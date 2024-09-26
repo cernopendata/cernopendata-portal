@@ -198,8 +198,7 @@ def record_metadata_view(pid, record, template=None):
         optional = headers.difference(["variable", "type", "description"])
 
         # ensure headers are in the correct order including custom types
-        optional = [low for head in semantics[0] if (low := head.lower()) not in ["variable", "type", "description"]]
-        record["dataset_semantics_header"] = ["variable", "type"] + optional + ["description"]
+        record["dataset_semantics_header"] = ["variable", "type"] + sorted(optional) + ["description"]
 
     return render_template(
         [
