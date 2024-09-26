@@ -188,6 +188,13 @@ def record_metadata_view(pid, record, template=None):
     collection = ""
     if len(record.get("collections", [])) > 0:
         collection = record.get("collections", [])[0]
+
+    # Fix issue 58 → sort headers beforehand
+    if semantics := record.get("dataset_semantics"):
+        # ensure headers are in the correct order including custom types
+        optional = [low for head in semantics[0] if (low := head.lower()) not in ["variable", "type", "description"]]
+        record["dataset_semantics_header"] = ["variable", "type"] + optional + ["description"]
+
     return render_template(
         [
             "cernopendata_records_ui/records/record_detail_{}.html".format(collection),
