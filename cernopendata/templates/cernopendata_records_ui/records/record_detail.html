@@ -245,7 +245,7 @@
         <table class="ui table striped">
             <thead>
             <tr>
-                {% for col in record.dataset_semantics[0] %}
+                {% for col in record.dataset_semantics_header %}
                 <th>{{ col | capitalize }}</th>
                 {% endfor %}
             </tr>
@@ -256,6 +256,9 @@
                 {% if semantic.type %}
                     <td><em>{{semantic.type}}</em></td>
                 {% endif %}
+                {% for other_var in record.dataset_semantics_header[2:-1] %}
+                    <td><span>{{semantic[other_var]}}</span></td>
+                {% endfor %}
                 <td><span>{{semantic.description | safe}}</span></td>
                 </tr>
             {% endfor %}
