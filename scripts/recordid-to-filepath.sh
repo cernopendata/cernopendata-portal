@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# This script returns the exact path of a record
-# Pass the id as the first argument
-# On finding the correct file, it prints its path to the console
+# This script returns the exact path of a record.
+# Pass the id as the first argument.
+# On finding the correct file, it prints its path to the console.
 
 if [ $# -eq 0 ]; then
   echo "Error: No record ID provided."
