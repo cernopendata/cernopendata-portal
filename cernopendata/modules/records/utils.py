@@ -22,6 +22,8 @@
 import json
 from re import sub
 import six
+import itertools
+
 from flask import abort, current_app, jsonify, render_template, request
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
@@ -189,8 +191,12 @@ def record_metadata_view(pid, record, template=None):
     if len(record.get("collections", [])) > 0:
         collection = record.get("collections", [])[0]
 
-    # Fix issue 58 → sort headers beforehand
+    # Fix issue 58 → sort headers beforehand and check all fields
     if semantics := record.get("dataset_semantics"):
+        # dynamically check all fields for used keys
+        headers = set(itertools.chain(*semantics))
+        optional = headers.difference(["variable", "type", "description"])
+
         # ensure headers are in the correct order including custom types
         optional = [low for head in semantics[0] if (low := head.lower()) not in ["variable", "type", "description"]]
         record["dataset_semantics_header"] = ["variable", "type"] + optional + ["description"]
