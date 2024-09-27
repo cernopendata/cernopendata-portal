@@ -83,10 +83,15 @@ USER ${INVENIO_USER_ID}
 # Debug off by default
 ARG DEBUG=""
 ENV DEBUG=${DEBUG:-""}
+# Install the cold storage interface
+# TODO: Once the package is properly published, all of this should go away.
+RUN cd /tmp && git clone https://github.com/psaiz/invenio-cold-storage.git && cd invenio-cold-storage && \
+    pip install --no-cache-dir --user ".[all]" "invenio-db==1.1.0" "invenio-base==1.4.0" "SQLAlchemy==1.4.49" "Flask-Alembic==2.0.1" "Flask-SQLAlchemy==3.0.0" "SQLAlchemy-Continuum==1.4.1" "celery==5.2.7" "Flask-Mail==0.9.1"  && \
+    pip check
 
 # Install CERN Open Data Portal sources
 # hadolint ignore=DL3013,SC2086
-RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
+RUN cd ${CODE_DIR} && if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
     pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check
 # Create instance
 RUN scripts/create-instance.sh
