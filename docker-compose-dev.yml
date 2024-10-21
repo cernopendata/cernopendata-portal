@@ -40,7 +40,6 @@ services:
       - ./tests:/code/tests
       - ../opendata.cern.ch:/content
       - ../invenio-cold-storage:/cold
-      - kerberos-credentials-cache:/tmp
 
   web-files:
     profiles:
@@ -72,14 +71,3 @@ services:
       - ../opendata.cern.ch:/content
     profiles:
       - donotstart
-  krb:
-      volumes:
-        - kerberos-credentials-cache:/tmp
-      environment:
-        - KEYTAB_PWD=eeshohNgotie2soowoh5leeF6aebooKi
-        - KEYTAB_USER=cernod
-      image: 'gitlab-registry.cern.ch/paas-tools/kerberos-ticket-manager:RELEASE.2023.11.30T16-47-18Z'
-#      args:
-#        - daemon
-volumes:
-  kerberos-credentials-cache:

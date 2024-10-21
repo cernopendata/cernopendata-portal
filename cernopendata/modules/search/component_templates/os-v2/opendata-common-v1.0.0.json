@@ -18,6 +18,9 @@
         "accelerator": {
           "type": "keyword"
         },
+        "availability": {
+          "type": "keyword"
+        },
         "date_created": {
           "type": "keyword"
         },
