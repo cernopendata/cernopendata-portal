@@ -167,21 +167,23 @@ def record_file_page(pid, record, page=1, **kwargs):
     if request.args.get("group"):
         grouped_files = {
             "index_files": {
-                "total": len(index_files),
-                "files": index_files[:items_per_page],
+                "total": len(list(index_files.file_indices)),
+                "files": index_files.dumps()[:items_per_page],
             },
             "files": {"total": len(_files), "files": _files[:items_per_page]},
         }
+        print("VOLVMOS 1", file=sys.stderr)
         return jsonify(grouped_files)
 
     file_type_filter = request.args.get("type")
 
     if file_type_filter == "index_files":
-        filtered_files = index_files
+        filtered_files = index_files.dumps()
     else:
         filtered_files = _files
     rf_len = len(filtered_files)
     paged_files = get_paged_files(filtered_files, page, items_per_page)
+    print("VOLVMOS 2", file=sys.stderr)
     return jsonify({"total": rf_len, "files": paged_files})
 
 
@@ -202,6 +204,10 @@ def record_metadata_view(pid, record, template=None):
             ["variable", "type"] + sorted(optional) + ["description"]
         )
 
+    print(f"{record.keys()}", file=sys.stderr)
+    for f in "_files", "files", "file_indices", "_file_indices":
+        if f in record:
+            del(record[f])
     return render_template(
         [
             "cernopendata_records_ui/records/record_detail_{}.html".format(collection),

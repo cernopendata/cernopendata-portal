@@ -13,6 +13,8 @@ from invenio_files_rest.models import (
 )
 from invenio_records_files.api import FilesIterator, Record
 from invenio_cold_storage.api import FileObjectCold
+from invenio_search import current_search_client
+from invenio_search.utils import prefix_index
 
 
 class FileIndexIterator(object):
@@ -68,7 +70,6 @@ class FileIndexIterator(object):
 
 class RecordFilesWithIndex(Record):
     """Class for a Record with File Indices."""
-
     def __init__(self, *args, **kwargs):
         """Initialize the record."""
         super(RecordFilesWithIndex, self).__init__(*args, **kwargs)
@@ -79,12 +80,34 @@ class RecordFilesWithIndex(Record):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
 
+    def check_availability(self):
+        """Calculate the availability of the record based on the files and file indices"""
+        self._avl = {}
+        for index in self.file_indices:
+            # And let's propagate the availability to the record
+            for avl in index["availability"]:
+                if avl not in self._avl:
+                    self._avl[avl] = 0
+                self._avl[avl] += index["availability"][avl]
+        for file in self["files"]:
+            avl = file["availability"]
+            if avl not in self._avl:
+                self._avl[avl] = 0
+            self._avl[avl] += 1
+
+        self["_availability_details"] = self._avl
+        if len(self._avl.keys()) == 1:
+            self["availability"] = list(self._avl.keys())[0]
+        else:
+            self["availability"] = "some files"
+
 
 class FileIndexMetadata:
     """Class for the FileIndexMetadata."""
 
     def __init__(self):
         """Initialize an object."""
+        self._avl = {}
         self._number_files = 0
         self._size = 0
         self._files = []
@@ -93,20 +116,6 @@ class FileIndexMetadata:
         """Representation of the object."""
         return str(self.dumps())
 
-    @classmethod
-    def get(cls, bucket):
-        """Get a file index from the bucket """
-        rb = cls()
-        rb._index_file_name = BucketTag.query.filter_by(key="index_name", bucket_id=bucket).one().value
-        rb._files = []
-        rb._size=0
-        rb._number_files=0
-        for ov in ObjectVersion.get_by_bucket(bucket).all():
-            rb._size += ov.file.size
-            rb._number_files+=1
-            f = FileObjectCold(ov, {})
-            rb._files.append(f)
-        return rb.dumps()
     @classmethod
     def create(cls, record, file_object):
         """Method to create a FileIndex."""
@@ -133,6 +142,9 @@ class FileIndexMetadata:
                 _file_id=entry_file.id,
             )
             f = FileObjectCold(o, entry)
+            if f.availability not in rb._avl:
+                rb._avl[f.availability]  = 0
+            rb._avl[f.availability] += 1
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
             if not rb._number_files % 1000:
@@ -140,8 +152,22 @@ class FileIndexMetadata:
             rb._size += entry["size"]
             rb._files.append(f)
         record["_file_indices"].append(rb.dumps())
-        rb._record = record
         return rb
+    @classmethod
+    def get(cls, record_id, bucket_id):
+        """Get a file index, based on the bucket"""
+        obj=cls()
+        obj._index_file_name=BucketTag.query.filter_by(key="index_name", bucket_id=str(bucket_id)).one().value
+        bucket = Bucket.get(bucket_id)
+        for o in ObjectVersion.get_by_bucket(bucket).all():
+            f = FileObjectCold(o ,{})
+            obj._files.append(f)
+            obj._size += f['size']
+            obj._number_files +=1
+            if f.availability not in obj._avl:
+                obj._avl[f['availability']]  = 0
+            obj._avl[f['availability']] += 1
+        return obj
 
     @classmethod
     def get(cls, record_id, bucket_id):
@@ -177,6 +203,7 @@ class FileIndexMetadata:
         """Dumping."""
         files = [ o.dumps() for o in self._files ]
         return  {
+            "availability": self._avl,
             "key": self._index_file_name,
             "number_files": self._number_files,
             "size": self._size,

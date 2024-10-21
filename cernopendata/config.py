@@ -249,11 +249,11 @@ def _query_parser_and(qstr=None):
         )
     else:
         _query = dsl.Q()
-    if (
-        request.values.get("ondemand") != "true"
-        and request.values.get("ondemand") != "ondemand"
-    ):
-        _query = _query & ~dsl.Q("match", **{"distribution.availability": "ondemand"})
+#    if (
+#        request.values.get("ondemand") != "true"
+#        and request.values.get("ondemand") != "ondemand"
+#   ):
+#        _query = _query & ~dsl.Q("match", **{"distribution.availability": "ondemand"})
     return _query
 
 
@@ -371,7 +371,11 @@ RECORDS_REST_FACETS = {
                     )
                 ),
             ),
+
             experiment=dict(terms=dict(field="experiment", order=dict(_key="asc"))),
+            availability=dict(
+                terms=dict(field="availability")
+            ),
             year=dict(
                 terms=dict(field="date_created", size=70, order=dict(_key="asc"))
             ),
@@ -420,6 +424,7 @@ RECORDS_REST_FACETS = {
             keywords=dict(terms=dict(field="keywords", order=dict(_key="asc"))),
         ),
         "post_filters": dict(
+            availability=terms_filter("availability"),
             type=nested_filter("type.primary", "type.secondary"),
             experiment=terms_filter("experiment"),
             year=terms_filter("date_created"),
