@@ -15,6 +15,9 @@
         "_updated": {
           "type": "date"
         },
+        "availability": {
+          "type": "keyword"
+        },
         "control_number": {
           "type": "keyword"
         },

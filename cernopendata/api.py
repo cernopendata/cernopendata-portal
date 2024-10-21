@@ -13,6 +13,8 @@ from invenio_files_rest.models import (
 )
 from invenio_records_files.api import FilesIterator, Record
 from invenio_cold_storage.api import FileObjectCold
+from invenio_search import current_search_client
+from invenio_search.utils import prefix_index
 
 
 class FileIndexIterator(object):
@@ -27,6 +29,20 @@ class FileIndexIterator(object):
         self.file_indices = OrderedDict(
             [(f["key"], f) for f in self.record.get("_file_indices", [])]
         )
+
+    def __len__(self):
+        """Get number of file indices"""
+        return len(self.file_indices)
+
+    def __iter__(self):
+        """Get iterator."""
+        self._it = iter(self.file_indices)
+        return self
+    def __next__(self):
+        """Get next file item."""
+        entry = next(self._it)
+        return self.file_indices[entry]
+        #   return RecordFilesWithIndex(obj, self.file_indices.get(obj.key, {}))
 
     def flush(self):
         """Flush changes to record."""
@@ -47,7 +63,6 @@ class FileIndexIterator(object):
 
 class RecordFilesWithIndex(Record):
     """Class for a Record with File Indices."""
-
     def __init__(self, *args, **kwargs):
         """Initialize the record."""
         super(RecordFilesWithIndex, self).__init__(*args, **kwargs)
@@ -57,37 +72,62 @@ class RecordFilesWithIndex(Record):
     def file_indices(self):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
-
     @classmethod
-    def get_record(self, record):
-        """Get a record and all the file indices from the database"""
-        entry=super(RecordFilesWithIndex, self).get_record(record)
-        entry["_file_indices"]=[]
-        for tag in BucketTag.query.filter_by(key="record", value=str(record)).all():
-            entry["_file_indices"].append(FileIndexMetadata.get(tag.bucket_id))
-        return entry
+    def get_record(cls, id):
+        record =  super(RecordFilesWithIndex, cls).get_record(id)
+        record["_file_indices"] = []
+        for buckettag in BucketTag.query.filter_by(key="record", value=str(record.id)):
+            record['_file_indices'].append(FileIndexMetadata.get(record.id, buckettag.bucket_id ).dumps())
+        return record
+
+    def check_availability(self):
+        """Calculate the availability of the record based on the files and file indices"""
+        self._avl = {}
+        for index in self.file_indices:
+            # And let's propagate the availability to the record
+            for avl in index["availability"]:
+                if avl not in self._avl:
+                    self._avl[avl] = 0
+                self._avl[avl] += index["availability"][avl]
+        for file in self["files"]:
+            avl = file["availability"]
+            if avl not in self._avl:
+                self._avl[avl] = 0
+            self._avl[avl] += 1
+
+        self["_availability_details"] = self._avl
+        if len(self._avl.keys()) == 1:
+            self["availability"] = list(self._avl.keys())[0]
+        else:
+            self["availability"] = "some files"
+
+class RecordFilesWithIndexCache(RecordFilesWithIndex):
+    """Class for a Record that reads from OpenSearch."""
+    @classmethod
+    def get_record(cls, id):
+        """Get a record from OpenSearch"""
+        import sys
+        print("READING FROM OPENSEARCH", file=sys.stderr)
+        index = prefix_index("records-record")
+        data = current_search_client.get(
+            index=index,
+            id=id
+        )
+        print("GOT THE OBJECT", file=sys.stderr)
+        return cls(data["_source"])
 
 class FileIndexMetadata:
     """Class for the FileIndexMetadata."""
 
+    def __init__(self):
+        self._avl = {}
+        self._number_files = 0
+        self._size = 0
+        self._files = []
     def __repr__(self):
         """Representation of the object."""
         return str(self.dumps())
 
-    @classmethod
-    def get(cls, bucket):
-        """Get a file index from the bucket """
-        rb = cls()
-        rb._index_file_name = BucketTag.query.filter_by(key="index_name", bucket_id=bucket).one().value
-        rb._files = []
-        rb._size=0
-        rb._number_files=0
-        for ov in ObjectVersion.get_by_bucket(bucket).all():
-            rb._size += ov.file.size
-            rb._number_files+=1
-            f = FileObjectCold(ov, {})
-            rb._files.append(f)
-        return rb.dumps()
     @classmethod
     def create(cls, record, file_object):
         """Method to create a FileIndex."""
@@ -104,9 +144,7 @@ class FileIndexMetadata:
         rb._bucket = Bucket.create()
         BucketTag.create(rb._bucket, "index_name", index_file_name)
         BucketTag.create(rb._bucket, "record", record.model.id)
-        rb._number_files = 0
-        rb._size = 0
-        rb._files = []
+        print(f"The file index contains {len(index_content)} entries.")
         for entry in index_content:
             entry_file = FileInstance.create()
             entry_file.set_uri(entry["uri"], entry["size"], entry["checksum"])
@@ -116,13 +154,32 @@ class FileIndexMetadata:
                 _file_id=entry_file.id,
             )
             f = FileObjectCold(o, entry)
+            if f.availability not in rb._avl:
+                rb._avl[f.availability]  = 0
+            rb._avl[f.availability] += 1
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
+            if not rb._number_files % 1000:
+                print(f"    {rb._number_files} done")
             rb._size += entry["size"]
             rb._files.append(f)
         record["_file_indices"].append(rb.dumps())
-        rb._record = record
         return rb
+    @classmethod
+    def get(cls, record_id, bucket_id):
+        """Get a file index, based on the bucket"""
+        obj=cls()
+        obj._index_file_name=BucketTag.query.filter_by(key="index_name", bucket_id=str(bucket_id)).one().value
+        bucket = Bucket.get(bucket_id)
+        for o in ObjectVersion.get_by_bucket(bucket).all():
+            f = FileObjectCold(o ,{})
+            obj._files.append(f)
+            obj._size += f['size']
+            obj._number_files +=1
+            if f.availability not in obj._avl:
+                obj._avl[f['availability']]  = 0
+            obj._avl[f['availability']] += 1
+        return obj
 
     @classmethod
     def delete_by_record(cls, record):
@@ -138,6 +195,7 @@ class FileIndexMetadata:
         """Dumping."""
         files = [ o.dumps() for o in self._files ]
         return  {
+            "availability": self._avl,
             "key": self._index_file_name,
             "number_files": self._number_files,
             "size": self._size,

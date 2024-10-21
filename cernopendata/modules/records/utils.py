@@ -107,7 +107,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     # Check permissions
     ObjectResource.check_object_permission(obj)
-    search_record = _get_record_from_index(record.get("recid"))["files"]
+#    search_record = _get_record_from_index(record.get("recid"))["files"]
 
     return ObjectResource.send_object(
         obj.bucket,
@@ -155,19 +155,19 @@ def get_paged_files(files, page, items_per_page=5):
     return files[start:end]
 
 
-def _get_record_from_index(recid):
-    prefix = current_app.config["SEARCH_INDEX_PREFIX"]
-    results = (
-        dsl.Search(
-            using=current_search_client,
-            index=f"{prefix}records-record-v1.0.0",
-        )
-        .filter("term", recid=recid)
-        .extra(size=1)
-        .execute()
-    )
-
-    return results["hits"]["hits"][0]["_source"].to_dict()
+#def _get_record_from_index(recid):
+#    prefix = current_app.config["SEARCH_INDEX_PREFIX"]
+#    results = (
+#        dsl.Search(
+#            using=current_search_client,
+#            index=f"{prefix}records-record-v1.0.0",
+#        )
+#        .filter("term", recid=recid)
+#        .extra(size=1)
+#        .execute()
+#    )
+#
+#    return results["hits"]["hits"][0]["_source"].to_dict()
 
 
 def record_file_page(pid, record, page=1, **kwargs):
@@ -177,27 +177,30 @@ def record_file_page(pid, record, page=1, **kwargs):
         items_per_page = int(items_per_page)
     except Exception:
         items_per_page = 5
-
-    _files = record.files
+    import sys
+    print("EMPEZAMOS", file=sys.stderr)
+    _files = record.get("files",[])
     index_files = record.file_indices
     if request.args.get("group"):
         grouped_files = {
             "index_files": {
-                "total": len(index_files),
-                "files": index_files[:items_per_page],
+                "total": len(list(index_files.file_indices)),
+                "files": index_files.dumps()[:items_per_page],
             },
             "files": {"total": len(_files), "files": _files[:items_per_page]},
         }
+        print("VOLVMOS 1", file=sys.stderr)
         return jsonify(grouped_files)
 
     file_type_filter = request.args.get("type")
 
     if file_type_filter == "index_files":
-        filtered_files = index_files
+        filtered_files = index_files.dumps()
     else:
         filtered_files = _files
     rf_len = len(filtered_files)
     paged_files = get_paged_files(filtered_files, page, items_per_page)
+    print("VOLVMOS 2", file=sys.stderr)
     return jsonify({"total": rf_len, "files": paged_files})
 
 
@@ -215,7 +218,13 @@ def record_metadata_view(pid, record, template=None):
 
         # ensure headers are in the correct order including custom types
         record["dataset_semantics_header"] = ["variable", "type"] + sorted(optional) + ["description"]
-
+    import sys
+    print("VAMOS AL RENDER", file=sys.stderr)
+    print(f"{record.keys()}", file=sys.stderr)
+    for f in "_files", "files", "file_indices", "_file_indices":
+        if f in record:
+            del(record[f])
+    print(f"Y AHORA {record.keys()}", file=sys.stderr)
     return render_template(
         [
             "cernopendata_records_ui/records/record_detail_{}.html".format(collection),

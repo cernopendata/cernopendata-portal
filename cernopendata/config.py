@@ -177,38 +177,38 @@ RECORDS_UI_ENDPOINTS = dict(
         pid_type="recid",
         route="/record/<pid_value>",
         permission_factory_imp=None,
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
         view_imp="cernopendata.modules.records.utils:record_metadata_view",
     ),
     recid_files=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/<path:filename>",
         view_imp="cernopendata.modules.records.utils:file_download_ui",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
     ),
     recid_file_index=dict(
         pid_type="recid",
         route="/record/<pid_value>/file_index/<path:file_index>",
         view_imp="cernopendata.modules.records.utils:get_file_index",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
     ),
     recid_files_assets=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/assets/<path:filepath>",
         view_imp="cernopendata.modules.records.utils:eos_file_download_ui",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
     ),
     recid_files_page=dict(
         pid_type="recid",
         route="/record/<pid_value>/filepage/<int:page>",
         view_imp="cernopendata.modules.records.utils:record_file_page",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
     ),
     recid_export=dict(
         pid_type="recid",
         route="/record/<pid_value>/export/<format>",
         view_imp="cernopendata.modules.records.utils:export_json_view",
-        record_class="invenio_records_files.api:Record",
+        record_class="cernopendata.api:RecordFilesWithIndexCache",
     ),
     termid=dict(
         pid_type="termid",
@@ -246,11 +246,13 @@ def _query_parser_and(qstr=None):
         )
     else:
         _query = dsl.Q()
-    if (
-        request.values.get("ondemand") != "true"
-        and request.values.get("ondemand") != "ondemand"
-    ):
-        _query = _query & ~dsl.Q("match", **{"distribution.availability": "ondemand"})
+#    if (
+#        request.values.get("ondemand") != "true"
+#        and request.values.get("ondemand") != "ondemand"
+#   ):
+#        _query = _query & ~dsl.Q("match", **{"distribution.availability": "ondemand"})
+#    import sys
+#    print(f"HOLA: {_query}", file=sys.stderr)
     return _query
 
 
@@ -368,7 +370,11 @@ RECORDS_REST_FACETS = {
                     )
                 ),
             ),
+
             experiment=dict(terms=dict(field="experiment", order=dict(_key="asc"))),
+            availability=dict(
+                terms=dict(field="availability")
+            ),
             year=dict(
                 terms=dict(field="date_created", size=70, order=dict(_key="asc"))
             ),
@@ -417,6 +423,7 @@ RECORDS_REST_FACETS = {
             keywords=dict(terms=dict(field="keywords", order=dict(_key="asc"))),
         ),
         "post_filters": dict(
+            availability=terms_filter("availability"),
             type=nested_filter("type.primary", "type.secondary"),
             experiment=terms_filter("experiment"),
             year=terms_filter("date_created"),
