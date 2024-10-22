@@ -71,7 +71,7 @@ install_requires = [
     "invenio-base>=1.3.0,<2.0.0",
     "invenio-config>=1.0.3,<2.0.0",
     # Custom Invenio `base` bundle
-    "importlib-metadata==4.13.0",
+    "importlib-metadata>=6.11.0",
     "invenio-accounts==3.1.0",
     "invenio-assets>=3.0.0,<4.0.0",
     "invenio-logging[sentry]>=1.3.0,<2.0.0",
@@ -85,7 +85,7 @@ install_requires = [
     "invenio-records>=2.1.0,<3.0.0",
     "invenio-records-rest[datacite]>=2.4.0,<3.0.0",
     "invenio-records-ui>=1.2.0,<3.0.0",
-    "invenio-search-ui>=2.8.3,<3.0.0",
+    "invenio-search-ui>=3.0.0,<4.0.0",
     # Custom Invenio `files` bundle
     "invenio-previewer>=2.0.1,<3.0.0",
     "invenio-records-files>=1.2.1,<3.0.0",
