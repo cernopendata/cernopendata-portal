@@ -134,6 +134,12 @@ def update_record(pid, data, skip_files):
             o.remove()
             FileInstance.query.filter_by(id=o.file_id).delete()
         FileIndexMetadata.delete_by_record(record=record)
+    # This is to ensure that fields that do not appear in the new data
+    # are not just maintained from the previous version
+    for k in list(record.keys()):
+        if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
+            continue
+        del record[k]
     record.update(data)
     if not skip_files:
         _handle_record_files(record, data)
@@ -153,6 +159,10 @@ def create_doc(data, skip_files):
 def update_doc_or_glossary(pid, data, skip_files):
     """Updates the given doc/glossary record."""
     record = Record.get_record(pid.object_uuid)
+    # This is to ensure that fields that do not appear in the new data
+    # are not just maintained from the previous version
+    for k in list(record.keys()):
+        del record[k]
     record.update(data)
     return record
 
