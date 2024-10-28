@@ -12872,6 +12872,7 @@
       "L3",
       "OPAL"
     ],
+    "accelerator": "LEP",
     "links": [
       {
         "text": "DELPHI home page",
@@ -12909,6 +12910,7 @@
       "L3",
       "OPAL"
     ],
+    "accelerator": "LEP",
     "links": [
       {
         "text": "OPAL home page",
@@ -12946,6 +12948,7 @@
       "L3",
       "OPAL"
     ],
+    "accelerator": "LEP",
     "links": [
       {
         "text": "L3 home page",
@@ -13081,16 +13084,13 @@
     "category": "generic",
     "definition": "First phase of LEP running around the Z pole between 1989 and 1995.",
     "experiment": [
-      "LEP",
       "DELPHI",
       "ALEPH",
       "L3",
       "OPAL"
     ],
+    "accelerator": "LEP",
     "see_also": [
-      {
-        "term": "LEP"
-      },
       {
         "term": "LEP2"
       },
@@ -13119,16 +13119,13 @@
     "category": "generic",
     "definition": "Second phase of LEP running above the Z pole between 1996 and 2000.",
     "experiment": [
-      "LEP",
       "DELPHI",
       "ALEPH",
       "L3",
       "OPAL"
     ],
+    "accelerator": "LEP",
     "see_also": [
-      {
-        "term": "LEP"
-      },
       {
         "term": "LEP1"
       },
