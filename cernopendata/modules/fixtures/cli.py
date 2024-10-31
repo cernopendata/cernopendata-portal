@@ -139,7 +139,8 @@ def update_record(pid, data, skip_files):
     for k in list(record.keys()):
         if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
             continue
-        del record[k]
+        if k != "control_number":
+            del record[k]
     record.update(data)
     if not skip_files:
         _handle_record_files(record, data)
@@ -162,7 +163,8 @@ def update_doc_or_glossary(pid, data, skip_files):
     # This is to ensure that fields that do not appear in the new data
     # are not just maintained from the previous version
     for k in list(record.keys()):
-        del record[k]
+        if k != "control_number":
+            del record[k]
     record.update(data)
     return record
 
