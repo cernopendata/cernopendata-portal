@@ -146,9 +146,9 @@
     "category": "specific",
     "definition": "Contains data that have been derived from the primary datasets. The data may be reduced in the sense that (a) only part of the information is kept or (b) only part of the events are selected.",
     "experiment": [
-      "CMS",
-      "ATLAS",
       "ALICE",
+      "ATLAS",
+      "CMS",
       "LHCb"
     ],
     "links": [
@@ -885,9 +885,9 @@
     "category": "specific",
     "definition": "Datasets prepared after trigger selections, with no further selection criteria applied. On this portal, primary datasets refer to “reconstructed data”.",
     "experiment": [
-      "CMS",
-      "ATLAS",
       "ALICE",
+      "ATLAS",
+      "CMS",
       "LHCb"
     ],
     "links": [
@@ -1057,9 +1057,9 @@
     "category": "specific",
     "definition": "Fragmented data from various sub-detectors are processed or “reconstructed” to provide coherent information about individual physics objects such as electrons or particle jets. Reconstruction involves putting together information from different sub-detectors into a coherent representation of every particle collision. However, the format for the first tier of reconstructed data is often too huge for meaningful analysis, and is converted into a lighter format, such as the AOD format for CMS.",
     "experiment": [
-      "CMS",
-      "ATLAS",
       "ALICE",
+      "ATLAS",
+      "CMS",
       "LHCb"
     ],
     "links": [
@@ -1093,9 +1093,9 @@
     "category": "specific",
     "definition": "The data collected by an experiment in a given year are divided into sets called “Runs”. For example, the data from 2010 were divided into “RunA” and “RunB”, the latter being from the second part of the year.",
     "experiment": [
-      "CMS",
-      "ATLAS",
       "ALICE",
+      "ATLAS",
+      "CMS",
       "LHCb"
     ],
     "links": [
