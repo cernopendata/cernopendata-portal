@@ -137,6 +137,9 @@
             "type": {
               "type": "keyword"
             },
+            "unit": {
+              "type" : "keyword"
+            },
             "variable": {
               "type": "keyword"
             }
