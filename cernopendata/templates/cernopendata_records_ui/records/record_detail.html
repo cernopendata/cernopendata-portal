@@ -460,7 +460,7 @@
 {% if files_list and include_cms_visualiser %}
     {% set file_name = files_list | get_first_file %}
     <script>
-    ispy.loadUrl("/record/{{record.control_number }}/files/{{file_name}}");
+    ispy.loadUrl("/record/{{record.recid}}/files/{{file_name}}");
     </script>
 {% endif %}
 

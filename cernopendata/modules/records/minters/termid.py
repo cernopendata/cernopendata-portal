@@ -12,5 +12,4 @@ def cernopendata_termid_minter(record_uuid, data):
         pid_value=str(data["anchor"]),
     )
 
-    data["control_number"] = provider.pid.pid_value
     return provider.pid

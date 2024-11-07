@@ -12,5 +12,5 @@ def cernopendata_recid_fetcher(record_uuid, data):
     return FetchedPID(
         provider=RecordUUIDProvider,
         pid_type=RecordUUIDProvider.pid_type,
-        pid_value=data["control_number"],
+        pid_value=data["recid"],
     )
