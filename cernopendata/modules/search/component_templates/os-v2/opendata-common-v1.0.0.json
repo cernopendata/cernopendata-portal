@@ -15,9 +15,6 @@
         "_updated": {
           "type": "date"
         },
-        "control_number": {
-          "type": "keyword"
-        },
         "date_created": {
           "type": "keyword"
         },

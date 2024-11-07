@@ -8,9 +8,9 @@ from cernopendata.modules.fixtures.cli import (
 
 
 def test_update_doc(app, database):
-    print("Checking if the control_number is there after an update")
+    print("Checking if t_number is there after an update")
     data = {
-        "anchor": "dummy_control_number",
+        "anchor": "dummy_anchor",
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
             "records/glossary-term-v1.0.0.json"
         ),
@@ -20,12 +20,12 @@ def test_update_doc(app, database):
     record = create_glossary_term(data, False)
     print("Record created")
     print(record)
-    assert record["control_number"]
+
     assert record["old_field"]
 
-    pid_object = PersistentIdentifier.get("termid", "dummy_control_number")
+    pid_object = PersistentIdentifier.get("termid", "dummy_anchor")
     new_data = {
-        "anchor": "dummy_control_number",
+        "anchor": "dummy_anchor",
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
             "records/glossary-term-v1.0.0.json"
         ),
@@ -34,6 +34,5 @@ def test_update_doc(app, database):
     record = update_doc_or_glossary(pid_object, new_data, False)
     print("Record updated")
     print(record)
-    assert record["control_number"]
     assert "old_field" not in record.keys()
     assert record["new_field"]

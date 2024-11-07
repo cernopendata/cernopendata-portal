@@ -12,5 +12,5 @@ def cernopendata_termid_fetcher(record_uuid, data):
     return FetchedPID(
         provider=TermUUIDProvider,
         pid_type=TermUUIDProvider.pid_type,
-        pid_value=data["control_number"],
+        pid_value=data["anchor"],
     )

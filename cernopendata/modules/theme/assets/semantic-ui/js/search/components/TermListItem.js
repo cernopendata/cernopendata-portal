@@ -31,7 +31,7 @@ import { Item } from "semantic-ui-react";
 import ListItemLabels from "./ListItemLabels";
 
 const CODTermListItem = ({ result: { metadata }, index }) => {
-  const link = `/glossary/${metadata.control_number}`;
+  const link = `/glossary/${metadata.anchor}`;
   return (
     <Item key={index}>
       <Item.Content>

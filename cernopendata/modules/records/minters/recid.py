@@ -17,5 +17,4 @@ def cernopendata_recid_minter(record_uuid, data):
         pid_value=str(recid),
     )
 
-    data["control_number"] = provider.pid.pid_value
     return provider.pid

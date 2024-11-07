@@ -139,8 +139,7 @@ def update_record(pid, data, skip_files):
     for k in list(record.keys()):
         if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
             continue
-        if k != "control_number":
-            del record[k]
+        del record[k]
     record.update(data)
     if not skip_files:
         _handle_record_files(record, data)
@@ -163,8 +162,7 @@ def update_doc_or_glossary(pid, data, skip_files):
     # This is to ensure that fields that do not appear in the new data
     # are not just maintained from the previous version
     for k in list(record.keys()):
-        if k != "control_number":
-            del record[k]
+        del record[k]
     record.update(data)
     return record
 
@@ -395,10 +393,10 @@ def glossary(files, mode):
 @with_appcontext
 def docs(files, mode):
     """Load demo article records."""
-    from slugify import slugify
 
     def read_doc_content(data, filename):
         assert data["body"]["content"]
+        assert data["slug"]
         content_filename = os.path.join(
             *(
                 [
@@ -413,7 +411,7 @@ def docs(files, mode):
 
         with open(content_filename) as body_field:
             data["body"]["content"] = body_field.read()
-        return str(slugify(data.get("slug", data["title"])))
+        return data["slug"]
 
     _process_fixture_files(
         files,
@@ -470,9 +468,8 @@ def pids():
 
             pid_value = record.json.get("_oai", {}).get("id")
             if pid_value is None:
-                assert "control_number" in record.json
                 pid_value = current_app.config.get("OAISERVER_ID_PREFIX") + str(
-                    record.json["control_number"]
+                    record.json["recid"]
                 )
 
                 record.json.setdefault("_oai", {})
