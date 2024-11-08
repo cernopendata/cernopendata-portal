@@ -15,6 +15,9 @@
         "_updated": {
           "type": "date"
         },
+        "accelerator": {
+          "type": "keyword"
+        },
         "date_created": {
           "type": "keyword"
         },
