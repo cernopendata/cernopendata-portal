@@ -162,7 +162,7 @@ def record_file_page(pid, record, page=1, **kwargs):
     except Exception:
         items_per_page = 5
 
-    _files = list(record.files)
+    _files = record.get("files", [])
     index_files = list(record.file_indices)
     if request.args.get("group"):
         grouped_files = {
