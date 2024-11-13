@@ -78,7 +78,10 @@ APP_DEFAULT_SECURE_HEADERS = {
     "strict_transport_security_max_age": 31556926,  # One year in seconds
     "strict_transport_security_include_subdomains": True,
     "content_security_policy": {
-        "default-src": ["'self'", "https://inspirehep.net/",],
+        "default-src": [
+            "'self'",
+            "https://inspirehep.net/",
+        ],
         "object-src": ["'none'"],
         "script-src": [
             "'self'",

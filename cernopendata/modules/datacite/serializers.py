@@ -46,15 +46,17 @@ class DataCiteSerializer(Schema):
         creators = [
             {
                 "creatorName": author["name"],
-                "nameIdentifiers": [
-                    {
-                        "nameIdentifier": author["orcid"],
-                        "nameIdentifierScheme": "ORCID",
-                        "schemeURI": "http://orcid.org/",
-                    }
-                ]
-                if "orcid" in author
-                else [],
+                "nameIdentifiers": (
+                    [
+                        {
+                            "nameIdentifier": author["orcid"],
+                            "nameIdentifierScheme": "ORCID",
+                            "schemeURI": "http://orcid.org/",
+                        }
+                    ]
+                    if "orcid" in author
+                    else []
+                ),
             }
             for author in authors
         ]
