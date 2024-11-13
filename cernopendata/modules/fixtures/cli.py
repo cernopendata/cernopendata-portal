@@ -31,8 +31,13 @@ import pkg_resources
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
-from invenio_files_rest.models import (Bucket, BucketTag, FileInstance,
-                                       ObjectVersion, ObjectVersionTag)
+from invenio_files_rest.models import (
+    Bucket,
+    BucketTag,
+    FileInstance,
+    ObjectVersion,
+    ObjectVersionTag,
+)
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
@@ -40,12 +45,9 @@ from invenio_records import Record
 from sqlalchemy.orm.attributes import flag_modified
 
 from cernopendata.api import FileIndexMetadata, RecordFilesWithIndex
-from cernopendata.modules.records.minters.docid import \
-    cernopendata_docid_minter
-from cernopendata.modules.records.minters.recid import \
-    cernopendata_recid_minter
-from cernopendata.modules.records.minters.termid import \
-    cernopendata_termid_minter
+from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
+from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
+from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
 MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
 

@@ -139,6 +139,9 @@ do
         --check-manifest) check_manifest;;
         --check-docker-build) check_docker_build;;
         --check-pytest) check_pytest;;
+        --check-black) check_black;;
         *)
+          echo "Unknown option: $arg";
+          exit 255
     esac
 done
