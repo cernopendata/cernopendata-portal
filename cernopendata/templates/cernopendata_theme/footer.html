@@ -3,85 +3,18 @@
     <div class="row">
       <div class="six wide column">
         <div class="ui list horizontal logos">
+          {% for id, exp in experiments_display.items() %}
           <div class="item">
-            <a href="http://alice.cern">
+            <a href="https://{{ exp.url }}">
               <img
-                src="{{ url_for('static', filename='img/alice.gif') }}"
-                alt="ALICE experiment"
-                width="55"
-                height="55"
+                src="{{ url_for('static', filename='img/{}.gif'.format(exp.img or id)) }}"
+                alt="{{ exp.name }} experiment"
+                width="{{ exp.width }}"
+                height="{{ exp.height }}"
               />
             </a>
           </div>
-          <div class="item">
-            <a href="https://atlas.cern">
-              <img
-                src="{{ url_for('static', filename='img/atlas.gif') }}"
-                alt="ATLAS experiment"
-                width="55"
-                height="55"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="https://cms.cern">
-              <img
-                src="{{ url_for('static', filename='img/cms.gif') }}"
-                alt="CMS experiment"
-                width="55"
-                height="55"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="https://delphi-www.web.cern.ch/">
-              <img
-                src="{{ url_for('static', filename='img/dolphin.gif') }}"
-                alt="DELPHI experiment"
-                width="55"
-                height="55"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="http://lhcb.cern.ch">
-              <img
-                src="{{ url_for('static', filename='img/lhcb.gif') }}"
-                alt="LHCb experiment"
-                width="55"
-                height="55"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="http://operaweb.lngs.infn.it">
-              <img
-                src="{{ url_for('static', filename='img/opera.gif') }} "
-                width="55"
-                height="55"
-                alt="OPERA experiment"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="https://www.phenix.bnl.gov">
-              <img
-                src="{{ url_for('static', filename='img/phenix.gif') }} "
-                height="35"
-                alt="PHENIX experiment"
-              />
-            </a>
-          </div>
-          <div class="item">
-            <a href="https://totem-experiment.web.cern.ch/">
-              <img
-                      src="{{ url_for('static', filename='img/totem.gif') }}"
-                      alt="TOTEM experiment"
-                      width="55"
-                      height="55"
-              />
-            </a>
-          </div>
+          {% endfor %}
         </div>
       </div>
       <div class="four wide column centered stretched middle aligned">

@@ -13,7 +13,6 @@
         >
       </h2>
     </div>
-
     <div class="cod-search row">
       <form
         class="search-form container"
@@ -58,14 +57,9 @@
       <div class="collections-col">
         <header><span>Focus on</span></header>
         <ul>
-          <li><a href="/search?experiment=ALICE">ALICE</a></li>
-          <li><a href="/search?experiment=ATLAS">ATLAS</a></li>
-          <li><a href="/search?experiment=CMS">CMS</a></li>
-          <li><a href="/search?experiment=DELPHI">DELPHI</a></li>
-          <li><a href="/search?experiment=LHCb">LHCb</a></li>
-          <li><a href="/search?experiment=OPERA">OPERA</a></li>
-          <li><a href="/search?experiment=PHENIX">PHENIX</a></li>
-          <li><a href="/search?experiment=TOTEM">TOTEM</a></li>
+          {% for id, exp in experiments_display.items() %}
+            <li><a href="/search?experiment={{ id }}">{{ exp.name }}</a></li>
+          {% endfor %}
           <li><a href="/search?keywords=datascience">Data Science</a></li>
         </ul>
       </div>

@@ -21,13 +21,9 @@
       </span>
       <div class="menu dropdown-items">
         <div class="item"><a href="/docs/about">CERN Open Data</a></div>
-        <div class="item"><a href="/docs/about-alice">ALICE</a></div>
-        <div class="item"><a href="/docs/about-atlas">ATLAS</a></div>
-        <div class="item"><a href="/docs/about-cms">CMS</a></div>
-        <div class="item"><a href="/docs/about-delphi">DELPHI</a></div>
-        <div class="item"><a href="/docs/about-lhcb">LHCb</a></div>
-        <div class="item"><a href="/docs/about-opera">OPERA</a></div>
-        <div class="item"><a href="/docs/about-totem">TOTEM</a></div>
+        {% for id, exp in experiments_display.items() %}
+          <div class="item"><a href="/docs/about-{{ id }}">{{ exp.name }}</a></div>
+        {% endfor %}
         <div class="item"><a href="/search?type=Glossary&sort=title">Glossary</a></div>
       </div>
     </li>
