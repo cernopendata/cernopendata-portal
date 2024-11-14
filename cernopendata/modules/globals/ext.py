@@ -31,25 +31,25 @@ class GlobalVariables:
             "phenix": {"name": "PHENIX", "url": "www.phenix.bnl.gov", "height": 35},
             "totem": {"name": "TOTEM", "url": "totem-experiment.web.cern.ch/", "height": 55},
         }
-        experiments = experiment_data.keys()
+        experiments = list(experiment_data.keys())
 
         # check config for custom setting
-        if custom_setting := app.config.get("INCLUDE_EXPERIMENTS"):
+        if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
             try:
-                custom_experiments = [exp.lower() for exp in list(custom_setting)]
+                exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
             except TypeError:
-                logger.error(f"Failed to load custom experiments. CERNOPENDATA_EXPERIMENTS is not a list! "
-                             f"Using default.")
+                logger.error(f"Failed to exclude any experiments. Config EXCLUDE_EXPERIMENTS is not a list! "
+                             f"Using default option...")
             else:
-                if set(experiments).issuperset(custom_experiments):
-                    experiments = custom_experiments
-                    logger.info(f"Loaded following custom experiments in view: {experiments}")
+                if set(experiments).issuperset(exclude_experiments):
+                    logger.info(f"Loaded following experiments in view: {experiments}.")
                 else:
-                    invalid_experiments = sorted(set(custom_experiments).difference(experiments))
-                    experiments = sorted(set(experiments).intersection(custom_experiments))
-                    logger.warning(f"Loaded custom entries with errors. Following are invalid: {invalid_experiments}.")
+                    invalid_choice = sorted(set(exclude_experiments).difference(experiments))
+                    logger.warning(f"Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: {invalid_choice}.")
+
+                experiments = list(set(experiments).difference(exclude_experiments))
         else:
-            logger.info("Using default experiments in view.")
+            logger.info("EXCLUDE_EXPERIMENTS not set. Using default experiments in view.")
 
         # load settings as a "global" variable for templates
         experiments.sort()

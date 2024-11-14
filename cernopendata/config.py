@@ -517,4 +517,4 @@ ANNOUNCEMENT_BANNER_MESSAGE = os.getenv("ANNOUNCEMENT_BANNER_MESSAGE", "")
 RATELIMIT_PER_ENDPOINT = {"static": "600 per minute"}
 
 # Uncomment to activate, only show the following experiments:
-# INCLUDE_EXPERIMENTS = ["alice", "atlas", "cms", "delphi", "lhcb", "opera", "phenix", "totem"]
+# EXCLUDE_EXPERIMENTS = []
