@@ -7,7 +7,7 @@
           <div class="item">
             <a href="https://{{ exp.url }}">
               <img
-                src="{{ url_for('static', filename='img/{}.gif'.format(exp.img or id)) }}"
+                src="{{ url_for('static', filename='img/{}.gif'.format(id)) }}"
                 alt="{{ exp.name }} experiment"
                 width="{{ exp.width }}"
                 height="{{ exp.height }}"

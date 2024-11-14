@@ -21,14 +21,15 @@ class GlobalVariables:
         """Sets the experiments to be displayed in templates
         available with env `CERNOPENDATA_EXPERIMENTS`"""
 
+        # allowed: name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
         experiment_data = {
             "alice": {"name": "ALICE", "url": "alice.cern", "width": 55, "height": 55},
             "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
             "cms": {"name": "CMS", "url": "cms.cern", "width": 55, "height": 55},
-            "delphi": {"name": "DELPHI", "img": "dolphin", "url": "delphi-www.web.cern.ch", "width": 55, "height": 55},
-            "lhcb": {"name": "LHCb", "url": "lhcb.cern", "width": 55, "height": 55},
+            "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch", "width": 55, "height": 55},
+            "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch", "width": 55, "height": 55},
             "opera": {"name": "OPERA", "url": "operaweb.lngs.infn.it", "width": 55, "height": 55},
-            "phenix": {"name": "PHENIX", "url": "www.phenix.bnl.gov", "height": 35, "no_docs": True},
+            "phenix": {"name": "PHENIX", "url": "www.phenix.bnl.gov", "height": 35, "no_opendata_docs": True},
             "totem": {"name": "TOTEM", "url": "totem-experiment.web.cern.ch", "height": 55},
         }
         experiments = list(experiment_data.keys())

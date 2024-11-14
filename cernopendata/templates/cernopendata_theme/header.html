@@ -21,7 +21,7 @@
       </span>
       <div class="menu dropdown-items">
         <div class="item"><a href="/docs/about">CERN Open Data</a></div>
-        {% for id, exp in experiments_display.items() if not exp.no_docs %}
+        {% for id, exp in experiments_display.items() if not exp.no_opendata_docs %}
           <div class="item"><a href="/docs/about-{{ id }}">{{ exp.name }}</a></div>
         {% endfor %}
         <div class="item"><a href="/search?type=Glossary&sort=title">Glossary</a></div>
