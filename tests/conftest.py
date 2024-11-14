@@ -27,9 +27,8 @@ import shutil
 import tempfile
 
 import pytest
-from flask import Flask
 
-from cernopendata.factory import create_api
+from cernopendata.factory import create_app
 
 
 @pytest.fixture(scope="session")
@@ -53,8 +52,13 @@ def env_config(instance_path):
 
 
 @pytest.fixture(scope="session")
-def default_config():
+def default_config(instance_path):
     """Default configuration."""
+    # os.environ.update(
+    #     INVENIO_INSTANCE_PATH=os.environ.get("INSTANCE_PATH", instance_path),
+    #     INVENIO_STATIC_FOLDER=os.path.join(sys.prefix, "var/instance/static"),
+    # )
+
     return dict(
         DEBUG_TB_ENABLED=False,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
@@ -65,9 +69,10 @@ def default_config():
 
 
 @pytest.fixture(scope="session")
-def app(env_config, default_config, instance_path):
+def app(env_config, default_config):
     """Flask application fixture."""
-    app = create_api(**default_config)
+
+    app = create_app(**default_config)
 
     with app.app_context():
         yield app

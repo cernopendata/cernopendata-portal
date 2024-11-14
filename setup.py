@@ -48,6 +48,7 @@ tests_require = [
     "pytest-cache>=1.0",
     "pytest-cov==4.1.0",
     "pytest==7.4.4",
+    "beautifulsoup4==4.12.3",
 ]
 
 extras_require = {
@@ -161,8 +162,8 @@ setup(
         "invenio_base.apps": [
             "invenio_records_rest = invenio_records_rest:InvenioRecordsREST",
             "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD",
-            "cernopendata_sitemap = "
-            "cernopendata.modules.sitemap:CERNOpenDataSitemap",
+            "cernopendata_sitemap = cernopendata.modules.sitemap:CERNOpenDataSitemap",
+            "cernopendata_globals = cernopendata.modules.globals:GlobalVariables",
             # cod_md and cod_mistune are just wrappers to init the actual
             # markdown flask-extensions properly.
             "cod_md = " "cernopendata.modules.markdown.ext:CernopendataMarkdown",
