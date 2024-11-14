@@ -26,10 +26,10 @@ class GlobalVariables:
             "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
             "cms": {"name": "CMS", "url": "cms.cern", "width": 55, "height": 55},
             "delphi": {"name": "DELPHI", "img": "dolphin", "url": "delphi-www.web.cern.ch", "width": 55, "height": 55},
-            "lhcb": {"name": "LHCb", "url": "https://www.phenix.bnl.gov", "width": 55, "height": 55},
+            "lhcb": {"name": "LHCb", "url": "lhcb.cern", "width": 55, "height": 55},
             "opera": {"name": "OPERA", "url": "operaweb.lngs.infn.it", "width": 55, "height": 55},
-            "phenix": {"name": "PHENIX", "url": "www.phenix.bnl.gov", "height": 35},
-            "totem": {"name": "TOTEM", "url": "totem-experiment.web.cern.ch/", "height": 55},
+            "phenix": {"name": "PHENIX", "url": "www.phenix.bnl.gov", "height": 35, "no_docs": True},
+            "totem": {"name": "TOTEM", "url": "totem-experiment.web.cern.ch", "height": 55},
         }
         experiments = list(experiment_data.keys())
 
