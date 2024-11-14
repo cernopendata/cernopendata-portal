@@ -1,3 +1,5 @@
+"""Global variables for Flask app."""
+
 import logging
 from flask import Flask
 
@@ -7,10 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 class GlobalVariables:
-    """This class loads and holds global variables
-    to be used in templates with context_processor."""
+    """Global variables Invenio module.
+
+    This class loads and holds global variables
+    to be used in templates with context_processor.
+    """
 
     def __init__(self, app):
+        """Extension initialization."""
         if not isinstance(app, Flask):
             return
 
@@ -18,10 +24,12 @@ class GlobalVariables:
 
     @staticmethod
     def set_experiments(app):
-        """Sets the experiments to be displayed in templates
-        available with env `CERNOPENDATA_EXPERIMENTS`"""
+        """Sets the experiments to be displayed in templates.
 
-        # allowed: name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
+        Use config `CERNOPENDATA_EXPERIMENTS` to exclude experiments.
+        For the experiment_data the following fields are currently supported:
+        name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
+        """
         experiment_data = {
             "alice": {"name": "ALICE", "url": "alice.cern", "width": 55, "height": 55},
             "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
