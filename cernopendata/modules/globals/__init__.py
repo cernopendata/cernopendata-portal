@@ -2,4 +2,4 @@
 
 from .ext import GlobalVariables
 
-__all__ = ['GlobalVariables']
+__all__ = ["GlobalVariables"]
