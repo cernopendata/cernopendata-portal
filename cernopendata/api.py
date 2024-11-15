@@ -78,17 +78,6 @@ class RecordFilesWithIndex(Record):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
 
-    @classmethod
-    def get_record(cls, id):
-        """Get a record."""
-        record = super(RecordFilesWithIndex, cls).get_record(id)
-        record["_file_indices"] = []
-        for buckettag in BucketTag.query.filter_by(key="record", value=str(record.id)):
-            record["_file_indices"].append(
-                FileIndexMetadata.get(record.id, buckettag.bucket_id).dumps()
-            )
-        return record
-
 
 class FileIndexMetadata:
     """Class for the FileIndexMetadata."""
