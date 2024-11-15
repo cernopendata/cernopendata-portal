@@ -114,6 +114,14 @@
                     <p>These open data are released under the license identifier of
                         "<a href="https://spdx.org/licenses/{{ attr }}.html">{{ attr }}</a>".</p>
                     {% endif %}
+
+                     <p>Neither the experiment(s) ({% for exp in record.experiment %} {{ exp }}  {% endfor %}) nor
+                        CERN endorse any works, scientific or otherwise, produced using these data.</p>
+
+                     {% if record.doi %}
+                    <p>This release has a unique DOI that you are requested to cite in any applications or
+                        publications.</p>
+                    {% endif %}
                 </div>
                 {% endblock disclaimer %}
             </div>
