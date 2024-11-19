@@ -85,7 +85,7 @@
                     {# TODO: The second parts of the if statements are for backwards compatibility with old records!
                     Please adjust in the future. #}
 
-                    {% set attr = record.license.attribution or "CC0-1.0" %}
+                    {% set attr = record.get("license", {}).get("attribution", "CC0-1.0") %}
                     {% if attr == 'CC0-1.0' or attr.startswith("CC0") %}
                     <p>These open data are released under the <a href="https://creativecommons.org/publicdomain/zero/1.0/">
                         Creative Commons Zero v1.0 Universal</a> license.</p>
