@@ -24,11 +24,9 @@
 
 import os
 import shutil
-# import sys
 import tempfile
 
 import pytest
-from flask import Flask
 
 from cernopendata.factory import create_app
 

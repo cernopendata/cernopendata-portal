@@ -1,6 +1,7 @@
 """Global variables for Flask app."""
 
 import logging
+
 from flask import Flask
 
 from cernopendata.version import __version__
@@ -65,7 +66,6 @@ class GlobalVariables:
         For the experiment_data the following fields are currently supported:
         name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
         """
-
         experiment_data = GlobalVariables._experiments
         experiments = list(experiment_data.keys())
 
@@ -96,7 +96,11 @@ class GlobalVariables:
             )
 
         # load settings as a "global" variable for templates
-        experiment_data = {k: experiment_data[k] for k in sorted(experiment_data.keys()) if k in experiments}
+        experiment_data = {
+            k: experiment_data[k]
+            for k in sorted(experiment_data.keys())
+            if k in experiments
+        }
 
         app.context_processor(
             lambda: {

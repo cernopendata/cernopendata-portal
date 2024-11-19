@@ -1,15 +1,17 @@
 """Tests for the display experiment exclusion feature."""
 
-from bs4 import BeautifulSoup
 import pytest
-
-from cernopendata.factory import create_app
-from cernopendata.modules.pages.views import index  # , faceted_search
-from cernopendata.modules.globals.ext import GlobalVariables
+from bs4 import BeautifulSoup
 from conftest import default_config
 
-ALL_EXPERIMENTS = list(GlobalVariables._experiments.keys())
-EXCLUDE_ABOUT = list([k for k, v in GlobalVariables._experiments.items() if v.get("no_opendata_docs")])
+from cernopendata.factory import create_app
+from cernopendata.modules.globals.ext import GlobalVariables
+from cernopendata.modules.pages.views import index  # , faceted_search
+
+ALL_EXPERIMENTS = sorted(GlobalVariables._experiments.keys())
+EXCLUDE_ABOUT = sorted(
+    [k for k, v in GlobalVariables._experiments.items() if v.get("no_opendata_docs")]
+)
 
 
 @pytest.fixture
@@ -33,7 +35,8 @@ def get_experiments_from_about(page_soup):
         if title.lower() == "about":
             not_experiment = ["cern open data", "glossary"]
             return [
-                exp for div in element.div.find_all("div")
+                exp
+                for div in element.div.find_all("div")
                 if (exp := div.text.lower()) not in not_experiment
             ]
 
@@ -47,7 +50,8 @@ def get_experiments_from_site(page_soup):
         if title.lower() == "focus on":
             not_experiment = ["data science"]
             return [
-                exp for li in element.ul.find_all("li")
+                exp
+                for li in element.ul.find_all("li")
                 if (exp := li.text.lower()) not in not_experiment
             ]
 
@@ -73,6 +77,7 @@ def run_queries(flask_app):
 
 
 # - Tests - - - - - - - - - -
+
 
 def test_display_experiments_default(app_param):
     """Test default setting, focus on ordering and default functionality."""
@@ -113,7 +118,9 @@ def test_display_experiments_exclude_experiments(app_param):
         # assert content
         assert body == expected_result
         assert footer == expected_result
-        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(EXCLUDE_ABOUT)
+        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+            EXCLUDE_ABOUT
+        )
 
 
 def test_display_experiments_invalid_parameter(app_param):
@@ -130,18 +137,15 @@ def test_display_experiments_invalid_parameter(app_param):
     # assert content
     assert body == expected_result
     assert footer == expected_result
-    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(EXCLUDE_ABOUT)
+    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+        EXCLUDE_ABOUT
+    )
 
 
 def test_display_experiments_invalid_setting(app_param):
     """Test setting the configuration parameter to an invalid value."""
     # setup
-    cases = [
-        "i am not a valid setting",
-        0,
-        True,
-        {"key": "value"}
-    ]
+    cases = ["i am not a valid setting", 0, True, {"key": "value"}]
     for case in cases:
         expected_result = ALL_EXPERIMENTS
 
@@ -153,7 +157,9 @@ def test_display_experiments_invalid_setting(app_param):
         # assert content
         assert body == expected_result
         assert footer == expected_result
-        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(EXCLUDE_ABOUT)
+        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+            EXCLUDE_ABOUT
+        )
 
 
 def test_display_experiments_empty_setting(app_param):
@@ -170,7 +176,9 @@ def test_display_experiments_empty_setting(app_param):
     # assert content
     assert body == expected_result
     assert footer == expected_result
-    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(EXCLUDE_ABOUT)
+    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+        EXCLUDE_ABOUT
+    )
 
 
 def test_display_experiments_exclude_all(app_param):
@@ -187,7 +195,9 @@ def test_display_experiments_exclude_all(app_param):
     # assert content
     assert body == expected_result
     assert footer == expected_result
-    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(EXCLUDE_ABOUT)
+    assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+        EXCLUDE_ABOUT
+    )
 
 
 def test_display_experiments_exclude_glossary(app_param, monkeypatch):
@@ -212,6 +222,7 @@ def test_display_experiments_exclude_glossary(app_param, monkeypatch):
     assert body == expected_result_default
     assert footer == expected_result_default
     assert about == expected_result_glossary
+
 
 # def test_display_experiments_on_other_site(app_param):
 #     """Checks the basic functionality on search page."""
