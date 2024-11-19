@@ -48,6 +48,7 @@ tests_require = [
     "pytest-cache>=1.0",
     "pytest-cov==4.1.0",
     "pytest==7.4.4",
+    "beautifulsoup4==4.12.3",
 ]
 
 extras_require = {
