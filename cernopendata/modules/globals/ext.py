@@ -15,6 +15,41 @@ class GlobalVariables:
     to be used in templates with context_processor.
     """
 
+    _experiments = {
+        "alice": {"name": "ALICE", "url": "alice.cern", "width": 55, "height": 55},
+        "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
+        "cms": {"name": "CMS", "url": "cms.cern", "width": 55, "height": 55},
+        "delphi": {
+            "name": "DELPHI",
+            "url": "delphi-www.web.cern.ch",
+            "width": 55,
+            "height": 55,
+        },
+        "lhcb": {
+            "name": "LHCb",
+            "url": "lhcb.web.cern.ch",
+            "width": 55,
+            "height": 55,
+        },
+        "opera": {
+            "name": "OPERA",
+            "url": "operaweb.lngs.infn.it",
+            "width": 55,
+            "height": 55,
+        },
+        "phenix": {
+            "name": "PHENIX",
+            "url": "www.phenix.bnl.gov",
+            "height": 35,
+            "no_opendata_docs": True,
+        },
+        "totem": {
+            "name": "TOTEM",
+            "url": "totem-experiment.web.cern.ch",
+            "height": 55,
+        },
+    }
+
     def __init__(self, app):
         """Extension initialization."""
         if not isinstance(app, Flask):
@@ -30,40 +65,8 @@ class GlobalVariables:
         For the experiment_data the following fields are currently supported:
         name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
         """
-        experiment_data = {
-            "alice": {"name": "ALICE", "url": "alice.cern", "width": 55, "height": 55},
-            "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
-            "cms": {"name": "CMS", "url": "cms.cern", "width": 55, "height": 55},
-            "delphi": {
-                "name": "DELPHI",
-                "url": "delphi-www.web.cern.ch",
-                "width": 55,
-                "height": 55,
-            },
-            "lhcb": {
-                "name": "LHCb",
-                "url": "lhcb.web.cern.ch",
-                "width": 55,
-                "height": 55,
-            },
-            "opera": {
-                "name": "OPERA",
-                "url": "operaweb.lngs.infn.it",
-                "width": 55,
-                "height": 55,
-            },
-            "phenix": {
-                "name": "PHENIX",
-                "url": "www.phenix.bnl.gov",
-                "height": 35,
-                "no_opendata_docs": True,
-            },
-            "totem": {
-                "name": "TOTEM",
-                "url": "totem-experiment.web.cern.ch",
-                "height": 55,
-            },
-        }
+
+        experiment_data = GlobalVariables._experiments
         experiments = list(experiment_data.keys())
 
         # check config for custom setting
@@ -93,8 +96,7 @@ class GlobalVariables:
             )
 
         # load settings as a "global" variable for templates
-        experiments.sort()
-        experiment_data = {k: v for k, v in experiment_data.items() if k in experiments}
+        experiment_data = {k: experiment_data[k] for k in sorted(experiment_data.keys()) if k in experiments}
 
         app.context_processor(
             lambda: {
