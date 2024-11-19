@@ -82,26 +82,45 @@
                 {% block disclaimer %}
                 <div>
                     <h2>Disclaimer</h2>
-                    {% if record.license %}
-                    {% if record.license.attribution != 'CC0'%}
-                    <p>{{record.license.attribution}}</p>
+                    {# TODO: The second parts of the if statements are for backwards compatibility with old records!
+                    Please adjust in the future. #}
+
+                    {% set attr = record.get("license", {}).get("attribution", "CC0-1.0") %}
+                    {% if attr == 'CC0-1.0' or attr.startswith("CC0") %}
+                    <p>These open data are released under the <a href="https://creativecommons.org/publicdomain/zero/1.0/">
+                        Creative Commons Zero v1.0 Universal</a> license.</p>
+                    <img src="{{url_for('static', filename='img/licenses/cc-zero.svg')}}" alt="Logo {{ attr }}" height=45 >
+
+                    {% elif attr == 'GPL-3.0-only' or attr.startswith("GNU") %}
+                    <p>These open data are released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">
+                        GNU General Public License v3.0</a>.</p>
+                    <img src="{{url_for('static', filename='img/licenses/gpl_v3.svg')}}" alt="Logo {{ attr }}" height=45>
+
+                    {% elif attr == 'MIT' or attr.startswith("MIT") %}
+                    <p>These open data are released under the <a href="https://opensource.org/license/mit">
+                        MIT License</a>.</p>
+                    <img src="{{url_for('static', filename='img/licenses/mit_logo.svg')}}" alt="Logo {{ attr }}" height=45>
+
+                    {% elif attr == 'Apache-2.0' or attr.startswith("Apache") %}
+                    <p>These open data are released under the <a href="https://www.apache.org/licenses/LICENSE-2.0.txt">
+                        Apache Licenses Version 2.0</a>.</p>
+                    <img src="{{url_for('static', filename='img/licenses/apache_logo.svg')}}" alt="Logo {{ attr }}" height=45>
+
+                    {% elif attr == 'BSD-3-Clause' or attr.startswith("BSD") %}
+                    <p>These open data are released under the <a href="https://opensource.org/licenses/BSD-3-Clause">
+                        BSD 3-Clause License</a>.</p>
+
                     {% else %}
-                    <p>The open data are released under the <a href="https://creativecommons.org/publicdomain/zero/1.0/">Creative
-                        Commons CC0 waiver</a>. Neither the experiment(s) ({% for exp in record.experiment %} {{ exp }}  {% endfor %}) nor CERN endorse any
-                    works, scientific or otherwise, produced using these data.
-                    All releases will have a unique DOI that you are requested to cite in any applications or
-                    publications.
-                    </p>
-                    <img src="{{url_for('static', filename='img/cc-zero.svg')}}">
+                    <p>These open data are released under the license identifier of
+                        "<a href="https://spdx.org/licenses/{{ attr }}.html">{{ attr }}</a>".</p>
                     {% endif %}
-                    {% else %}
-                    <p>The open data are released under the <a href="https://creativecommons.org/publicdomain/zero/1.0/">Creative
-                        Commons CC0 waiver</a>. Neither the experiment(s) ({% for exp in record.experiment %} {{ exp }}  {% endfor %}) nor CERN endorse any
-                    works, scientific or otherwise, produced using these data.
-                    All releases will have a unique DOI that you are requested to cite in any applications or
-                    publications.
-                    </p>
-                    <img src="{{url_for('static', filename='img/cc-zero.svg')}}">
+
+                     <p>Neither the experiment(s) ({% for exp in record.experiment %} {{ exp }}  {% endfor %}) nor
+                        CERN endorse any works, scientific or otherwise, produced using these data.</p>
+
+                     {% if record.doi %}
+                    <p>This release has a unique DOI that you are requested to cite in any applications or
+                        publications.</p>
                     {% endif %}
                 </div>
                 {% endblock disclaimer %}
