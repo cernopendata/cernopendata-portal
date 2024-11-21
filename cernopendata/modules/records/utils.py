@@ -19,30 +19,24 @@
 
 """Implementention of various utility functions."""
 
-import json
-from re import sub
-import six
 import itertools
+import json
+import re
+from os.path import isfile
 
+import flask
 from flask import abort, current_app, jsonify, render_template, request
-from invenio_files_rest.views import ObjectResource
-from invenio_records.api import Record
-from invenio_records_files.utils import record_file_factory
-
 from invenio_files_rest.models import FileInstance
 
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
+from invenio_files_rest.storage.pyfs import PyFSFileStorage
+from invenio_files_rest.views import ObjectResource
+from invenio_records.api import Record
+from invenio_records_files.utils import record_file_factory
 from invenio_records_ui.utils import obj_or_import_string
 from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
-
-from invenio_search import current_search_client
-from invenio_search.engine import dsl, search
-
-import sys
-import flask
-import re
 
 
 def get_file_index(pid, record, file_index, **kwargs):
@@ -85,21 +79,15 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
     _record_file_factory = _record_file_factory or record_file_factory
     # Extract file from record.
     filename = kwargs.get("filename")
-    if filename == "configFile.py":
-        rf = record.files.dumps()
-        for file in rf:
-            if file.get("key", "").endswith("configFile.py"):
-                filename = file.get("key")
-                break
-
     fileobj = _record_file_factory(pid, record, filename)
     if not fileobj:
-        for index in record.file_indices:
-            for file in index["files"]:
-                if file["key"] == filename:
-                    obj = ObjectResource.get_object(
-                        file["bucket"], file["key"], file["version_id"]
-                    )
+        file_index = re.sub(r"_\d+$", "", filename)
+        for file in record.file_indices[file_index]._files:
+            if file["key"] == filename:
+                obj = ObjectResource.get_object(
+                    file["bucket"], file["key"], file["version_id"]
+                )
+                break
         if not obj:
             abort(404)
     else:
@@ -107,43 +95,32 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     # Check permissions
     ObjectResource.check_object_permission(obj)
+    return _send_file(obj.file.uri)
 
-    return ObjectResource.send_object(
-        obj.bucket,
-        obj,
-        # expected_chksum=fileobj.get('checksum'),
-        logger_data={
-            "bucket_id": obj.bucket_id,
-            "pid_type": pid.pid_type,
-            "pid_value": pid.pid_value,
-        },
-        # create_dir=False
-    )
+
+def _send_file(uri):
+    """Send a file to the client."""
+    import sys
+    if isfile(uri.replace("root://eospublic.cern.ch/", "")):
+        print("Getting the file through root", file=sys.stderr)
+        storage = PyFSFileStorage(uri.replace("root://eospublic.cern.ch/", "file:///"))
+    else:
+        print("Getting the file through fuse", file=sys.stderr)
+        storage = EOSFileStorage(uri)
+    filename = uri.split("/")[-1:]
+    try:
+        return storage.send_file(filename[0])
+    except Exception:
+        abort(404)
 
 
 def eos_file_download_ui(pid, record, _record_file_factory=None, **kwargs):
     """File download view for a given EOS uri."""
     if current_app.config.get("CERNOPENDATA_DISABLE_DOWNLOADS", False):
         abort(503)
-
-    path = kwargs.get("filepath", "")
-
-    return eos_send_file_or_404(path)
-
-
-def eos_send_file_or_404(file_path=""):
-    """File download for a given EOS uri."""
-    storage = EOSFileStorage(
-        "root://eospublic.cern.ch//eos/opendata/" + file_path,
-        # create_dir=False
+    return _send_file(
+        "root://eospublic.cern.ch/eos/opendata/" + kwargs.get("filepath", "")
     )
-
-    filename = file_path.split("/")[-1:]
-
-    try:
-        return storage.send_file(filename[0])
-    except Exception:
-        abort(404)
 
 
 def get_paged_files(files, page, items_per_page=5):
