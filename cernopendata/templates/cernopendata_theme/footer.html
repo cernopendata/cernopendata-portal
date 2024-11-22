@@ -9,8 +9,8 @@
               <img
                 src="{{ url_for('static', filename='img/experiments/{}.gif'.format(id)) }}"
                 alt="{{ exp.name }} experiment"
-                width="{{ exp.width }}"
-                height="{{ exp.height }}"
+                width="{{ exp.get('width', 55) }}"
+                height="{{ exp.get('height', 55) }}"
               />
             </a>
           </div>

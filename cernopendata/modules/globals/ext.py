@@ -17,37 +17,23 @@ class GlobalVariables:
     """
 
     _experiments = {
-        "alice": {"name": "ALICE", "url": "alice.cern", "width": 55, "height": 55},
-        "atlas": {"name": "ATLAS", "url": "atlas.cern", "width": 55, "height": 55},
-        "cms": {"name": "CMS", "url": "cms.cern", "width": 55, "height": 55},
-        "delphi": {
-            "name": "DELPHI",
-            "url": "delphi-www.web.cern.ch",
-            "width": 55,
-            "height": 55,
-        },
-        "lhcb": {
-            "name": "LHCb",
-            "url": "lhcb.web.cern.ch",
-            "width": 55,
-            "height": 55,
-        },
-        "opera": {
-            "name": "OPERA",
-            "url": "operaweb.lngs.infn.it",
-            "width": 55,
-            "height": 55,
-        },
+        "alice": {"name": "ALICE", "url": "alice.cern"},
+        "atlas": {"name": "ATLAS", "url": "atlas.cern"},
+        "cms": {"name": "CMS", "url": "cms.cern"},
+        "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch"},
+        "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch"},
+        "opera": {"name": "OPERA", "url": "operaweb.lngs.infn.it"},
         "phenix": {
             "name": "PHENIX",
             "url": "www.phenix.bnl.gov",
             "height": 35,
+            "width": "auto",
             "no_opendata_docs": True,
         },
         "totem": {
             "name": "TOTEM",
             "url": "totem-experiment.web.cern.ch",
-            "height": 55,
+            "width": "auto",
         },
     }
 
