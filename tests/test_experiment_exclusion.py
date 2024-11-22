@@ -204,7 +204,7 @@ def test_display_experiments_exclude_glossary(app_param, monkeypatch):
     """Tests if excluding an experiment from the glossary works."""
     # setup
     experiments = {
-        "atlas": {"name": "Atlas", "no_opendata_docs": True},
+        "atlas": {"name": "ATLAS", "no_opendata_docs": True},
         "cms": {"name": "CMS", "no_opendata_docs": True},
         "alice": {"name": "ALICE", "no_opendata_docs": False},
         "lhcb": {"name": "LHCb"},
@@ -222,13 +222,3 @@ def test_display_experiments_exclude_glossary(app_param, monkeypatch):
     assert body == expected_result_default
     assert footer == expected_result_default
     assert about == expected_result_glossary
-
-
-# def test_display_experiments_on_other_site(app_param):
-#     """Checks the basic functionality on search page."""
-#
-#     flask_app = app_param()
-#
-#     # query
-#     with flask_app.test_request_context("/search/"):
-#         soup = BeautifulSoup(faceted_search(), "html.parser")
