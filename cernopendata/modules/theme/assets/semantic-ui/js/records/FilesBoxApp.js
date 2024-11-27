@@ -69,7 +69,7 @@ const FilesBoxApp = () => {
     <>
       {items.total > 0 && (
         <>
-          <h3>{title}</h3>
+          <h2>{title}</h2>
           <FileTable items={items} pidValue={pidValue} table_type={table_type}/>
         </>
       )}
