@@ -71,6 +71,8 @@ install_requires = [
     "invenio-app>=1.5.0,<2.0.0",
     "invenio-base>=1.3.0,<2.0.0",
     "invenio-config>=1.0.3,<2.0.0",
+    # Pin pytz dependency for invenio-i18n
+    "pytz>=2022.7,<2024.2",
     # Custom Invenio `base` bundle
     "importlib-metadata>=6.11.0",
     "invenio-accounts==3.1.0",
