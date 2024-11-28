@@ -57,8 +57,8 @@
       <div class="collections-col">
         <header><span>Focus on</span></header>
         <ul>
-          {% for id, exp in experiments_display.items() %}
-            <li><a href="/search?experiment={{ id }}">{{ exp.name }}</a></li>
+          {% for exp in experiments_display.values() %}
+            <li><a href="/search?experiment={{ exp.name }}">{{ exp.name }}</a></li>
           {% endfor %}
           <li><a href="/search?keywords=datascience">Data Science</a></li>
         </ul>
