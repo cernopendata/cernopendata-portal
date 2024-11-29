@@ -22,6 +22,7 @@
 import itertools
 import json
 import re
+from os.path import isfile
 
 import flask
 from flask import abort, current_app, jsonify, render_template, request
@@ -34,6 +35,7 @@ from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
 from invenio_records_ui.utils import obj_or_import_string
+from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
 
 
@@ -93,11 +95,16 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
     # Check permissions
     ObjectResource.check_object_permission(obj)
+    return _send_file(obj.file.uri)
 
-    storage = PyFSFileStorage(
-        obj.file.uri.replace("root://eospublic.cern.ch/", "file:///")
-    )
-    filename = obj.file.uri.split("/")[-1:]
+def _send_file(uri):
+    """Send a file to the client."""
+
+    if isfile(uri.replace("root://eospublic.cern.ch/", "")):
+        storage = PyFSFileStorage(uri.replace("root://eospublic.cern.ch/", "file:///"))
+    else:
+        storage = EOSFileStorage(uri)
+    filename = uri.split("/")[-1:]
     try:
         return storage.send_file(filename[0])
     except Exception:
@@ -108,15 +115,7 @@ def eos_file_download_ui(pid, record, _record_file_factory=None, **kwargs):
     """File download view for a given EOS uri."""
     if current_app.config.get("CERNOPENDATA_DISABLE_DOWNLOADS", False):
         abort(503)
-
-    file_path = kwargs.get("filepath", "")
-    storage = PyFSFileStorage("file:///eos/opendata/" + file_path)
-    filename = file_path.split("/")[-1:]
-
-    try:
-        return storage.send_file(filename[0])
-    except Exception:
-        abort(404)
+    return _send_file("root://eospublic.cern.ch/eos/opendata/" + kwargs.get("filepath", ""))
 
 
 def get_paged_files(files, page, items_per_page=5):
