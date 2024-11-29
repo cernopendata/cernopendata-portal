@@ -28,4 +28,4 @@ This file is imported by ``cernopendata.__init__``,
 and parsed by ``setup.py``.
 """
 
-__version__ = "0.1.5"
+__version__ = "0.2.5"
