@@ -354,9 +354,14 @@ a {
     margin-bottom: 0;
 }
 
-.card-body h4 a {
-    font-size: 20px;
-    color: #3b97d3;
+.card-body {
+    h4 {
+        font-size: 20px;
+    }
+
+    a {
+        color: $light-blue;
+    }
 }
 
 .date-author-small {
