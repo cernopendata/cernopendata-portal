@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import Confetti from 'react-confetti'
 
 
+const unlock_date = new Date("2024-12-09")
+
 function Celebrate() {
     const [isDisabled, setIsDisabled] = useState(false);
 
@@ -44,5 +46,7 @@ function Celebrate() {
     )
 }
 
-const titleContainer = document.getElementById("react-anniversary")
-ReactDOM.render(React.createElement(Celebrate), titleContainer)
+if (new Date() > unlock_date) {
+    const titleContainer = document.getElementById("react-anniversary")
+    ReactDOM.render(React.createElement(Celebrate), titleContainer)
+}
