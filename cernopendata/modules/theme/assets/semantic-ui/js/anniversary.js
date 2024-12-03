@@ -12,7 +12,6 @@ function Celebrate() {
     let make_confetti = async () => {
         setIsDisabled(true);
 
-        // const element_id = Math.random().toString()
         const confettiContainer = document.getElementById("confetti-holder")
 
         ReactDOM.render(
