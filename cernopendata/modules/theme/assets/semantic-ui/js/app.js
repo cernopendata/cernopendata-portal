@@ -5,3 +5,5 @@ import jquery from "jquery/dist/jquery";
 // ispy and opera visualizers, since other versions are loaded through script
 // tag and take over `$` and `jQuery` namespaces.
 global.jquery = jquery;
+
+export default jquery;
