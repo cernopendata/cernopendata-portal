@@ -53,7 +53,7 @@ function Celebrate() {
     )
 }
 
-if (new Date() > unlock_date || true) {
+if (new Date() > unlock_date) {
     const titleContainer = document.getElementById("react-anniversary")
     ReactDOM.render(React.createElement(Celebrate), titleContainer)
 }
