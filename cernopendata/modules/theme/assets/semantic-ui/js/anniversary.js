@@ -7,11 +7,13 @@ import Confetti from 'react-confetti'
 const unlock_date = new Date("2024-12-09")
 
 function Celebrate() {
-    const [isDisabled, setIsDisabled] = useState(false);
+    const [stateShowConfetti, setShowConfetti] = useState(false);
+    const [stateShowBlog, setShowBlog] = useState(false);
 
-    let make_confetti = async () => {
-        setIsDisabled(true);
+    let make_confetti = () => {
+        if (stateShowConfetti) return;
 
+        setShowConfetti(true);
         const confettiContainer = document.getElementById("confetti-holder")
 
         ReactDOM.render(
@@ -26,7 +28,7 @@ function Celebrate() {
                         null,
                         confettiContainer
                     )
-                    setIsDisabled(false);
+                    setShowConfetti(false);
                 }}
             />,
             confettiContainer
@@ -34,12 +36,25 @@ function Celebrate() {
     }
 
     return (
-        <div className="navbar-anniversary-wrap">
-          <span title="Eat from the cake to celebrate with us!">
-            <button onClick={make_confetti} disabled={isDisabled}>
-                {!isDisabled ? "🎂" : "🎉"}
-            </button> <strong>10 Years</strong> of CERN Open Data!
-          </span>
+        <div
+            className="navbar-anniversary-wrap"
+            onMouseEnter={() => {
+                setShowBlog(true)
+            }}
+            onMouseMove={() => {
+                make_confetti()
+            }}
+            onMouseLeave={() => {
+                setShowBlog(false)
+            }}
+        >
+            <a href={"/docs/10-years-of-open-data"}>
+                {stateShowBlog ?
+                    <span>🗞️ Click <strong>here</strong> to read our blog!</span>
+                    :
+                    <span>🎂 <strong>10 Years</strong> of CERN Open Data!</span>
+                }
+            </a>
             <div id="confetti-holder"></div>
         </div>
     )
