@@ -8,7 +8,7 @@ const unlock_date = new Date("2024-12-09")
 
 function Celebrate() {
     const [stateShowConfetti, setShowConfetti] = useState(false);
-    const [stateShowBlog, setShowBlog] = useState(false);
+    // const [stateShowBlog, setShowBlog] = useState(false);
 
     let make_confetti = () => {
         if (stateShowConfetti) return;
@@ -36,31 +36,24 @@ function Celebrate() {
     }
 
     return (
-        <div
-            className="navbar-anniversary-wrap"
-            onMouseEnter={() => {
-                setShowBlog(true)
-            }}
-            onMouseMove={() => {
-                make_confetti()
-            }}
-            onMouseLeave={() => {
-                setShowBlog(false)
-            }}
-        >
-            <a href={"/docs/10-years-of-open-data"}>
-                {stateShowBlog ?
-                    <span>🗞️ Click <strong>here</strong> to read our blog!</span>
-                    :
-                    <span>🎂 <strong>10 Years</strong> of CERN Open Data!</span>
-                }
+        <div className="navbar-anniversary-wrap" title="Click the cake to celebrate!">
+            <button onClick={make_confetti} disabled={stateShowConfetti}>
+                {!stateShowConfetti ? "🎂" : "🎉"}
+            </button>
+            <a className="navbar-anniversary-texts" href="/docs/ten-years-of-cern-open-data-portal">
+                <span className="navbar-anniversary-texts-title">
+                    <strong>Ten years</strong> of CERN Open Data portal!
+                </span><br/>
+                <span className="navbar-anniversary-texts-subtitle">
+                    (anniversary blog)
+                </span>
             </a>
             <div id="confetti-holder"></div>
         </div>
     )
 }
 
-if (new Date() > unlock_date) {
+if (new Date() > unlock_date || true) {
     const titleContainer = document.getElementById("react-anniversary")
     ReactDOM.render(React.createElement(Celebrate), titleContainer)
 }
