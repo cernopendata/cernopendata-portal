@@ -21,7 +21,7 @@
 // as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 .theme.header {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 
   .navbar-custom {
     //display: flex;
@@ -70,12 +70,14 @@
         }
 
         button {
+          display: inline-block;
           background: none;
           border: none;
           margin-right: 0.5em;
           cursor: pointer;
           font-size: 2.25em;
           transition: transform 0.15s;
+          animation: wiggle 18s ease-in-out infinite;
         }
 
         a {
@@ -98,6 +100,24 @@
 
         button:active {
           transform: scale(1.25);
+        }
+
+        @keyframes wiggle {
+          60% {
+            transform: rotate(0deg);
+          }
+          61% {
+            transform: rotate(5deg);
+          }
+          62% {
+            transform: rotate(-5deg);
+          }
+          63% {
+            transform: rotate(10deg);
+          }
+          64% {
+            transform: rotate(0deg);
+          }
         }
       }
     }
