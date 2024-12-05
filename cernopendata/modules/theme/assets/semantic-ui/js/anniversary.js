@@ -45,7 +45,7 @@ function Celebrate() {
                     <strong>Ten years</strong> of CERN Open Data portal!
                 </span><br/>
                 <span className="navbar-anniversary-texts-subtitle">
-                    (anniversary blog)
+                    (blog post)
                 </span>
             </a>
             <div id="confetti-holder"></div>
