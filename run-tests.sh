@@ -37,7 +37,7 @@ check_black () {
 
 check_fixtures () {
     # check for possibly incorrect JSON files:
-    find cernopendata/modules/fixtures/data/ -name "*.json" -exec jsonlint -q {} \;
+    find cernopendata/modules/fixtures/data/ -name "*.json" -exec jq -re "." {} \; > /dev/null
 
     # check record ID uniqueness:
     dupes=$(jq '.[].recid' cernopendata/modules/fixtures/data/records/*.json | sort | uniq -d)
