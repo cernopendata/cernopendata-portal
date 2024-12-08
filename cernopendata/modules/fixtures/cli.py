@@ -137,8 +137,10 @@ def update_record(pid, data, skip_files):
             FileInstance.query.filter_by(id=o.file_id).delete()
         FileIndexMetadata.delete_by_record(record=record)
     # This is to ensure that fields that do not appear in the new data
-    # are not just maintained from the previous version
+    # are not just kept from the previous version
     for k in list(record.keys()):
+        if k == "_bucket":
+            continue
         if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
             continue
         del record[k]
