@@ -27,12 +27,14 @@ import json
 import pytest
 from invenio_files_rest.models import Location
 from invenio_indexer.api import RecordIndexer
+from invenio_pidstore.models import PersistentIdentifier
 
-from cernopendata.modules.fixtures.cli import create_record
+from cernopendata.api import FileIndexMetadata, RecordFilesWithIndex
+from cernopendata.modules.fixtures.cli import create_record, update_record
 from cernopendata.modules.records.utils import record_file_page
 
 
-def test_file_index(app, database, search):
+def test_file(app, database, search):
     """Checking that records can be inserted"""
     data = {
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
@@ -66,3 +68,47 @@ def test_file_index(app, database, search):
         )
         response = json.loads(req.response[0])
     assert response["files"][0]["uri"] == "root://foo/bar"
+    record.commit()
+    data2 = {
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/record-v1.0.0.json"
+        ),
+        "recid": "71114",
+        "date_published": "2024",
+        "experiment": ["ALICE"],
+        "publisher": "CERN Open Data Portal",
+        "title": "File modified",
+        "type": {
+            "primary": "Dataset",
+            "secondary": ["Derived"],
+        },
+        "files": [
+            {"checksum": "adler32:9719fd6a", "size": 1053, "uri": "root://foo/bar"}
+        ],
+    }
+    pid = PersistentIdentifier.get("recid", data["recid"])
+    # The first time that an update is done, it usually works
+    record = update_record(pid, data2, False)
+    record.commit()
+
+    data3 = {
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/record-v1.0.0.json"
+        ),
+        "recid": "71114",
+        "date_published": "2024",
+        "experiment": ["ALICE"],
+        "publisher": "CERN Open Data Portal",
+        "title": "File modified",
+        "type": {
+            "primary": "Dataset",
+            "secondary": ["Derived"],
+        },
+        "files": [
+            {"checksum": "adler32:9719fd6a", "size": 1053, "uri": "root://foo/bar"}
+        ],
+    }
+    # Let's make sure that a new update still works. This used to fail because the first update
+    # was removing the bucket
+    record = update_record(pid, data3, False)
+    record.commit()
