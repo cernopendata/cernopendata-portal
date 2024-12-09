@@ -1,6 +1,7 @@
 """Global variables and methods for Flask app."""
 
 import logging
+import typing
 
 from flask import Flask, request
 from counter_robots import is_robot_or_machine
@@ -58,25 +59,32 @@ class GlobalVariables:
 
         # check config for custom setting
         if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
-            try:
-                exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
-            except TypeError:
+            if isinstance(exclude_experiments, str):
+                exclude_experiments = json.loads(exclude_experiments.replace("'", "\""))
+
+                logger.info("Loaded experiments from string")
+
+            if not isinstance(exclude_experiments, typing.Iterable):
                 logger.error(
                     f"Failed to exclude any experiments. Config EXCLUDE_EXPERIMENTS is not a list! "
                     f"Using default option..."
                 )
-            else:
-                if set(experiments).issuperset(exclude_experiments):
-                    logger.info(f"Loaded following experiments in view: {experiments}.")
-                else:
-                    invalid_choice = sorted(
-                        set(exclude_experiments).difference(experiments)
-                    )
-                    logger.warning(
-                        f"Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: {invalid_choice}."
-                    )
+                return
 
-                experiments = list(set(experiments).difference(exclude_experiments))
+            exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
+
+            if set(experiments).issuperset(exclude_experiments):
+                logger.info(f"Loaded following experiments in view: {experiments}.")
+            else:
+                invalid_choice = sorted(
+                    set(exclude_experiments).difference(experiments)
+                )
+                logger.warning(
+                    f"Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: {invalid_choice}."
+                )
+
+            experiments = list(set(experiments).difference(exclude_experiments))
+
         else:
             logger.info(
                 "EXCLUDE_EXPERIMENTS not set. Using default experiments in view."
