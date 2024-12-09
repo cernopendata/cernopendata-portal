@@ -8,7 +8,6 @@ const unlock_date = new Date("2024-12-10T16:00Z")
 
 function Celebrate() {
     const [stateShowConfetti, setShowConfetti] = useState(false);
-    // const [stateShowBlog, setShowBlog] = useState(false);
 
     let make_confetti = () => {
         if (stateShowConfetti) return;
