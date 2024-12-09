@@ -22,7 +22,7 @@ class GlobalVariables:
         "cms": {"name": "CMS", "url": "cms.cern"},
         "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch"},
         "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch"},
-        "opera": {"name": "OPERA", "url": "operaweb.lngs.infn.it"},
+        "opera": {"name": "OPERA", "url": "en.wikipedia.org/wiki/OPERA_experiment"},
         "phenix": {
             "name": "PHENIX",
             "url": "www.phenix.bnl.gov",
