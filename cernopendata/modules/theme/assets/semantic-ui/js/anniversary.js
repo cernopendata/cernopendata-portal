@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import Confetti from 'react-confetti'
 
 
-const unlock_date = new Date("2024-12-09")
+const unlock_date = new Date("2024-12-10T16:00Z")
 
 function Celebrate() {
     const [stateShowConfetti, setShowConfetti] = useState(false);
