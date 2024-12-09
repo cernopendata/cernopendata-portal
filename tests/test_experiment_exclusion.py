@@ -162,6 +162,27 @@ def test_display_experiments_invalid_setting(app_param):
         )
 
 
+def test_display_experiments_json_strings(app_param):
+    """Test display by setting a json-list structures, similar to how env vars work"""
+    cases = ["""["alice", "atlas"]""", """['alice', 'atlas']"""]
+    for case in cases:
+        expected_result = [
+            exp for exp in ALL_EXPERIMENTS if exp not in ["alice", "atlas"]
+        ]
+
+        flask_app = app_param(exclude=case)
+
+        # query
+        about, body, footer = run_queries(flask_app)
+
+        # assert content
+        assert body == expected_result
+        assert footer == expected_result
+        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
+            EXCLUDE_ABOUT
+        )
+
+
 def test_display_experiments_empty_setting(app_param):
     """Test setting the configuration parameter to an empty value."""
     # setup

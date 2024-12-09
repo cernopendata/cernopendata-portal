@@ -60,7 +60,7 @@ class GlobalVariables:
         # check config for custom setting
         if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
             if isinstance(exclude_experiments, str):
-                exclude_experiments = json.loads(exclude_experiments.replace("'", "\""))
+                exclude_experiments = json.loads(exclude_experiments.replace("'", '"'))
 
                 logger.info("Loaded experiments from string")
 
