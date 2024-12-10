@@ -1,6 +1,14 @@
 Changes
 =======
 
+Version 0.2.6 (released 2024-12-10)
+----------------------------
+
+- files: add support to keep file indices in the database
+- templates: add banner for the 10th year anniversary
+- experiments: add TOTEM and DELPHI. Add configuration variable to exclude experiments from templates
+
+
 Version 0.1.5 (released 2024-07-09)
 ----------------------------
 
