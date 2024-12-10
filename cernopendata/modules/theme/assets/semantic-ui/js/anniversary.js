@@ -42,7 +42,7 @@ function Celebrate() {
             <a className="navbar-anniversary-texts" href="/docs/ten-years-of-cern-open-data-portal">
                 <span className="navbar-anniversary-texts-title">
                     <strong>Ten years</strong> of CERN Open Data portal!
-                </span><br/>
+                </span>
                 <span className="navbar-anniversary-texts-subtitle">
                     (blog post)
                 </span>
