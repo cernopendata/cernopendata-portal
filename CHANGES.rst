@@ -1,7 +1,7 @@
 Changes
 =======
 
-Version 0.2.6 (released 2024-12-10)
+Version 0.2.7 (released 2024-12-10)
 ----------------------------
 
 - files: add support to keep file indices in the database
