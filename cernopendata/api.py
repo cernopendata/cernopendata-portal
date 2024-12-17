@@ -43,10 +43,8 @@ class FileIndexIterator(object):
 
     def __getitem__(self, key):
         """Get a specific file."""
-        obj = FileIndexMetadata.get(self.record, key)
-        if obj:
-            return self.file_cls(obj, self.filesmap.get(obj.key, {}))
-        raise KeyError(key)
+        obj = self.file_indices[key]
+        return FileIndexMetadata.get(None, obj["files"][0]["bucket"])
 
     def flush(self):
         """Flush changes to record."""
