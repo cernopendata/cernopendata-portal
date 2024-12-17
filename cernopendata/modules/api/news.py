@@ -1,4 +1,4 @@
-"""News endpoint accessible via the CERN Open Data Portal API"""
+"""News endpoint accessible via the CERN Open Data Portal API."""
 
 from datetime import datetime
 
@@ -11,12 +11,14 @@ blueprint = Blueprint("cernopendata_api_news", __name__)
 
 @blueprint.route("/news.xml", methods=["GET"])
 def get_latest_news():
-    """Returns the set amount of latest news from the Open Data Portal"""
-    limit = request.args.get('limit', default=10, type=int)
+    """Returns the set amount of latest news from the Open Data Portal."""
+    limit = request.args.get("limit", default=10, type=int)
     limit = min(abs(limit), 128)
 
     try:
-        news = FeaturedArticlesSearch().sort("-date_published")[:limit].execute().hits.hits
+        news = (
+            FeaturedArticlesSearch().sort("-date_published")[:limit].execute().hits.hits
+        )
     except Exception:
         news = []
 
@@ -34,7 +36,7 @@ def get_latest_news():
                 }</pubDate>
                 <description>
                     Author: {article.get("author", "Open Data Portal team")}
-                </description>   
+                </description>
             </item>
             """
             for a in news
