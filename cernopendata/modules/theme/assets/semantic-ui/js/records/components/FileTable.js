@@ -104,7 +104,7 @@ export default function FileTable({ items, table_type }) {
           setOpen={setOpenDownloadModal}
           filename={selectedFile.key}
           size={selectedFile.size}
-          uri={getFileUri(selectedFile.key)}
+          uri={getFileUri(table_type, selectedFile.key)}
         />
       )}
     </Table>
