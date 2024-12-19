@@ -177,6 +177,9 @@ setup(
         "invenio_base.api_apps": [
             "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD"
         ],
+        "invenio_base.api_blueprints": [
+            "cernopendata_news_api = cernopendata.modules.api.news:blueprint",
+        ],
         "invenio_base.blueprints": [
             "cernopendata = cernopendata.views:blueprint",
             "cernopendata_pages = " "cernopendata.modules.pages.views:blueprint",
