@@ -19,30 +19,28 @@
 
 """Implementention of various utility functions."""
 
-import json
-from re import sub
-import six
 import itertools
+import json
+import re
+import sys
+from os.path import basename
+from re import sub
 
+import flask
+import six
 from flask import abort, current_app, jsonify, render_template, request
+from invenio_files_rest.models import FileInstance
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
 
-from invenio_files_rest.models import FileInstance
-
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
 from invenio_records_ui.utils import obj_or_import_string
-from invenio_xrootd import EOSFileStorage
-from werkzeug.utils import import_string
-
 from invenio_search import current_search_client
 from invenio_search.engine import dsl, search
-
-import sys
-import flask
-import re
+from invenio_xrootd import EOSFileStorage
+from werkzeug.utils import import_string
 
 
 def get_file_index(pid, record, file_index, **kwargs):
@@ -100,11 +98,14 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
                     obj = ObjectResource.get_object(
                         file["bucket"], file["key"], file["version_id"]
                     )
+                    # Let's overwrite the key of the object, so that the downloads has the same name
+                    # Note that the basename could not have been used as the key, since multiple files could
+                    # have the same basename inside a file index
+                    obj.key = basename(obj.file.uri)
         if not obj:
             abort(404)
     else:
         obj = fileobj.obj
-
     # Check permissions
     ObjectResource.check_object_permission(obj)
 
