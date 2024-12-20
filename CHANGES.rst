@@ -1,6 +1,12 @@
 Changes
 =======
 
+Version 0.2.8 (released 2024-12-20)
+----------------------------
+
+- content: doc for the 10 year aaniversary
+- bug fixes: fix to download big files and keeping the original name of files within an index
+
 Version 0.2.7 (released 2024-12-10)
 ----------------------------
 
