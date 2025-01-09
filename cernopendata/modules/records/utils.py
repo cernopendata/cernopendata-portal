@@ -21,6 +21,7 @@
 
 import itertools
 import json
+import logging
 import re
 import sys
 from os.path import basename
@@ -28,7 +29,7 @@ from re import sub
 
 import flask
 import six
-from flask import abort, current_app, jsonify, render_template, request
+from flask import abort, current_app, jsonify, render_template, request, make_response
 from invenio_files_rest.models import FileInstance
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
@@ -186,6 +187,19 @@ def record_file_page(pid, record, page=1, **kwargs):
     return jsonify({"total": rf_len, "files": paged_files})
 
 
+def _extract_experiment_name(record):
+    try:
+        experiment = str(record["collaboration"]["name"])
+        return experiment.split(" ", maxsplit=1)[0]
+
+    except (KeyError, IndexError):
+        return "other"
+
+    except Exception as e:
+        logging.error(f"[{type(e)}] Could not extract experiment from record: {e}")
+        return "other"
+
+
 def record_metadata_view(pid, record, template=None):
     """Record detail view."""
     collection = ""
@@ -203,15 +217,21 @@ def record_metadata_view(pid, record, template=None):
             ["variable", "type"] + sorted(optional) + ["description"]
         )
 
-    return render_template(
-        [
-            "cernopendata_records_ui/records/record_detail_{}.html".format(collection),
-            "cernopendata_records_ui/records/record_detail.html",
-        ],
-        pid=pid,
-        record=record,
-        title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
+    response = make_response(
+        render_template(
+            [
+                "cernopendata_records_ui/records/record_detail_{}.html".format(collection),
+                "cernopendata_records_ui/records/record_detail.html",
+            ],
+            pid=pid,
+            record=record,
+            title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
+        )
     )
+
+    # include experiment in the header for direct annotation in the logs
+    response.headers["X-Custom-Record-Experiment"] = _extract_experiment_name(record)
+    return response
 
 
 def term_metadata_view(pid, record, template=None):
