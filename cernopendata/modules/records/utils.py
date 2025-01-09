@@ -220,7 +220,7 @@ def record_metadata_view(pid, record, template=None):
     response = make_response(
         render_template(
             [
-                "cernopendata_records_ui/records/record_detail_{}.html".format(collection),
+                f"cernopendata_records_ui/records/record_detail_{collection}.html",
                 "cernopendata_records_ui/records/record_detail.html",
             ],
             pid=pid,
