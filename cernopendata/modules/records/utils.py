@@ -230,7 +230,7 @@ def record_metadata_view(pid, record, template=None):
     )
 
     # include experiment in the header for direct annotation in the logs
-    response.headers["X-Custom-Record-Experiment"] = _extract_experiment_name(record)
+    response.headers["X-Record-Experiment"] = _extract_experiment_name(record)
     return response
 
 
