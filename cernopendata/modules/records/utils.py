@@ -33,7 +33,6 @@ from invenio_files_rest.models import FileInstance
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
-from invenio_records_files.api import Record
 
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
