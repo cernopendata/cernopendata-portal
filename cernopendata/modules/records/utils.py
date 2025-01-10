@@ -188,16 +188,12 @@ def record_file_page(pid, record, page=1, **kwargs):
 
 
 def _extract_experiment_name(record):
-    try:
-        experiment = str(record["collaboration"]["name"])
-        return experiment.split(" ", maxsplit=1)[0]
+    experiments = record.get("experiment", [])
 
-    except (KeyError, IndexError):
-        return "other"
+    if len(experiments) == 1:
+        return experiments[0]
 
-    except Exception as e:
-        logging.error(f"[{type(e)}] Could not extract experiment from record: {e}")
-        return "other"
+    return "multiple" if len(experiments) else "unknown"
 
 
 def record_metadata_view(pid, record, template=None):
