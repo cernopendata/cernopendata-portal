@@ -1,6 +1,11 @@
 Changes
 =======
 
+Version 0.2.9 (released 2025-01-10)
+----------------------------
+- template: Remove anniversary banner
+
+
 Version 0.2.8 (released 2024-12-20)
 ----------------------------
 
