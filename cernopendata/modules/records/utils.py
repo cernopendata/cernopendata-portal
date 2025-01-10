@@ -189,7 +189,8 @@ def record_file_page(pid, record, page=1, **kwargs):
 
 
 def _add_experiment_header(render):
-    """Decorator for rendering a page and extracting the experiment"""
+    """Decorator for rendering a page and adding the experiment as a header to the response."""
+
     def __wrapper(*args, **kwargs):
         response = make_response(render(*args, **kwargs))
 
@@ -207,6 +208,7 @@ def _add_experiment_header(render):
                 break
 
         return response
+
     return __wrapper
 
 
