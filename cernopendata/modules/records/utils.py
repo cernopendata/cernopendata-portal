@@ -213,21 +213,15 @@ def record_metadata_view(pid, record, template=None):
             ["variable", "type"] + sorted(optional) + ["description"]
         )
 
-    response = make_response(
-        render_template(
-            [
-                f"cernopendata_records_ui/records/record_detail_{collection}.html",
-                "cernopendata_records_ui/records/record_detail.html",
-            ],
-            pid=pid,
-            record=record,
-            title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
-        )
+    return render_template(
+        [
+            f"cernopendata_records_ui/records/record_detail_{collection}.html",
+            "cernopendata_records_ui/records/record_detail.html",
+        ],
+        pid=pid,
+        record=record,
+        title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
     )
-
-    # include experiment in the header for direct annotation in the logs
-    response.headers["X-Record-Experiment"] = _extract_experiment_name(record)
-    return response
 
 
 def term_metadata_view(pid, record, template=None):
