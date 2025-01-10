@@ -21,7 +21,6 @@
 
 import itertools
 import json
-import logging
 import re
 import sys
 from os.path import basename
