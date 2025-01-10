@@ -34,6 +34,7 @@ from invenio_files_rest.models import FileInstance
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
+from invenio_records_files.api import Record
 
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
@@ -187,15 +188,29 @@ def record_file_page(pid, record, page=1, **kwargs):
     return jsonify({"total": rf_len, "files": paged_files})
 
 
-def _extract_experiment_name(record):
-    experiments = record.get("experiment", [])
+def _add_experiment_header(render):
+    """Decorator for rendering a page and extracting the experiment"""
+    def __wrapper(*args, **kwargs):
+        response = make_response(render(*args, **kwargs))
 
-    if len(experiments) == 1:
-        return experiments[0]
+        # extract experiment from passed record if available
+        for param in args:
+            if isinstance(param, Record):
+                experiments = param.get("experiment", [])
 
-    return "multiple" if len(experiments) else "unknown"
+                if len(experiments) == 1:
+                    experiment = experiments[0]
+                else:
+                    experiment = "multiple" if len(experiments) else "unknown"
+
+                response.headers["X-Record-Experiment"] = experiment
+                break
+
+        return response
+    return __wrapper
 
 
+@_add_experiment_header
 def record_metadata_view(pid, record, template=None):
     """Record detail view."""
     collection = ""
@@ -224,6 +239,7 @@ def record_metadata_view(pid, record, template=None):
     )
 
 
+@_add_experiment_header
 def term_metadata_view(pid, record, template=None):
     """Term detail view."""
     return render_template(
@@ -234,6 +250,7 @@ def term_metadata_view(pid, record, template=None):
     )
 
 
+@_add_experiment_header
 def doc_metadata_view(pid, record, template=None):
     """Doc detail view."""
     return render_template(
