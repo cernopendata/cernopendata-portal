@@ -27,12 +27,17 @@
 import os
 import warnings
 
+from celery.schedules import timedelta
 from flask import request
 from invenio_records_files.api import _Record
 from invenio_records_rest.config import RECORDS_REST_ENDPOINTS
 from invenio_records_rest.facets import nested_filter, range_filter, terms_filter
 from invenio_records_rest.utils import allow_all
 from invenio_search.engine import dsl
+from invenio_stats.aggregations import StatAggregator
+from invenio_stats.contrib.config import EVENTS_CONFIG
+from invenio_stats.queries import TermsQuery
+from invenio_stats.tasks import StatsAggregationTask, StatsEventTask
 from urllib3.exceptions import InsecureRequestWarning
 
 from cernopendata.modules.pages.config import *
@@ -133,6 +138,107 @@ CACHE_TYPE = "redis"
 # Celery
 CELERY_ACCEPT_CONTENT = ["json", "msgpack", "yaml"]
 
+STATS_EVENTS = EVENTS_CONFIG
+
+STATS_AGGREGATIONS = {
+    "file-download-agg": {
+        "templates": "invenio_stats.contrib.aggregations.aggr_file_download",
+        "cls": StatAggregator,
+        "params": {
+            "index_interval": "year",
+            "copy_fields": {
+                "file_key": "file_key",
+                "bucket_id": "bucket_id",
+                "file_id": "file_id",
+            },
+            "metric_fields": {
+                "unique_count": (
+                    "cardinality",
+                    "unique_session_id",
+                    {"precision_threshold": 1000},
+                ),
+                "volume": ("sum", "size", {}),
+            },
+        },
+    },
+    "record-view-agg": {
+        "templates": "invenio_stats.contrib.aggregations.aggr_record_view",
+        "cls": StatAggregator,
+        "params": {
+            "event": "record-view",
+            "field": "unique_id",
+            "interval": "day",
+            "index_interval": "year",
+            "copy_fields": {
+                "record_id": "record_id",
+                "pid_type": "pid_type",
+                "pid_value": "pid_value",
+            },
+            "metric_fields": {
+                "unique_count": (
+                    "cardinality",
+                    "unique_session_id",
+                    {"precision_threshold": 1000},
+                ),
+            },
+        },
+    },
+}
+
+STATS_QUERIES = {
+    "record-view": {
+        "cls": TermsQuery,
+        "permission_factory": None,
+        "params": {
+            "index": "stats-record-view",
+            "doc_type": "record-view-day-aggregation",
+            "copy_fields": {
+                "recid": "recid",
+            },
+            "query_modifiers": [],
+            "required_filters": {
+                "recid": "recid",
+            },
+            "metric_fields": {
+                "views": ("sum", "count", {}),
+                "unique_views": ("sum", "unique_count", {}),
+            },
+        },
+    },
+    "record-download": {
+        "cls": TermsQuery,
+        "permission_factory": None,
+        "params": {
+            "index": "stats-file-download",
+            "doc_type": "file-download-day-aggregation",
+            "copy_fields": {
+                "recid": "recid",
+            },
+            "query_modifiers": [],
+            "required_filters": {
+                "recid": "recid",
+            },
+            "metric_fields": {
+                "downloads": ("sum", "count", {}),
+                "unique_downloads": ("sum", "unique_count", {}),
+                "data_volume": ("sum", "volume", {}),
+            },
+        },
+    },
+}
+
+
+CELERY_BEAT_SCHEDULE = {
+    # indexing of statistics events & aggregations
+    "stats-process-events": {
+        **StatsEventTask,
+        "schedule": timedelta(minutes=5),  # Every five minutes
+    },
+    "stats-aggregate-events": {
+        **StatsAggregationTask,
+        "schedule": timedelta(minutes=30),  # Every thirty minutes
+    },
+}
 # JSONSchemas
 JSONSCHEMAS_ENDPOINT = "/schema"
 JSONSCHEMAS_HOST = "opendata.cern.ch"

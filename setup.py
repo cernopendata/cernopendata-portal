@@ -94,6 +94,7 @@ install_requires = [
     # Custom Invenio `files` bundle
     "invenio-previewer>=2.0.1,<3.0.0",
     "invenio-records-files>=1.2.1,<3.0.0",
+    "invenio-stats>=4.3.0,<5.0.0",
     "jupyter-client==7.1.0",
     "pluggy==0.13.1",
     # Custom Invenio `postgresql` bundle
@@ -127,7 +128,6 @@ install_requires = [
     # Pin Flask/gevent/greenlet/raven to make master work again
     "Flask==2.2.5",
     "Flask-Alembic==2.0.1",
-    "flask-celeryext==0.4.0",
     "Werkzeug~=2.2.0",
     "gevent==23.9.1",
     "greenlet==3.0.3",
