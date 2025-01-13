@@ -34,9 +34,7 @@ services:
       - WDB_SOCKET_SERVER=wdb
       - WDB_NO_BROWSER_AUTO_OPEN=True
     volumes:
-      - ./cernopendata:/code/cernopendata
-      - ./scripts:/code/scripts
-      - ./tests:/code/tests
+      - ./:/code/
 
   web-files:
     profiles:
@@ -61,8 +59,4 @@ services:
   worker:
     command: bash -c "/code/scripts/start-server-debug.sh worker"
     volumes:
-      - ./cernopendata:/code/cernopendata
-      - ./scripts:/code/scripts
-      - ./tests:/code/tests
-    profiles:
-      - donotstart
+      - ./:/code/
