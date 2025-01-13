@@ -64,5 +64,3 @@ services:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
       - ./tests:/code/tests
-    profiles:
-      - donotstart
