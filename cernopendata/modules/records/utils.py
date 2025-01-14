@@ -186,31 +186,42 @@ def record_file_page(pid, record, page=1, **kwargs):
     return jsonify({"total": rf_len, "files": paged_files})
 
 
-def _add_experiment_header(render):
+def add_experiment_header(record_args_index):
     """Decorator for rendering a page and adding the experiment as a header to the response."""
 
-    def __wrapper(*args, **kwargs):
-        response = make_response(render(*args, **kwargs))
+    def _decorator(render_function):
 
-        # extract experiment from passed record if available
-        for param in args:
-            if isinstance(param, Record):
-                experiments = param.get("experiment", [])
+        def _wrapper(*args, **kwargs):
+            response = make_response(render_function(*args, **kwargs))
 
-                if len(experiments) == 1:
-                    experiment = experiments[0]
-                else:
-                    experiment = "multiple" if len(experiments) else "unknown"
+            # extract experiment from record and ensure answer in case of errors
+            try:
+                if isinstance(record := args[record_args_index], Record):
+                    experiments = record.get("experiment", [])
 
-                response.headers["X-Record-Experiment"] = experiment
-                break
+                    if len(experiments) == 1:
+                        experiment = experiments[0]
+                    elif len(experiments) > 1:
+                        experiment = "multiple"
+                    else:
+                        experiment = "unknown"
 
-        return response
+                    response.headers["X-Record-Experiment"] = experiment
 
-    return __wrapper
+            except Exception as e:
+                current_app.logger.exception(
+                    f"[{type(e)}] Failed to extract experiment from record: {e}"
+                )
+
+            finally:
+                return response
+
+        return _wrapper
+
+    return _decorator
 
 
-@_add_experiment_header
+@add_experiment_header(record_args_index=1)
 def record_metadata_view(pid, record, template=None):
     """Record detail view."""
     collection = ""
@@ -239,7 +250,7 @@ def record_metadata_view(pid, record, template=None):
     )
 
 
-@_add_experiment_header
+@add_experiment_header(record_args_index=1)
 def term_metadata_view(pid, record, template=None):
     """Term detail view."""
     return render_template(
@@ -250,7 +261,7 @@ def term_metadata_view(pid, record, template=None):
     )
 
 
-@_add_experiment_header
+@add_experiment_header(record_args_index=1)
 def doc_metadata_view(pid, record, template=None):
     """Doc detail view."""
     return render_template(
