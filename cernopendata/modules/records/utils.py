@@ -30,9 +30,11 @@ import flask
 import six
 from flask import abort, current_app, jsonify, render_template, request, make_response
 from invenio_files_rest.models import FileInstance
+from invenio_files_rest.signals import file_downloaded
 from invenio_files_rest.views import ObjectResource
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
+from invenio_records_ui.signals import record_viewed
 
 # from invenio_files_rest.models import FileInstance, ObjectVersion
 # from invenio_records.errors import MissingModelError
@@ -108,7 +110,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
         obj = fileobj.obj
     # Check permissions
     ObjectResource.check_object_permission(obj)
-
+    file_downloaded.send(current_app._get_current_object(), obj=obj)
     return ObjectResource.send_object(
         obj.bucket,
         obj,
@@ -238,6 +240,11 @@ def record_metadata_view(pid, record, template=None):
         record["dataset_semantics_header"] = (
             ["variable", "type"] + sorted(optional) + ["description"]
         )
+    record_viewed.send(
+        current_app._get_current_object(),
+        pid=pid,
+        record=record,
+    )
 
     return render_template(
         [
@@ -264,6 +271,11 @@ def term_metadata_view(pid, record, template=None):
 @add_experiment_header(record_args_index=1)
 def doc_metadata_view(pid, record, template=None):
     """Doc detail view."""
+    record_viewed.send(
+        current_app._get_current_object(),
+        pid=pid,
+        record=record,
+    )
     return render_template(
         ["cernopendata_records_ui/docs/detail.html"],
         pid=pid,
