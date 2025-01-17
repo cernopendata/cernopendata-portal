@@ -51,6 +51,8 @@ from cernopendata.modules.records.minters.termid import cernopendata_termid_mint
 
 MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
 
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
@@ -78,14 +80,10 @@ def _handle_record_files(record, data):
         filename = file.get("uri").split("/")[-1:][0]
         f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
         if "type" in file and file["type"] == "index.json":
-            print(
-                datetime.now(),
-                "This is an index file. Let's check the entries that it has:",
-                file.get("uri"),
-            )
+            logging.info("Processing index file: %s",file.get("uri"))
             # We don't need to store the index
             FileIndexMetadata.create(record, f)
-            print("File index created")
+            logging.info("File index created")
             f.delete()
         elif "type" in file and file["type"] == "index.txt":
             # The txt indexes should be ignored. Just delete the file
@@ -102,11 +100,11 @@ def _handle_record_files(record, data):
                 }
                 file.update(file_info)
             except Exception as e:
-                click.secho(
-                    "Recid {0} file {1} could not be loaded due "
-                    "to {2}.".format(data.get("recid"), filename, str(e)),
-                    fg="red",
-                    err=True,
+                logging.error(
+                    "Recid %s file %s could not be loaded due to %s ",
+                    data.get("recid", "Unknown Recid"),
+                    filename,
+                    str(e),
                 )
     record["files"] = real_files
     data["files"] = real_files
