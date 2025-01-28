@@ -272,7 +272,10 @@
           "description": "Specifies if dataset is on-demand, online in future might be also tape, disk",
           "enum": [
             "ondemand",
-            "online"
+            "online",
+            "available",
+            "sample available",
+            "needs to be requested"
           ],
           "type": "string"
         },

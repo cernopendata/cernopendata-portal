@@ -113,8 +113,8 @@ install_requires = [
     "python-markdown-math>=0.3",
     "python-slugify>=1.2.4",
     # Webserver
-    "uWSGI>=2.0.21",
-    "uwsgitop>=0.11",
+    #"uWSGI>=2.0.21",
+    #"uwsgitop>=0.11",
     # Pin SQLAlchemy version due to sqlalchemy-utils compatibility
     # <https://github.com/kvesteri/sqlalchemy-utils/issues/505>
     "sqlalchemy-continuum==1.4.1",
