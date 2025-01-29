@@ -1,5 +1,11 @@
 Changes
 =======
+Version 0.2.10 (released 2025-01-29)
+----------------------------
+- stats: collect stats on record views and file downloads.
+- API: Added an endpoint to get the latest news articles as an RSS document
+- Style: improved url highlighting
+- View: Return the experiment of a record page as a custom HTTP header alongside the rendered template.
 
 Version 0.2.9 (released 2025-01-10)
 ----------------------------
