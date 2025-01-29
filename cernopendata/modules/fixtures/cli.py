@@ -84,7 +84,9 @@ def _handle_record_files(record, data):
                 file.get("uri"),
             )
             # We don't need to store the index
-            FileIndexMetadata.create(record, f)
+            FileIndexMetadata.create(
+                record, f, description=file.get("description", filename)
+            )
             print("File index created")
             f.delete()
         elif "type" in file and file["type"] == "index.txt":
