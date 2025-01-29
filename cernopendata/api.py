@@ -87,13 +87,14 @@ class FileIndexMetadata:
         self._number_files = 0
         self._size = 0
         self._files = []
+        self._description = ""
 
     def __repr__(self):
         """Representation of the object."""
         return str(self.dumps())
 
     @classmethod
-    def create(cls, record, file_object):
+    def create(cls, record, file_object, description=""):
         """Method to create a FileIndex."""
         rb = cls()
         rb.model = record.model
@@ -106,6 +107,7 @@ class FileIndexMetadata:
 
         rb._index_file_name = index_file_name
         rb._bucket = Bucket.create()
+        rb._description = description
         BucketTag.create(rb._bucket, "index_name", index_file_name)
         BucketTag.create(rb._bucket, "record", record.model.id)
         print(f"The file index contains {len(index_content)} entries.")
@@ -166,6 +168,7 @@ class FileIndexMetadata:
             "number_files": self._number_files,
             "size": self._size,
             "files": files,
+            "description": self._description,
         }
 
     def flush(self):

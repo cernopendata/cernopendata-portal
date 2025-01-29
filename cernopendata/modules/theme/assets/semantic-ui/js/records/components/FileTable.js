@@ -38,17 +38,17 @@ export default function FileTable({ items, table_type }) {
   const [openDownloadModal, setOpenDownloadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState();
 
-  const getFileUri = (table_type, fileKey) => {
+  const getFileUri = (table_type, fileKey, format) => {
     var  url= `/record/${config.pidValue}/${table_type}/${fileKey}`;
-    if (table_type=='file_index')
+    if (table_type=='file_index' && format== 'txt')
            url = url.replace('.json', '.txt');
     return url};
   return (
     <Table singleLine>
       <Table.Header>
         <Table.Row>
-          <Table.HeaderCell>Filename</Table.HeaderCell>
-          <Table.HeaderCell>Size</Table.HeaderCell>
+          <Table.HeaderCell>{table_type=='file_index' ? 'Index description' : 'Filename'}</Table.HeaderCell>
+          <Table.HeaderCell>{table_type=='file_index' ? 'Index size' : 'Size'}</Table.HeaderCell>
           <Table.HeaderCell></Table.HeaderCell>
         </Table.Row>
       </Table.Header>
@@ -63,15 +63,14 @@ export default function FileTable({ items, table_type }) {
                   },
                 }
               : { href: getFileUri(table_type, file.key) };
-          const label= table_type=='file_index' ? 'index' : '';
           return (
             <Table.Row key={file.version_id}>
-              <Table.Cell className="filename-cell">{file.key}</Table.Cell>
+              <Table.Cell className="filename-cell">{table_type=='file_index' ? file.description :file.key}</Table.Cell>
               <Table.Cell collapsing>
                 {toHumanReadableSize(file.size)}
               </Table.Cell>
               <Table.Cell collapsing>
-                {table_type === "file_index" && (
+                {table_type === "file_index"  ? ( <>
                   <Button
                     icon
                     size="mini"
@@ -82,10 +81,17 @@ export default function FileTable({ items, table_type }) {
                   >
                     <Icon name="list" /> List files
                   </Button>
-                )}
-                <Button as="a" icon size="mini" primary {...downloadProp}>
-                  <Icon name="download" /> Download {label}
-                </Button>
+                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key, 'txt') } >
+                   <Icon name="download" /> Download txt
+                  </Button>
+                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key) }>
+                   <Icon name="download" /> Download json
+                  </Button></>
+                ) :
+                 <Button as="a" icon size="mini" primary {...downloadProp}>
+                   <Icon name="download" /> Download
+                  </Button>
+                 }
               </Table.Cell>
             </Table.Row>
           );
