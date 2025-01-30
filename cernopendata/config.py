@@ -145,6 +145,7 @@ STATS_AGGREGATIONS = {
         "templates": "invenio_stats.contrib.aggregations.aggr_file_download",
         "cls": StatAggregator,
         "params": {
+            "event": "file-download",
             "index_interval": "year",
             "copy_fields": {
                 "file_key": "file_key",
