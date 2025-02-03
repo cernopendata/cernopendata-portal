@@ -35,6 +35,17 @@
     }
   },
   {
+    "anchor": "Availability",
+    "category": "generic",
+    "definition": "In order to optimize storage costs, some of the datasets are stored on tape. These datasets are not available immediately from the web portal, and they have to be requested in advance. Some datasets offer some sample files, and keep the bulk of the data on tape. The three options for availability are: online (files can be accessed immediately), sample files (some files from the dataset can be accessible immediately), ondemand (the dataset has to be requested before it could be accessed). The instructions on how to request a dataset are explained in the relevant records",
+    "term": [
+      "Availability"
+    ],
+    "type": {
+      "primary": "Glossary"
+    }
+  },
+  {
     "anchor": "Barn",
     "category": "generic",
     "definition": "Barn is a unit of area, used to express cross sections, and is equivalent to $10^{-24}$ cm². The inverse femtobarn ($fb^{-1}$) is the typical unit used for time-integrated Luminosity.",
