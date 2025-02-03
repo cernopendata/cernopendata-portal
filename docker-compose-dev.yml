@@ -33,6 +33,7 @@ services:
       - WDB_NO_BROWSER_AUTO_OPEN=True
     volumes:
       - ./:/code/
+      - ../opendata.cern.ch:/content/
 
   web-files:
     profiles:

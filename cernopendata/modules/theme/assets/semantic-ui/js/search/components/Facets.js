@@ -39,11 +39,6 @@ const CODFacets = ({ aggs, updateQueryState, currentQueryState }) => {
         <div class="content"><ActiveFilters /></div>
       </div>
 
-      <Toggle
-        title="Availability"
-        label="include on-demand datasets"
-        filterValue={["ondemand", "ondemand"]}
-      />
       {aggs.map((agg) => (
         <BucketAggregation key={agg.title} title={agg.title} agg={agg.agg} />
       ))}
