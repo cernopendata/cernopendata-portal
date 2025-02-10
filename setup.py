@@ -101,6 +101,7 @@ install_requires = [
     "invenio-stats>=4.3.0,<5.0.0",
     "jupyter-client==7.1.0",
     "pluggy==0.13.1",
+    "invenio-oaiserver>=2.3.0,<3.0.0",
     # Custom Invenio `postgresql` bundle
     "invenio-db[versioning,postgresql]==1.1.0",
     "invenio-mail>=2.1.1",
@@ -137,6 +138,7 @@ install_requires = [
     "greenlet==3.0.3",
     "flask-babel==4.0.0",
     "raven<6.11",
+    "dcxml",
 ]
 
 packages = find_packages()
