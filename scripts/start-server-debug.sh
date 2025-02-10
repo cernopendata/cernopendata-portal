@@ -6,11 +6,6 @@ if [ -d "/opt/invenio/var/instance/python/lib/python3.9/site-packages/cernopenda
   echo "The installation directory is still there... let's overwrite it"
   cp /code/cernopendata/setup.py /code/setup.py
   pip install -e .
-
-  if [ -d "/cold" ]; then
-    cd /cold
-    pip install -e .
-  fi
 fi
 
 if [ "$1"  == "worker" ]; then
