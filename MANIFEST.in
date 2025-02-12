@@ -35,6 +35,7 @@ recursive-include cernopendata *.tpl
 recursive-include cernopendata *.txt
 recursive-include cernopendata *.variables
 recursive-include cernopendata *.xml
+recursive-include cernopendata *.xsl
 recursive-include nginx *.conf
 recursive-include scripts *.cfg
 recursive-include scripts *.py

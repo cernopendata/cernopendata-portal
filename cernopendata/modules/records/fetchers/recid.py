@@ -6,6 +6,9 @@ from ..providers.recid import RecordUUIDProvider
 from ..providers.termid import TermUUIDProvider
 from ..providers.docid import DocUUIDProvider
 
+from invenio_oaiserver.provider import OAIIDProvider
+from invenio_pidstore.models import PIDStatus
+
 FetchedPID = namedtuple("FetchedPID", ["provider", "pid_type", "pid_value"])
 
 
@@ -38,3 +41,14 @@ def cernopendata_generic_fetcher(record_uuid, data):
             pid_type=DocUUIDProvider.pid_type,
             pid_value=data["slug"],
         )
+
+
+def cernopendata_oai_fetcher(record_uuid, data):
+    """Fetch a term's identifiers."""
+    pid = FetchedPID(
+        provider=OAIIDProvider,
+        pid_type=OAIIDProvider.pid_type,
+        pid_value=data["pids"]["oai"]["id"],
+    )
+
+    return pid
