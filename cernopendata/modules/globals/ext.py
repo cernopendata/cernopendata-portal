@@ -1,8 +1,9 @@
-"""Global variables for Flask app."""
+"""Global variables and methods for Flask app."""
 
 import logging
 
-from flask import Flask
+from flask import Flask, request
+from counter_robots import is_robot_or_machine
 
 from cernopendata.version import __version__
 
@@ -94,3 +95,25 @@ class GlobalVariables:
                 "opendata_version": __version__,
             }
         )
+
+
+class FlaskHeaders:
+    """This class sets headers for the Flask app."""
+
+    def __init__(self, app):
+        """Extension initialization."""
+        if not isinstance(app, Flask):
+            return
+
+        @app.after_request
+        def add_requestor_header(response):
+            try:
+                agent = request.user_agent.string
+
+                if is_robot_or_machine(agent):
+                    response.headers["X-User-Category"] = "robot"
+                else:
+                    response.headers["X-User-Category"] = "user"
+
+            finally:
+                return response
