@@ -67,6 +67,7 @@ setup_requires = [
 ]
 
 install_requires = [
+    "counter-robots>=2025.2",
     # General Invenio dependencies
     "invenio-app>=1.5.0,<2.0.0",
     "invenio-base>=1.3.0,<2.0.0",
@@ -167,7 +168,8 @@ setup(
             "invenio_records_rest = invenio_records_rest:InvenioRecordsREST",
             "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD",
             "cernopendata_sitemap = cernopendata.modules.sitemap:CERNOpenDataSitemap",
-            "cernopendata_globals = cernopendata.modules.globals:GlobalVariables",
+            "cernopendata_globals = cernopendata.modules.globals.ext:GlobalVariables",
+            "cernopendata_rq_wraps = cernopendata.modules.globals.ext:FlaskHeaders",
             # cod_md and cod_mistune are just wrappers to init the actual
             # markdown flask-extensions properly.
             "cod_md = " "cernopendata.modules.markdown.ext:CernopendataMarkdown",
@@ -175,7 +177,8 @@ setup(
             # 'cernopendata.modules.mistune.ext:CernopendataMistune',
         ],
         "invenio_base.api_apps": [
-            "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD"
+            "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD",
+            "cernopendata_rq_wraps = cernopendata.modules.globals.ext:FlaskHeaders",
         ],
         "invenio_base.api_blueprints": [
             "cernopendata_news_api = cernopendata.modules.api.news:blueprint",
