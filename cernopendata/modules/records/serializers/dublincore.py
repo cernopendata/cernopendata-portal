@@ -14,12 +14,14 @@ def dumps_etree(pid, record, **kwargs):
     data = {
         "titles": [record["_source"]["title"]],
         "creators": [record["_source"]["collaboration"]["name"]],
-        "descriptions": [record["_source"]["abstract"]["description"]],
         "dates": [record["_source"]["date_published"]],
         "types": [record["_source"]["type"]["primary"]],
-        "formats": record["_source"]["distribution"]["formats"],
         "identifiers": [record["_source"]["pids"]["oai"]["id"]],
-        "publishers": ["CERN OPEN DATA"],
+        "publishers": ["CERN Open Data"],
     }
+    if "formats" in record["_source"]["distribution"]:
+        data["formats"] = record["_source"]["distribution"]["formats"]
+    if "abstract" in record["_source"] and "description" in record["_source"]["abstract"]:
+        data["descriptions"] = [record["_source"]["abstract"]["description"]]
 
     return simpledc.dump_etree(data)

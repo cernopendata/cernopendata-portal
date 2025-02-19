@@ -24,13 +24,22 @@
 """Serializers for datacite module."""
 
 from marshmallow import Schema, fields
+from datacite import schema43
 
+def datacite_etree(pid, record):
+    """DataCite XML format for OAI-PMH.
+
+    It assumes that record is a search result.
+    """
+    # TODO: Ditto. See https://github.com/inveniosoftware/flask-resources/issues/117
+    data_dict = DataCiteSerializer().dump(record["_source"])
+    return schema43.dump_etree(data_dict)
 
 class DataCiteSerializer(Schema):
     """DataCite complient schema."""
 
     identifier = fields.Method("get_identifier")
-    creators = fields.Method("get_creators")
+    creator = fields.Method("get_creator")
     titles = fields.Method("get_titles")
     resourceType = fields.Method("get_resourcetype")
     publisher = fields.Str()
@@ -38,9 +47,9 @@ class DataCiteSerializer(Schema):
 
     def get_identifier(self, obj):
         """Get identifier based on doi field."""
-        return {"identifier": obj["doi"], "identifierType": "DOI"}
+        return {"identifier": obj.get("doi", ""), "identifierType": "DOI"}
 
-    def get_creators(self, obj):
+    def get_creator(self, obj):
         """Get creators based on authors or collaboration field."""
         authors = obj.get("authors", [obj.get("collaboration", None)])
         creators = [
