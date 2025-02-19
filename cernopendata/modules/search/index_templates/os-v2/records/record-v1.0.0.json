@@ -3,6 +3,8 @@
     "__SEARCH_INDEX_PREFIX__opendata-common-v1.0.0",
     "__SEARCH_INDEX_PREFIX__opendata-file-index-v1.0.0",
     "__SEARCH_INDEX_PREFIX__opendata-record-v1.0.0",
+    "__SEARCH_INDEX_PREFIX__cold-storage-record-v1.0.0",
+
     "__SEARCH_INDEX_PREFIX__oairecord-v1.0.0"
   ],
   "index_patterns": [

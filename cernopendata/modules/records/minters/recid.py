@@ -1,5 +1,7 @@
 """PID minters."""
 
+from invenio_oaiserver.provider import OAIIDProvider
+
 from ..providers.recid import RecordUUIDProvider
 
 
@@ -18,5 +20,11 @@ def cernopendata_recid_minter(record_uuid, data):
     )
 
     data["pids"] = {"oai": {"id": f"oai:cernopendata.cern:{recid}"}}
+
+    OAIIDProvider.create(
+        object_type="rec",
+        object_uuid=record_uuid,
+        pid_value=f"oai:cernopendata.cern:{recid}",
+    )
 
     return provider.pid
