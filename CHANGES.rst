@@ -1,5 +1,13 @@
 Changes
 =======
+Version 0.2.11 (released 2025-02-19)
+----------------------------
+- ui: fixed bug in selecting the file to download from file indices
+- Requests: Add header for user/bot detection
+- build(docker): remove obsoleted compose version attribute
+- Authors: Updated list
+- xrootd: Increase version number
+
 Version 0.2.10 (released 2025-01-29)
 ----------------------------
 - stats: collect stats on record views and file downloads.
