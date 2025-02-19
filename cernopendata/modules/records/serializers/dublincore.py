@@ -12,19 +12,18 @@ def dumps_etree(pid, record, **kwargs):
     :return:
     """
     data = {
-        "titles": [record["_source"]["title"]],
-        "creators": [record["_source"]["collaboration"]["name"]],
-        "dates": [record["_source"]["date_published"]],
-        "types": [record["_source"]["type"]["primary"]],
-        "identifiers": [record["_source"]["pids"]["oai"]["id"]],
+        "titles": [record["_source"].get("title", None)],
+        "creators": [record["_source"].get("collaboration", {}).get("name", None)],
+        "dates": [record["_source"].get("date_published", None)],
+        "types": [record["_source"].get("type", {}).get("primary", None)],
+        "identifiers": [
+            record["_source"].get("pids", {}).get("oai", {}).get("id", None)
+        ],
         "publishers": ["CERN Open Data"],
     }
-    if "formats" in record["_source"]["distribution"]:
+    if record["_source"].get("distribution", {}).get("formats", None):
         data["formats"] = record["_source"]["distribution"]["formats"]
-    if (
-        "abstract" in record["_source"]
-        and "description" in record["_source"]["abstract"]
-    ):
+    if record["_source"].get("abstract", {}).get("description", None):
         data["descriptions"] = [record["_source"]["abstract"]["description"]]
 
     return simpledc.dump_etree(data)

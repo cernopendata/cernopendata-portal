@@ -26,8 +26,13 @@
 ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM registry.cern.ch/inveniosoftware/almalinux:1
 
-# Use XRootD 5.8.1
-ENV XROOTD_VERSION=5.8.1
+# Use XRootD 5.8.2
+ENV XROOTD_VERSION=5.8.2
+
+# Install the CERN CA
+COPY docker/carepo.repo /etc/yum.repos.d/
+
+RUN yum install -y ca_CERN-Root-2 && yum clean -y all
 
 # Install CERN Open Data Portal web node pre-requisites
 # hadolint ignore=DL3033
@@ -42,8 +47,9 @@ RUN yum install -y \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 
+# hadolint ignore=DL3033
 RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
-    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
+    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" swig python3-gfal2-util gfal2-plugin-http python3-gfal2 && \
     yum clean -y all
 
 RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==70.0.0 wheel==0.45.1 && \
@@ -72,13 +78,16 @@ ENV PATH=$PATH:${INVENIO_INSTANCE_PATH}/python/bin
 
 # Add CERN Open Data Portal sources to `code` and work there
 WORKDIR ${CODE_DIR}
+COPY . ${CODE_DIR}
+USER root
+RUN chown -R "${INVENIO_USER_ID}":root "${CODE_DIR}"
+USER ${INVENIO_USER_ID}
 
 # Debug off by default
 ARG DEBUG=""
 ENV DEBUG=${DEBUG:-""}
 
 # Install CERN Open Data Portal sources
-COPY . ${CODE_DIR}
 # hadolint ignore=DL3013,SC2086
 RUN git config --global url.https://github.com/.insteadOf git://github.com/ && if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
     pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check

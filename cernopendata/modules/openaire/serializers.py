@@ -23,11 +23,9 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Serializers for datacite module."""
 
-from marshmallow import Schema, fields
-
 from flask import request
-
 from lxml import etree, html
+from marshmallow import Schema, fields
 
 
 def dict_to_lxml(d):
@@ -56,9 +54,11 @@ def dict_to_lxml(d):
         "dates": "http://datacite.org/schema/kernel-4",
         "date": "http://datacite.org/schema/kernel-4",
         "rights": "http://datacite.org/schema/kernel-4",
+        "rightsList": "http://datacite.org/schema/kernel-4",
         # And these come from dc
         "publisher": "http://purl.org/dc/elements/1.1/",
-        "description": "http://purl.org/dc/elements/1.1/",
+        "description": "http://datacite.org/schema/kernel-4",
+        "descriptions": "http://datacite.org/schema/kernel-4",
         "resourceType": "http://namespace.openaire.eu/schema/oaire/",
     }
 
@@ -98,8 +98,8 @@ class OpenAireSerializer(Schema):
     resourceType = fields.Method("get_resourcetype")
     publisher = fields.Str()
     dates = fields.Method("get_publication_year")
-    rights = fields.Method("get_rights")
-    description = fields.Method("get_description")
+    rightsList = fields.Method("get_rights")
+    descriptions = fields.Method("get_description")
 
     def get_publication_year(self, obj):
         """Get the publication date."""
@@ -126,10 +126,12 @@ class OpenAireSerializer(Schema):
         if "abstract" in obj and "description" in obj["abstract"]:
             descriptions.append(
                 {
-                    "descriptionType": "abstract",
-                    "description": html.fromstring(
-                        obj["abstract"]["description"]
-                    ).text_content(),
+                    "description": {
+                        "@descriptionType": "abstract",
+                        "#text": html.fromstring(
+                            obj["abstract"]["description"]
+                        ).text_content(),
+                    }
                 }
             )
         return descriptions
@@ -137,8 +139,9 @@ class OpenAireSerializer(Schema):
     def get_rights(self, obj):
         """Get the access rights. Assume everything is open access."""
         return {
-            "@rightsURI": "http://purl.org/coar/access_right/c_abf2",
-            "#text": "open access",
+            "rights": {
+                "@rightsURI": "info:eu-repo/semantics/openAccess",
+            }
         }
 
     def get_creator(self, obj):

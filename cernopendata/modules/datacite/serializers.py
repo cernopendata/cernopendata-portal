@@ -23,10 +23,10 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Serializers for datacite module."""
 
-from marshmallow import Schema, fields
 from datacite import schema43
-from lxml import etree
 from flask import request
+from lxml import etree
+from marshmallow import Schema, fields
 
 
 def datacite_etree(pid, record):

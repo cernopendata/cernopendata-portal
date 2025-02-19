@@ -25,40 +25,91 @@ import re
 import sys
 from os.path import basename
 from re import sub
+from time import time
 
 import flask
 import six
-from flask import abort, current_app, jsonify, render_template, request, make_response
+from flask import (
+    Response,
+    abort,
+    current_app,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+)
+from invenio_db import db
 from invenio_files_rest.models import FileInstance
 from invenio_files_rest.signals import file_downloaded
 from invenio_files_rest.views import ObjectResource
+from invenio_indexer.api import RecordIndexer
 from invenio_records.api import Record
 from invenio_records_files.utils import record_file_factory
 from invenio_records_ui.signals import record_viewed
-
-# from invenio_files_rest.models import FileInstance, ObjectVersion
-# from invenio_records.errors import MissingModelError
 from invenio_records_ui.utils import obj_or_import_string
-from invenio_search import current_search_client
-from invenio_search.engine import dsl, search
 from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
+
+from cernopendata.cold_storage.api import RecordAvailability, Request
+
+
+def stage(pid, record, **kwargs):
+    """Stages all the files from a record."""
+    record["availability"] = RecordAvailability.REQUESTED.value
+    record.commit()
+    db.session.commit()
+    RecordIndexer().index(record)
+    data = request.get_json()  # Parse JSON data from request
+
+    print("REQUESTING THE STAGE OF A FILE", file=sys.stderr)
+    id = Request.create(record.id, [data.get("email", None)])
+    db.session.commit()
+    print(f"Transfer requested {id}", file=sys.stderr)
+    try:
+        response = requests.get(purge_url)
+        response.raise_for_status()
+    except Exception as e:
+        # Log error or fallback
+        print(f"Failed to purge cache: {e}", file=sys.stderr)
+    print("AND CACHE PURGED!!!", file=sys.stderr)
+    return Response("OK", status=200)
+
+
+def subscribe(pid, record, **kwargs):
+    """Add an email to the list of emails that should be notified after a request finishes."""
+    data = request.get_json()  # Parse JSON data from request
+    transfer_id = data.get("transfer_id", "")
+    email = data.get("email", "")
+    if Request.subscribe(transfer_id, email):
+        db.session.commit()
+        return f"{email} subscribed successfully", 200
+    return f"{email} is already subscribed", 403
 
 
 def get_file_index(pid, record, file_index, **kwargs):
     """Return the list of entries."""
     entry_name = file_index.replace(".txt", ".json")
-
+    qos = request.args.get("qos")
     for entry in record.file_indices:
-        if entry["key"] == entry_name:
-            if entry_name == file_index:
-                return entry
-            to_return = []
-            for file in entry["files"]:
-                to_return.append(file["uri"] + "\n")
-            resp = flask.Response(to_return)
-            resp.headers["Content-Type"] = "text/plain"
-            return resp
+        # Apply filtering regardless of return type
+        filtered_files = []
+        for file in entry["files"]:
+            # Exclude deleted hot files if qos=hot
+            if qos == "hot" and "hot_deleted" in file.get("tags", {}):
+                continue
+            filtered_files.append(file)
+
+        # Return raw JSON (as before) if .json was explicitly requested
+        if entry_name == file_index:
+            filtered_entry = dict(entry)
+            filtered_entry["files"] = filtered_files
+            return filtered_entry
+
+        # Otherwise, return list of URIs in text/plain
+        to_return = [f["uri"] + "\n" for f in filtered_files]
+        resp = Response(to_return)
+        resp.headers["Content-Type"] = "text/plain"
+        return resp
     abort(404)
 
 

@@ -31,6 +31,7 @@ cernopendata index init
 sleep 20
 
 cernopendata files location local var/data --default
+cernopendata cold location add --cold-path https://eosctapublic.cern.ch:8444/eos/ctapublic/archive/opendata/ --hot-path root://eospublic.cern.ch//eos/opendata/ --manager-class cernopendata.cold_storage.transfer.fts.TransferManager
 
 if [[ "$@" = *"--skip-glossary"* ]]; then
     echo "[INFO] Skipping loading of glossary terms."

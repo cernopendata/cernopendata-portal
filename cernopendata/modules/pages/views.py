@@ -27,7 +27,6 @@
 import json
 
 import pkg_resources
-from markupsafe import escape
 from flask import (
     Blueprint,
     Response,
@@ -41,7 +40,15 @@ from flask import (
 )
 from invenio_i18n import lazy_gettext as _
 from jinja2.exceptions import TemplateNotFound
+from markupsafe import escape
 from speaklater import make_lazy_string
+from webargs.flaskparser import use_args
+
+from cernopendata.cold_storage.schemas import (
+    TransferRequestQuerySchema,
+    TransferRequestSchema,
+)
+from cernopendata.cold_storage.service import RequestService
 
 from .utils import FeaturedArticlesSearch
 
@@ -342,3 +349,60 @@ def redirect_old_urls(path, year=None):
     new_url = old_to_new_url_map.get(path) or abort(404)
 
     return redirect(new_url)
+
+
+@blueprint.route("/transfer_requests")
+def transfer_requests_index():
+    """List transfer requests with pagination."""
+    return render_template("cernopendata_pages/transfer_requests.html")
+
+
+transfer_request_schema = TransferRequestSchema(many=True)
+
+
+@blueprint.route("/transfer_requests_content")
+@use_args(TransferRequestQuerySchema())
+def transfer_requests(args):
+    """Combined endpoint for summary and detailed table with pagination."""
+    page = args["page"]
+    per_page = args["per_page"]
+    status = args.get("status")
+    action = args.get("action")
+    record = args.get("record", "")
+    sort = args.get("sort")
+    direction = args.get("direction", "asc")
+
+    # Get summary
+    summary_raw = RequestService.get_requests(
+        status=status, action=action, record=record, summary=True
+    )
+    summary = [
+        {"status": s, "action": a, "count": c, "files": n, "size": size}
+        for s, a, c, n, size in summary_raw
+    ]
+
+    # Get detailed list
+    pagination = RequestService.get_requests(
+        status=status,
+        action=action,
+        record=record,
+        summary=False,
+        sort=sort,
+        direction=direction,
+        page=page,
+        per_page=per_page,
+    )
+    results = transfer_request_schema.dump(pagination.items)
+
+    return jsonify(
+        {
+            "summary": summary,
+            "details": results,
+            "pagination": {
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "per_page": pagination.per_page,
+            },
+        }
+    )
