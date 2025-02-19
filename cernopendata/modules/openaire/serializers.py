@@ -23,11 +23,9 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Serializers for datacite module."""
 
-from marshmallow import Schema, fields
-
 from flask import request
-
 from lxml import etree, html
+from marshmallow import Schema, fields
 
 
 def dict_to_lxml(d):

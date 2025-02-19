@@ -1,11 +1,11 @@
 """Global variables and methods for Flask app."""
 
-import logging
 import json
+import logging
 import os
 
-from flask import Flask, request
 from counter_robots import is_robot_or_machine
+from flask import Flask, request
 
 from cernopendata.version import __version__
 
