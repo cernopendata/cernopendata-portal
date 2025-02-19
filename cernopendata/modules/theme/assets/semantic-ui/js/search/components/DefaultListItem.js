@@ -30,6 +30,7 @@ import { Item } from "semantic-ui-react";
 
 import ListItemLabels from "./ListItemLabels";
 import { stripHtml } from "../utils";
+import { Link } from "react-router-dom";
 
 const CODefaultListItem = ({ result: { metadata, id }, index }) => {
   const link = `/record/${id}`;
