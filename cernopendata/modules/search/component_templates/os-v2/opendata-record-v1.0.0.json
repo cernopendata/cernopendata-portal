@@ -3,6 +3,10 @@
     "mappings": {
       "dynamic": "strict",
       "properties": {
+        "_availability_details": {
+          "enabled": false,
+          "type": "object"
+        },
         "_bucket": {
           "enabled": false,
           "type": "object"
@@ -454,6 +458,9 @@
         },
         "title_additional": {
           "type": "text"
+        },
+        "updated": {
+          "type": "keyword"
         },
         "usage": {
           "properties": {
