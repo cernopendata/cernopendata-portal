@@ -63,38 +63,67 @@ export default function FileTable({ items, table_type }) {
                   },
                 }
               : { href: getFileUri(table_type, file.key) };
-          return (
-            <Table.Row key={file.version_id}>
-              <Table.Cell className="filename-cell">{table_type=='file_index' ? file.description :file.key}</Table.Cell>
-              <Table.Cell collapsing>
-                {toHumanReadableSize(file.size)}
-              </Table.Cell>
-              <Table.Cell collapsing>
-                {table_type === "file_index"  ? ( <>
-                  <Button
-                    icon
-                    size="mini"
-                    onClick={() => {
-                      setSelectedFile(file);
-                      setOpenModal(true);
-                    }}
-                  >
-                    <Icon name="list" /> List files
-                  </Button>
-                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key, 'txt') } >
-                   <Icon name="download" /> Download txt
-                  </Button>
-                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key) }>
-                   <Icon name="download" /> Download json
-                  </Button></>
-                ) :
-                 <Button as="a" icon size="mini" primary {...downloadProp}>
-                   <Icon name="download" /> Download
-                  </Button>
-                 }
-              </Table.Cell>
-            </Table.Row>
-          );
+            return (
+              <Table.Row key={file.version_id}>
+                <Table.Cell className="filename-cell">
+                  {table_type === 'file_index' ? file.description : file.key}
+                </Table.Cell>
+
+                <Table.Cell collapsing>
+                  {toHumanReadableSize(file.size)}
+                </Table.Cell>
+
+                <Table.Cell collapsing>
+                  {table_type === 'file_index' ? (
+                    <>
+
+                      {file.availability?.ondemand && (
+                          <div className="ui label brown">
+                            <Icon name={file.availability.online ? "clone" : "archive"} />
+                            {file.availability.online ? "Sample files" : "On demand"}
+                          </div>
+                      )}
+
+                      <Button
+                        icon
+                        size="mini"
+                        onClick={() => {
+                          setSelectedFile(file);
+                          setOpenModal(true);
+                        }}
+                      >
+                        <Icon name="list" /> List files
+                      </Button>
+
+                      <Button
+                        as="a"
+                        icon
+                        size="mini"
+                        primary
+                        href={getFileUri(table_type, file.key, 'txt')}
+                      >
+                        <Icon name="download" /> Download txt
+                      </Button>
+
+                      <Button
+                        as="a"
+                        icon
+                        size="mini"
+                        primary
+                        href={getFileUri(table_type, file.key)}
+                      >
+                        <Icon name="download" /> Download json
+                      </Button>
+                    </>
+                  ) : (
+                    <Button as="a" icon size="mini" primary {...downloadProp}>
+                      <Icon name="download" /> Download
+                    </Button>
+                  )}
+                </Table.Cell>
+              </Table.Row>
+            );
+
         })}
       </Table.Body>
       {openModal && (
