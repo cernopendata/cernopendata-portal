@@ -30,7 +30,7 @@ import { Pagination } from "semantic-ui-react";
 import { FileTable } from "./components";
 import config, { ITEMS_PER_PAGE, RECORD_FILEPAGE_URL } from "./config";
 
-const FilesBoxApp = () => {
+const FilesBoxApp = (recordAvailability) => {
   const [page, setPage] = useState(1);
   const [files, setFiles] = useState({});
   const [indexFiles, setIndexFiles] = useState({});
@@ -69,8 +69,7 @@ const FilesBoxApp = () => {
     <>
       {items.total > 0 && (
         <>
-          <h2>{title}</h2>
-          <FileTable items={items} pidValue={pidValue} table_type={table_type}/>
+          <FileTable items={items} pidValue={pidValue} table_type={table_type} recordAvailability={recordAvailability}/>
         </>
       )}
       {items.total > ITEMS_PER_PAGE && (
@@ -78,6 +77,7 @@ const FilesBoxApp = () => {
           activePage={page}
           onPageChange={handlePaginationChange}
           totalPages={Math.ceil(items.total / ITEMS_PER_PAGE)}
+          recordAvailability={recordAvailability}
         />
       )}
     </>

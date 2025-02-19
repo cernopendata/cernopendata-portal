@@ -40,10 +40,10 @@ import {
 import { DownloadWarningModal } from "../components";
 import config, { ITEMS_PER_PAGE, INDEX_FILES_URL } from "../config";
 import { toHumanReadableSize } from "../utils";
-
+import { Popup } from 'semantic-ui-react';
 import "./IndexFilesModal.scss";
 
-export default function IndexFilesModal({ open, setOpen, indexFile }) {
+export default function IndexFilesModal({ open, setOpen, indexFile, recordAvailability }) {
   const files = indexFile.files;
   const [page, setPage] = useState(1);
   const [openDownloadModal, setOpenDownloadModal] = useState(false);
@@ -54,6 +54,11 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
     return files.slice(start, end);
   };
   const getFileUri = (file_key) => `/record/${config.pidValue}/files/${file_key}`;
+
+  const disableMessage =
+    recordAvailability === 'requested'
+      ? 'The record has been requested. Once it is ready, this button will become available.'
+      : `If you want to access it, please request it using the button "Request all files".`;
 
   return (
     <>
@@ -98,16 +103,18 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                             {toHumanReadableSize(file.size)}
                           </Table.Cell>
                           <Table.Cell collapsing>
-                          {file.uri && (
-                            <Button
-                              as="a"
-                              icon
-                              size="mini"
-                              primary
-                              {...downloadProp}
-                            >
-                              <Icon name="download" />
-                            </Button>)}
+                            <Popup
+                              disabled={file.availability !== 'ondemand'}
+                              content={`This file is not currently available. ${disableMessage}`}
+                              trigger={
+                                <span>
+                                  <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'ondemand'}>
+                                    <Icon name="download" />Download
+                                  </Button>
+                                </span>
+                              }
+                              position="top center"
+                            />
                           </Table.Cell>
                         </Table.Row>
                       );
