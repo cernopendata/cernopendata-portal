@@ -45,6 +45,13 @@ from speaklater import make_lazy_string
 
 from .utils import FeaturedArticlesSearch
 
+from invenio_search.proxies import current_search_client
+from invenio_search.utils import prefix_index
+
+from cernopendata.cold_storage.models import TransferRequest
+from datetime import datetime
+from invenio_pidstore.models import PersistentIdentifier
+
 blueprint = Blueprint(
     "cernopendata_pages",
     __name__,
@@ -342,3 +349,48 @@ def redirect_old_urls(path, year=None):
     new_url = old_to_new_url_map.get(path) or abort(404)
 
     return redirect(new_url)
+
+
+@blueprint.route("/stage_requests")
+def list_requests():
+    """List transfer requests with pagination."""
+    return render_template("cernopendata_pages/stage_requests.html")
+
+
+@blueprint.route("/stage_requests_table")
+def transfer_requests():
+    """List transfer requests with pagination."""
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+
+    pagination = TransferRequest.query.order_by(
+        TransferRequest.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    results = [
+        {
+            "id": tr.id,
+            "recid": PersistentIdentifier.query.filter_by(object_uuid=tr.record_id)
+            .first()
+            .pid_value,
+            "num_files": tr.num_files,
+            "status": tr.status,
+            "created_at": tr.created_at.timestamp() if tr.created_at else None,
+            "started_at": tr.started_at.timestamp() if tr.started_at else None,
+            "completed_at": tr.completed_at.timestamp() if tr.completed_at else None,
+            "cleaned_at": tr.cleaned_at.timestamp() if tr.cleaned_at else None,
+        }
+        for tr in pagination.items
+    ]
+
+    # Return JSON response
+    return jsonify(
+        {
+            "results": results,
+            "pagination": {
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "per_page": pagination.per_page,
+            },
+        }
+    )
