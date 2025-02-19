@@ -53,8 +53,7 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
     const end = page * ITEMS_PER_PAGE;
     return files.slice(start, end);
   };
-  var file_counter = 0;
-  const getFileUri = (position) => `/record/${config.pidValue}/files/${indexFile.key}_${position}`;
+  const getFileUri = (file_key) => `/record/${config.pidValue}/files/${file_key}`;
 
   return (
     <>
@@ -81,19 +80,17 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                   </Table.Header>
                   <Table.Body>
                     {getPageFiles().map((file) => {
-                      var my_counter=file_counter;
                       const downloadProp =
                         file.size > config.downloadThreshold
                           ? {
                               onClick: () => {
-                                setSelectedFile(my_counter);
+                                setSelectedFile(file.key);
                                 setOpenDownloadModal(true);
                               },
                             }
                           : {
-                              href: getFileUri(my_counter),
+                              href: getFileUri(file.key),
                             };
-                         file_counter +=1;
                       return (
                         <Table.Row key={file.checksum}>
                           <Table.Cell>{file.filename}</Table.Cell>
