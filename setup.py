@@ -72,46 +72,36 @@ setup_requires = [
 install_requires = [
     "counter-robots>=2025.2",
     # General Invenio dependencies
-    "invenio-app>=1.5.0,<2.0.0",
-    "invenio-base>=1.3.0,<2.0.0",
+    "invenio-app>=2.0.0,<3.0.0",
+    "invenio-base>=2.0.0,<3.0.0",
     "invenio-config>=1.0.3,<2.0.0",
-    # fix until every invenio package version is updated for the newest release
-    "invenio-i18n>=2.2.0,<3.0.0",
     # Pin pytz dependency for invenio-i18n
     "pytz>=2022.7,<2024.2",
     # Custom Invenio `base` bundle
     "importlib-metadata>=6.11.0",
-    "invenio-accounts==3.1.0",
-    "invenio-assets>=3.0.0,<4.0.0",
-    "invenio-logging[sentry]>=1.3.0,<2.0.0",
-    "invenio-rest==1.2.8",
-    "invenio-theme>=2.5.7,<3.0.0",
-    # Custom Invenio `metadata` bundle
-    "invenio-indexer>=2.1.0,<3.0.0",
-    "invenio-jsonschemas>=1.1.4,<2.0.0",
-    "invenio-pidstore>=1.3.1,<2.0.0",
-    # This one requires the nested_filter
-    "invenio-records>=2.1.0,<3.0.0",
-    "invenio-records-rest[datacite]>=2.4.0,<3.0.0",
-    "invenio-records-ui>=1.2.0,<2.0.0",
-    "invenio-search-ui>=3.0.0,<4.0.0",
-    # Custom Invenio `files` bundle
-    "invenio-previewer>=2.0.1,<3.0.0",
+    "invenio-accounts>=6.0.0,<7.0.0",
+    "invenio-access>=4.0.0,<5.0.0",
+    "invenio-theme>=4.0.0,<5.0.0",
+    "invenio-records>=3.0.0,<4.0.0",
+    "invenio-records-rest[datacite]>=3.0.0,<4.0.0",
+    "invenio-records-ui>=2.0.0,<3.0.0",
+    "invenio-search-ui>=4.0.0,<5.0.0",
     "invenio-records-files>=1.2.1,<3.0.0",
-    "invenio-stats>=4.3.0,<5.0.0",
+    "invenio-stats>=5.1.0,<6.0.0",
     "jupyter-client==7.1.0",
+    "invenio-jsonschemas>=2.0.0,<3.0.0",
     "pluggy==0.13.1",
-    "invenio-oaiserver>=2.3.0,<3.0.0",
+    "invenio-oaiserver>=3.2.0,<4.0.0",
     # Custom Invenio `postgresql` bundle
-    "invenio-db[versioning,postgresql]==1.1.0",
+    "invenio-db[versioning,postgresql]>=2.0.0,<3.0.0",
     "invenio-mail>=2.1.1",
     # Custom Invenio `opensearch` bundle
-    "invenio-search[opensearch2]>=2.3.1,<3.0.0",
+    "invenio-search[opensearch2]>=3.0.0,<4.0.0",
     # Specific Invenio dependencies
     "invenio-xrootd==2.0.0a1",
     "xrootdpyfs==2.0.0a1",
     # Specific dependencies
-    "Flask-Markdown>=0.3.0",
+    "Flask-Markdown @git+https://git@github.com/psaiz/flask-markdown",
     "Flask-Mistune>=0.1.1",
     "mistune>=0.7.4",
     "pymdown-extensions>=5.0.0",
@@ -120,20 +110,10 @@ install_requires = [
     # Webserver
     "uWSGI>=2.0.21",
     "uwsgitop>=0.11",
-    # Pin SQLAlchemy version due to sqlalchemy-utils compatibility
-    # <https://github.com/kvesteri/sqlalchemy-utils/issues/505>
-    "sqlalchemy-continuum==1.4.1",
-    "SQLAlchemy==1.4.49",
-    # Pin Flask-SQLAlchemy version due to apply_driver_hacks
-    "Flask-SQLAlchemy==3.0.0",
     # Pin Celery due to worker runtime issues
     "celery==5.2.7",
     # Pin XRootD consistently with Dockerfile
     "xrootd==5.7.3",
-    # Pin Flask/gevent/greenlet/raven to make master work again
-    "Flask==2.2.5",
-    "Flask-Alembic==2.0.1",
-    "Werkzeug~=2.2.0",
     "gevent==23.9.1",
     "greenlet==3.0.3",
     "flask-babel==4.0.0",
