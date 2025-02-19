@@ -1,0 +1,45 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "_availability_details": {
+          "enabled": false,
+          "type": "object"
+        },
+        "_file_indices": {
+          "properties": {
+            "availability": {
+              "properties": {
+                "ondemand": {
+                  "type": "unsigned_long"
+                },
+                "online": {
+                  "type": "unsigned_long"
+                }
+              },
+              "type": "object"
+            },
+            "bucket": {"type": "keyword"},
+            "files": {
+              "properties": {
+                "availability": {
+                  "type": "keyword"
+                },
+                "uri_cold": {
+                  "type": "text"
+                },
+                "tags": {
+                  "properties": {"uri_cold": {"type": "keyword"},"hot_deleted": {"type": "keyword"}}
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "availability": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

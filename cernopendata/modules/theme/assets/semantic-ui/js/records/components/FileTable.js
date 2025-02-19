@@ -23,9 +23,10 @@
  * waive the privileges and immunities granted to it by virtue of its status
  * as an Intergovernmental Organization or submit itself to any jurisdiction.
  */
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { Button, Icon, Table } from "semantic-ui-react";
+import { Button, Icon, Table, Dropdown } from "semantic-ui-react";
+import $ from "jquery"; // You need jQuery for Semantic UI's JS
 
 import { IndexFilesModal, DownloadWarningModal } from "../components";
 import { toHumanReadableSize } from "../utils";
@@ -39,23 +40,38 @@ export default function FileTable({ items, table_type }) {
   const [selectedFile, setSelectedFile] = useState();
 
   const getFileUri = (table_type, fileKey, format) => {
-    var  url= `/record/${config.pidValue}/${table_type}/${fileKey}`;
-    if (table_type=='file_index' && format== 'txt')
-           url = url.replace('.json', '.txt');
-    return url};
+    let url = `/record/${config.pidValue}/${table_type}/${fileKey}`;
+    if (table_type === "file_index" && format === "txt") {
+      url = url.replace(".json", ".txt");
+    }
+    return url;
+  };
+
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize Semantic UI dropdown
+    $(dropdownRef.current).dropdown();
+  }, []);
+
+  const hasOnDemandColumn = useMemo(() => {
+    return table_type === "file_index" && items.files.some(file => file.availability?.ondemand);
+  }, [items.files, table_type]);
+
   return (
     <Table singleLine>
       <Table.Header>
         <Table.Row>
-          <Table.HeaderCell>{table_type=='file_index' ? 'Index description' : 'Filename'}</Table.HeaderCell>
-          <Table.HeaderCell>{table_type=='file_index' ? 'Index size' : 'Size'}</Table.HeaderCell>
+          {hasOnDemandColumn && <Table.HeaderCell>Status</Table.HeaderCell>}
+          <Table.HeaderCell>{table_type === 'file_index' ? 'Index description' : 'Filename'}</Table.HeaderCell>
+          <Table.HeaderCell>{table_type === 'file_index' ? 'Index size' : 'Size'}</Table.HeaderCell>
           <Table.HeaderCell></Table.HeaderCell>
         </Table.Row>
       </Table.Header>
       <Table.Body>
         {items.files.map((file) => {
           const downloadProp =
-            table_type != 'file_index' && file.size > config.downloadThreshold
+            table_type !== 'file_index' && file.size > config.downloadThreshold
               ? {
                   onClick: () => {
                     setSelectedFile(file);
@@ -63,35 +79,64 @@ export default function FileTable({ items, table_type }) {
                   },
                 }
               : { href: getFileUri(table_type, file.key) };
+
           return (
             <Table.Row key={file.version_id}>
-              <Table.Cell className="filename-cell">{table_type=='file_index' ? file.description :file.key}</Table.Cell>
+              {hasOnDemandColumn && (
+                <Table.Cell>
+                  {file.availability?.ondemand && (
+                    <div className="ui label brown">
+                      <Icon name={file.availability.online ? "clone" : "archive"} />
+                      {file.availability.online ? "Sample files" : "On demand"}
+                    </div>
+                  )}
+                </Table.Cell>
+              )}
+              <Table.Cell className="filename-cell">
+                {table_type === 'file_index' ? file.description : file.key}
+              </Table.Cell>
               <Table.Cell collapsing>
                 {toHumanReadableSize(file.size)}
               </Table.Cell>
               <Table.Cell collapsing>
-                {table_type === "file_index"  ? ( <>
-                  <Button
-                    icon
-                    size="mini"
-                    onClick={() => {
-                      setSelectedFile(file);
-                      setOpenModal(true);
-                    }}
-                  >
-                    <Icon name="list" /> List files
+                {table_type === 'file_index' ? (
+                  <div className = "ui dropdown button mini blue" ref={dropdownRef}>
+                    <div className="text">
+                      Actions <i className="settings icon" />
+                    </div>
+                    <div className="menu">
+                      <Dropdown.Item
+                        icon="list"
+                        text="List files"
+                        title="List all the files inside the file index"
+                        onClick={() => {
+                          setSelectedFile(file);
+                          setOpenModal(true);
+                        }}
+                      />
+                      <Dropdown.Item
+                        icon="download"
+                        text="Download txt"
+                        title="Download the list of files in txt format"
+                        onClick={() => {
+                          window.open(getFileUri(table_type, file.key, 'txt'), '_blank');
+                        }}
+                      />
+                      <Dropdown.Item
+                        icon="download"
+                        text="Download json"
+                        title="Download the information of the files in the file index in json format"
+                        onClick={() => {
+                          window.open(getFileUri(table_type, file.key), '_blank');
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <Button as="a" icon size="mini" primary {...downloadProp}>
+                    <Icon name="download" /> Download
                   </Button>
-                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key, 'txt') } >
-                   <Icon name="download" /> Download txt
-                  </Button>
-                 <Button as="a" icon size="mini" primary href={getFileUri(table_type, file.key) }>
-                   <Icon name="download" /> Download json
-                  </Button></>
-                ) :
-                 <Button as="a" icon size="mini" primary {...downloadProp}>
-                   <Icon name="download" /> Download
-                  </Button>
-                 }
+                )}
               </Table.Cell>
             </Table.Row>
           );
@@ -116,6 +161,7 @@ export default function FileTable({ items, table_type }) {
     </Table>
   );
 }
+
 
 FileTable.propTypes = {
   items: PropTypes.object.isRequired,
