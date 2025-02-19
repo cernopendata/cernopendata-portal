@@ -25,9 +25,9 @@
 """Pages for CERN Open Data Portal."""
 
 import json
+from datetime import datetime
 
 import pkg_resources
-from markupsafe import escape
 from flask import (
     Blueprint,
     Response,
@@ -39,9 +39,17 @@ from flask import (
     request,
     url_for,
 )
+from invenio_db import db
 from invenio_i18n import lazy_gettext as _
+from invenio_pidstore.models import PersistentIdentifier
+from invenio_search.proxies import current_search_client
+from invenio_search.utils import prefix_index
 from jinja2.exceptions import TemplateNotFound
+from markupsafe import escape
 from speaklater import make_lazy_string
+from sqlalchemy import func
+
+from cernopendata.cold_storage.models import TransferRequest
 
 from .utils import FeaturedArticlesSearch
 
@@ -342,3 +350,96 @@ def redirect_old_urls(path, year=None):
     new_url = old_to_new_url_map.get(path) or abort(404)
 
     return redirect(new_url)
+
+
+@blueprint.route("/stage_requests")
+def list_requests():
+    """List transfer requests with pagination."""
+    return render_template("cernopendata_pages/stage_requests.html")
+
+
+@blueprint.route("/stage_requests_summary")
+def stage_requests_summary():
+    """Give a summary of all the requests."""
+    summary = (
+        db.session.query(
+            TransferRequest.status,
+            TransferRequest.action,
+            func.count().label("count"),
+            func.sum(TransferRequest.num_files).label("files"),
+            func.sum(TransferRequest.size).label("size"),
+        )
+        .group_by(TransferRequest.status, TransferRequest.action)
+        .all()
+    )
+    return jsonify(
+        [
+            {"status": s, "action": a, "count": c, "files": n, "size": size}
+            for s, a, c, n, size in summary
+        ]
+    )
+
+
+@blueprint.route("/stage_requests_table")
+def transfer_requests():
+    """List transfer requests with pagination."""
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+    status = request.args.get("status")
+    sort = request.args.get("sort")
+    direction = request.args.get("direction", "asc")
+    record_filter = request.args.get("record", "", type=str)
+
+    query = TransferRequest.query
+
+    if status:
+        query = query.filter(TransferRequest.status.in_(status.split(",")))
+
+    if record_filter:
+        try:
+            uuid = PersistentIdentifier.get("recid", record_filter).object_uuid
+            query = query.filter_by(record_id=uuid)
+        except Exception:
+            query = query.filter(False)
+
+    if sort:
+        column = getattr(TransferRequest, sort, None)
+        if column:
+            if direction == "desc":
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+
+    pagination = query.order_by(TransferRequest.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    results = [
+        {
+            "id": tr.id,
+            "action": tr.action,
+            "recid": PersistentIdentifier.query.filter_by(object_uuid=tr.record_id)
+            .first()
+            .pid_value,
+            "num_files": tr.num_files,
+            "size": tr.size,
+            "status": tr.status,
+            "created_at": tr.created_at.timestamp() if tr.created_at else None,
+            "started_at": tr.started_at.timestamp() if tr.started_at else None,
+            "completed_at": tr.completed_at.timestamp() if tr.completed_at else None,
+        }
+        for tr in pagination.items
+    ]
+
+    # Return JSON response
+    return jsonify(
+        {
+            "results": results,
+            "pagination": {
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "per_page": pagination.per_page,
+            },
+        }
+    )
