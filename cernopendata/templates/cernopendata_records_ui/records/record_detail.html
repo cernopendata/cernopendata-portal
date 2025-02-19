@@ -175,7 +175,6 @@
             <span><strong>{{record.distribution.size | filesizeformat(true) }}</strong> in total.</span>
             {% endif %}
         </div>
-
         {% if record.distribution.get("availability", "online") != "online" %}
         <div class="ui info message">
             <div class="header">
@@ -430,6 +429,69 @@
 
 {% block files_block %}
     <div>
+        {% if record.availability == "sample files"  or record.availability == "ondemand"  %}
+
+        <div class="ui info message">
+            <div class="header">
+                Availability: <strong style="color: {{ '#a24d4d' if record.distribution.availability else '#af7c2a' }}">{{record.availability | upper}}</strong>
+                <button type="button" class="ui brown button" id="open-modal">Request all files</button>
+            </div>
+            {% if record.availability == "sample files" %}
+            <p>Please note that only a subset of files are available for this dataset. If you are interested in accessing
+                all of them, please request them. Note that the file transfer to online storage may take several weeks or months in
+                case of a large amount of data.</p>
+            {% endif %}
+            {% if record.availability == "ondemand" %}
+            <p>Please note this dataset is currently not available. If you are interested in accessing
+                all of them, please request them. Note that the file transfer to online storage may take several weeks or months in
+                case of a large amount of data.</p>
+            {% endif %}
+        </div>
+
+
+        <div class="ui modal" id="request-modal">
+            <i class="close icon"></i>
+            <div class="header">
+                Request to make data available
+            </div>
+            <div class="image content">
+                <div class="description">
+                    <p>Please, confirm that you want to access all the files of the record.</p>
+                    <div class="ui error message">
+                        <p> This action takes time. The more data requested, the longer it will take.</p>
+                        <p><div class="ui checkbox">
+                        <input type="checkbox" id="confirm-checkbox">
+                        <label>I confirm that I want to request the data</label>
+                    </div></p>
+                    </div>
+                    <form class="ui form" id="request-form">
+                        <div class="field">
+                            <label>If you want to be notified when the files are online, please enter your email</label>
+                            <input type="email" id="email-input" name="email" placeholder="Enter your email" >
+                        </div>
+                    </form>
+
+                    <div class="actions">
+
+                            <div class="ui button cancel">Cancel</div>
+                            <div class="ui button primary disabled" id="ok-button" >OK</div>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        {% endif %}
+        {% if record.availability == "requested" %}
+        <div class="ui info message">
+            <div class="header">
+                Availability: <strong style="color: {{ '#a24d4d' if record.distribution.availability else '#af7c2a' }}">{{record.availability | upper}}</strong>
+                <a href="/stage_requests"><button class="ui brown button" >See request status</button></a>
+            </div>
+            <p>The files for this record are being staged. This operation takes time. Click on the button above to see the status of the transfer.</p>
+        </div>
+
+        {% endif %}
+
         {{ files_box_react_app() }}
     </div>
 {% endblock files_block %}
@@ -447,6 +509,43 @@
         $(".config-file-preview-modal .config-content").html($this.data('modal-content'))
         $('.config-file-preview-modal').modal('show');
   });
+  $('#open-modal').click(function() {
+                $('#request-modal').modal('show');
+  });
+  // Handle checkbox change
+  $('#confirm-checkbox').change(function() {
+        if ($(this).is(':checked')) {
+            $('#ok-button').removeClass('disabled'); // Enable OK button
+        } else {
+            $('#ok-button').addClass('disabled'); // Disable OK button
+        }
+  });
+  // When OK is clicked, open second modal
+  $('#ok-button').click(function() {
+        if (!$(this).hasClass('disabled')) {
+            $('#my-modal').modal('hide'); // Close first modal
+
+            // Make an asynchronous GET request to '/record/<id>/stage'
+            $.ajax({
+               url: '/record/{{record.recid}}/stage',
+               type: 'POST',  // Change to POST
+               contentType: 'application/json',  // Ensure proper content type
+               data: JSON.stringify({ email: $('#email-input').val().trim() }),  // Send email as JSON
+               success: function(response) {
+                    console.log('Success:', response); // Log success response
+                     },
+               error: function(xhr, status, error) {
+                    console.error('Error:', error); // Log any error
+                    },
+               complete: function() {
+                   // Open second modal after request completes
+                    setTimeout(() => {
+                            location.reload(); // Refresh page after closing second modal
+                    }, 300); // Delay for smooth transition
+               }
+            });
+        }
+});
 </script>
 
 {% set files_list = record.get('files', None) %}

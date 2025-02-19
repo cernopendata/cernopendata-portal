@@ -38,6 +38,7 @@ x-common-variables: &common-variables
   INVENIO_PIDSTORE_DATACITE_TESTMODE: None
   INVENIO_PIDSTORE_DATACITE_USERNAME: CERN.OPENDATA
   INVENIO_PIDSTORE_LANDING_BASE_URL: http://opendata.cern.ch/record/
+  INVENIO_FTS_ENDPOINT: https://fts3-public.cern.ch:8446
 
 services:
   web:

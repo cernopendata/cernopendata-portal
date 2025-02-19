@@ -29,6 +29,11 @@ FROM --platform=$BUILDPLATFORM registry.cern.ch/inveniosoftware/almalinux:1
 # Use XRootD 5.7.3
 ENV XROOTD_VERSION=5.7.3
 
+# Install the CERN CA
+COPY docker/carepo.repo /etc/yum.repos.d/
+
+RUN yum install -y ca_CERN-Root-2 && yum clean -y all
+
 # Install CERN Open Data Portal web node pre-requisites
 # hadolint ignore=DL3033
 RUN yum install -y \
@@ -42,8 +47,9 @@ RUN yum install -y \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 
+# hadolint ignore=DL3033
 RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
-    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
+    yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" swig python3-gfal2-util gfal2-plugin-http python3-gfal2 && \
     yum clean -y all
 
 RUN pip uninstall pipenv -y && pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==70.0.0 wheel==0.45.1 && \

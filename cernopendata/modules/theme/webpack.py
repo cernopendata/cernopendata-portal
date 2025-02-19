@@ -110,6 +110,23 @@ records_file_box = WebpackThemeBundle(
                 "react": "^16.13.0",
                 "react-dom": "^16.13.0",
                 "prop-types": "^15.7.2",
+                "react-router-dom": "^5.0.0",
+            },
+        ),
+    },
+)
+
+transfers = WebpackThemeBundle(
+    __name__,
+    "assets",
+    default="semantic-ui",
+    themes={
+        "semantic-ui": dict(
+            entry={
+                "cernopendata_transfers": "./js/transfers/TransferRequestsApp.js",
+            },
+            dependencies={
+                "react": "^16.13.0",
             },
         ),
     },
