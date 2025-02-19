@@ -79,6 +79,7 @@ install_requires = [
     "importlib-metadata>=6.11.0",
     "invenio-accounts>=6.0.0,<7.0.0",
     "invenio-access>=4.0.0,<5.0.0",
+    "invenio-files-rest @git+https://github.com/psaiz/invenio-files-rest@tag_value#egg=invenio-files-rest",
     "invenio-theme>=4.0.0,<5.0.0",
     "invenio-records>=3.0.0,<4.0.0",
     "invenio-records-rest[datacite]>=3.0.0,<4.0.0",
@@ -118,6 +119,8 @@ install_requires = [
     "flask-babel==4.0.0",
     "raven<6.11",
     "dcxml",
+    # And these ones are for the cold storage
+    "fts3",
 ]
 
 packages = find_packages()
@@ -138,7 +141,7 @@ setup(
     platforms="any",
     entry_points={
         "console_scripts": [
-            "cernopendata = " "cernopendata.cli:cli",
+            "cernopendata = cernopendata.cli:cli",
         ],
         "invenio_assets.webpack": [
             "cernopendata_theme = cernopendata.modules.theme.webpack:theme",
@@ -147,6 +150,7 @@ setup(
             "cernopendata_visualise = cernopendata.modules.theme.webpack:visualise",
             "cernopendata_records_file_box = "
             "cernopendata.modules.theme.webpack:records_file_box",
+            "cernopendata_transfers = cernopendata.modules.theme.webpack:transfers",
         ],
         "invenio_base.apps": [
             "invenio_records_rest = invenio_records_rest:InvenioRecordsREST",
@@ -202,13 +206,18 @@ setup(
             "cernopendata_generic_fetcher",
         ],
         "invenio_search.index_templates": [
-            "records = cernopendata.modules.search.index_templates",
+            "records = cernopendata.modules.search.index_templates"
         ],
         "invenio_search.component_templates": [
             "records = cernopendata.modules.search.component_templates",
+            "cold_storage = cernopendata.cold_storage.search.component_templates",
         ],
         "invenio_jsonschemas.schemas": [
             "cernopendata_schemas = cernopendata.jsonschemas",
+        ],
+        "flask.commands": [
+            ## ALL OF THESE ONES ARE FOR THE COLD STORAGE. TAKE THEM TO A DEDICATED MODULE?
+            "cold = cernopendata.cold_storage.cli:cold",
         ],
     },
     extras_require=extras_require,

@@ -40,6 +40,7 @@ from invenio_stats.queries import TermsQuery
 from invenio_stats.tasks import StatsAggregationTask, StatsEventTask
 from urllib3.exceptions import InsecureRequestWarning
 
+from cernopendata.cold_storage.tasks import CheckTransfersTask
 from cernopendata.modules.pages.config import *
 from cernopendata.modules.search_ui.helpers import CODSearchAppInvenioRestConfigHelper
 from cernopendata.modules.theme.config import *
@@ -239,6 +240,10 @@ CELERY_BEAT_SCHEDULE = {
         **StatsAggregationTask,
         "schedule": timedelta(minutes=30),  # Every thirty minutes
     },
+    "cold-storage-events": {
+        **CheckTransfersTask,
+        "schedule": timedelta(minutes=5),  # Every thirty minutes
+    },
 }
 # JSONSchemas
 JSONSCHEMAS_ENDPOINT = "/schema"
@@ -314,6 +319,20 @@ RECORDS_UI_ENDPOINTS = dict(
         pid_type="recid",
         route="/record/<pid_value>/export/<format>",
         view_imp="cernopendata.modules.records.utils:export_json_view",
+        record_class="cernopendata.api:RecordFilesWithIndex",
+    ),
+    recid_stage=dict(
+        pid_type="recid",
+        route="/record/<pid_value>/stage",
+        view_imp="cernopendata.modules.records.utils:stage",
+        methods=["POST"],
+        record_class="cernopendata.api:RecordFilesWithIndex",
+    ),
+    recid_subscribe=dict(
+        pid_type="recid",
+        route="/record/<pid_value>/subscribe",
+        view_imp="cernopendata.modules.records.utils:subscribe",
+        methods=["POST"],
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     termid=dict(
@@ -554,6 +573,7 @@ RECORDS_REST_FACETS = {
 FILES_REST_PERMISSION_FACTORY = allow_all
 #: Allow URI's longer than 255 chars.
 FILES_REST_FILE_URI_MAX_LEN = os.environ.get("FILES_REST_FILE_URI_MAX_LEN", 512)
+FILES_REST_OBJECT_TAG_VALUE_MAX_LEN = 512
 #: Files max size threshold(bytes)
 CERNOPENDATA_MAX_DOWNLOAD_SIZE = os.environ.get(
     "CERNOPENDATA_MAX_DOWNLOAD_SIZE", 1000000000
@@ -611,6 +631,11 @@ OAISERVER_METADATA_FORMATS = {
         "namespace": "http://datacite.org/schema/kernel-4",
         "schema": "http://schema.datacite.org/meta/kernel-4.1/metadata.xsd",
         "serializer": "cernopendata.modules.datacite.serializers:datacite_etree",
+    },
+    "oai_openaire": {
+        "namespace": "http://namespace.openaire.eu/schema/oaire/",
+        "schema": "https://www.openaire.eu/schema/repo-lit/4.0/openaire.xsd",
+        "serializer": "cernopendata.modules.openaire.serializers:openaire_etree",
     },
     "oai_openaire": {
         "namespace": "http://namespace.openaire.eu/schema/oaire/",

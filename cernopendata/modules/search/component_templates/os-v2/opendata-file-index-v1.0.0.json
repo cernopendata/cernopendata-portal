@@ -3,36 +3,51 @@
     "mappings": {
       "dynamic": false,
       "properties": {
-            "_file_indices": {
+        "_file_indices": {
+          "properties": {
+            "description": {
+              "type": "text"
+            },
+            "files": {
               "properties": {
-                "files": {
-                  "properties": {
-                    "bucket": {
-                      "type": "keyword"
-                    },
-                    "checksum": {
-                      "type": "keyword"
-                    },
-                    "file_id": {
-                      "type": "keyword"
-                    },
-                    "filename": {
-                      "type": "keyword"
-                    },
-                    "key": {
-                      "type": "keyword"
-                    },
-                    "size": {
-                      "type": "unsigned_long"
-                    },
-                    "uri": {
-                      "type": "text"
-                    },
-                    "version_id": {
-                      "type": "keyword"
-                    }
+                "bucket": {
+                  "type": "keyword"
+                },
+                "checksum": {
+                  "type": "keyword"
+                },
+                "file_id": {
+                  "type": "keyword"
+                },
+                "filename": {
+                  "type": "keyword"
+                },
+                "key": {
+                  "type": "keyword"
+                },
+                "size": {
+                  "type": "unsigned_long"
+                },
+                "tags": {
+                  "type": "object"
+                },
+                "uri": {
+                  "type": "text"
+                },
+                "version_id": {
+                  "type": "keyword"
+                }
               },
               "type": "object"
+            },
+            "key": {
+              "type": "keyword"
+            },
+            "number_files": {
+              "type": "unsigned_long"
+            },
+            "size": {
+              "type": "unsigned_long"
             }
           },
           "type": "object"
