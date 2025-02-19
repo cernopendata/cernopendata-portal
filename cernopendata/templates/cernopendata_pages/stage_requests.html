@@ -1,0 +1,23 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui one column centered grid container detail-page">
+    <div class="row">
+
+    <div>
+        <div id="transfer-requests-react-app" data-show-details="{{ request.args.get('details', 'false') }}"
+             data-record-id="{{ request.args.get('record_id', '') }}"></div>
+    </div>
+</div>
+{%- endblock %}
+
+{% block javascript %}
+    {{ super() }}
+    {{ webpack['cernopendata_transfers.js'] }}
+{%- endblock %}

@@ -31,9 +31,20 @@ import FilesBoxApp from "./FilesBoxApp";
 
 import CitationsApp from "./CitationsApp";
 
+import RequestRecordApp from "./components/RequestRecord"
+
 const citeContainer = document.querySelector("#citations-react-app");
 if (citeContainer) {
     ReactDOM.render(React.createElement(CitationsApp), citeContainer);
+};
+const requestContainer = document.querySelector("#request-record-react-app");
+if (requestContainer) {
+    const recordId = requestContainer.dataset.recordId;
+    const availability = requestContainer.dataset.availability;
+    ReactDOM.render(
+      <RequestRecordApp recordId={recordId}  availability={availability}/>,
+      requestContainer
+    );
 };
 const domContainer = document.querySelector("#files-box-react-app");
 ReactDOM.render(React.createElement(FilesBoxApp), domContainer);
