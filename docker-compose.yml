@@ -91,7 +91,7 @@ services:
 
   db:
     restart: "always"
-    image: docker.io/library/postgres:14.8
+    image: docker.io/library/postgres:14.15
     environment:
       - POSTGRES_USER=cernopendata
       - POSTGRES_DB=cernopendata
