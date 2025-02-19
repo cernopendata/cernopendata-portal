@@ -27,19 +27,18 @@
 import json
 
 import pkg_resources
+from markupsafe import escape
 from flask import (
     Blueprint,
     Response,
     abort,
     current_app,
-    escape,
     jsonify,
     redirect,
     render_template,
     request,
     url_for,
 )
-from flask_breadcrumbs import default_breadcrumb_root
 from invenio_i18n import lazy_gettext as _
 from jinja2.exceptions import TemplateNotFound
 from speaklater import make_lazy_string
@@ -52,8 +51,6 @@ blueprint = Blueprint(
     template_folder="templates",
     static_folder="static",
 )
-
-default_breadcrumb_root(blueprint, ".")
 
 
 @blueprint.errorhandler(TemplateNotFound)
@@ -124,7 +121,6 @@ def md_debug():
 
 
 @blueprint.route("/visualise/events")
-# @register_breadcrumb(blueprint, '.visualise_events', _('Visualise Events'))
 def visualise_events_landing():
     """Display landing page."""
     try:
@@ -135,7 +131,6 @@ def visualise_events_landing():
 
 @blueprint.route("/visualise/events/<string:experiment>")
 @blueprint.route("/visualise/events/<string:experiment>/<int:eventid>")
-# @register_breadcrumb(blueprint, '.visualise_events', _('Visualise Events'))
 def visualise_events(experiment="cms", eventid=None):
     """Display visualisations."""
     # if experiment == 'opera':
@@ -152,8 +147,6 @@ def visualise_events(experiment="cms", eventid=None):
 
 @blueprint.route("/visualise/histograms")
 @blueprint.route("/visualise/histograms/<string:experiment>")
-# @register_breadcrumb(blueprint, '.visualise_histograms',
-#                      _('Visualise Histograms'))
 def visualise_histograms(experiment="cms"):
     """Display histograms."""
     try:
