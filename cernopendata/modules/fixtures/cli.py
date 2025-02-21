@@ -147,7 +147,7 @@ def update_record(pid, data, skip_files):
     # This is to ensure that fields that do not appear in the new data
     # are not just kept from the previous version
     for k in list(record.keys()):
-        if k == "_bucket":
+        if k in ["_bucket", "pids"]:
             continue
         if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
             continue

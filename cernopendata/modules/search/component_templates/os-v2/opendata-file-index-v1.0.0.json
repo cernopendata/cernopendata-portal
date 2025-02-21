@@ -3,9 +3,7 @@
     "mappings": {
       "dynamic": false,
       "properties": {
-        "files": {
-          "properties": {
-            "dataset": {
+            "_file_indices": {
               "properties": {
                 "files": {
                   "properties": {
@@ -33,8 +31,6 @@
                     "version_id": {
                       "type": "keyword"
                     }
-                  }
-                }
               },
               "type": "object"
             }

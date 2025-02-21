@@ -44,4 +44,6 @@ else
     cernopendata fixtures docs --mode insert
 fi
 
+cernopendata shell scripts/create_oaisets.py
+
 echo "The instance has been populated successfully :-)"

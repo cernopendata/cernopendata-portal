@@ -17,4 +17,6 @@ def cernopendata_recid_minter(record_uuid, data):
         pid_value=str(recid),
     )
 
+    data["pids"] = {"oai": {"id": f"oai:cernopendata.cern:{recid}"}}
+
     return provider.pid
