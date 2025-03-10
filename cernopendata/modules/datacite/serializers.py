@@ -25,6 +25,9 @@
 
 from marshmallow import Schema, fields
 from datacite import schema43
+from lxml import etree
+from flask import request
+
 
 def datacite_etree(pid, record):
     """DataCite XML format for OAI-PMH.
@@ -33,28 +36,53 @@ def datacite_etree(pid, record):
     """
     # TODO: Ditto. See https://github.com/inveniosoftware/flask-resources/issues/117
     data_dict = DataCiteSerializer().dump(record["_source"])
-    return schema43.dump_etree(data_dict)
+    f = schema43.dump_etree(data_dict)
+
+    if f.find("identifier") is None:
+        identifier = etree.SubElement(f, "identifierType", identifierType="URL")
+        identifier.text = (
+            f"https://{request.host}/record/{record['_source'].get('recid')}"
+        )
+    return f
+
 
 class DataCiteSerializer(Schema):
     """DataCite complient schema."""
 
-    identifier = fields.Method("get_identifier")
-    creator = fields.Method("get_creator")
+    doi = fields.Method("get_identifier")
+    creators = fields.Method("get_creator")
     titles = fields.Method("get_titles")
-    resourceType = fields.Method("get_resourcetype")
+    # resourceType = fields.Method("get_resourcetype")
     publisher = fields.Str()
     publicationYear = fields.Str(attribute="date_published")
+    types = fields.Method("get_resourcetype")
+    rightsList = fields.Method("get_rights")
+    descriptions = fields.Method("get_description")
+
+    def get_description(self, obj):
+        descriptions = []
+        if "abstract" in obj and "description" in obj["abstract"]:
+            descriptions.append(
+                {
+                    "descriptionType": "abstract",
+                    "description": obj["abstract"]["description"],
+                }
+            )
+        return descriptions
+
+    def get_rights(self, obj):
+        return [{"rights": "open access"}]
 
     def get_identifier(self, obj):
         """Get identifier based on doi field."""
-        return {"identifier": obj.get("doi", ""), "identifierType": "DOI"}
+        return obj.get("doi", "")
 
     def get_creator(self, obj):
         """Get creators based on authors or collaboration field."""
         authors = obj.get("authors", [obj.get("collaboration", None)])
         creators = [
             {
-                "creatorName": author["name"],
+                "name": author["name"],
                 "nameIdentifiers": (
                     [
                         {
@@ -82,4 +110,7 @@ class DataCiteSerializer(Schema):
             type_primary = obj["type"].get("primary", "")
             if type_primary in ["Software", "Dataset"]:
                 resource_type = type_primary
-        return {"resourceTypeGeneral": resource_type}
+        return {
+            "resourceTypeGeneral": resource_type,
+            "resourceType": resource_type,
+        }
