@@ -598,9 +598,9 @@ OAISERVER_METADATA_FORMATS = {
         "serializer": "cernopendata.modules.records.serializers.dublincore:dumps_etree",
     },
     "oai_datacite": {
-        "serializer": "invenio_rdm_records.oai:oai_datacite_etree",
-        "schema": "http://schema.datacite.org/oai/oai-1.1/oai.xsd",
-        "namespace": "http://schema.datacite.org/oai/oai-1.1/",
+        "serializer": "cernopendata.modules.datacite.serializers:datacite_etree",
+        "schema": "http://schema.datacite.org/meta/kernel-4.1/metadata.xsd",
+        "namespace": "http://schema.datacite.org/meta/kernel-4.1",
     },
     'datacite4': {
         'namespace': 'http://datacite.org/schema/kernel-4',
