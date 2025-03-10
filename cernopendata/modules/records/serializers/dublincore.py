@@ -21,7 +21,10 @@ def dumps_etree(pid, record, **kwargs):
     }
     if "formats" in record["_source"]["distribution"]:
         data["formats"] = record["_source"]["distribution"]["formats"]
-    if "abstract" in record["_source"] and "description" in record["_source"]["abstract"]:
+    if (
+        "abstract" in record["_source"]
+        and "description" in record["_source"]["abstract"]
+    ):
         data["descriptions"] = [record["_source"]["abstract"]["description"]]
 
     return simpledc.dump_etree(data)
