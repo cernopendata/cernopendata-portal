@@ -64,7 +64,9 @@ class GlobalVariables:
         # check config for custom setting
         if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
             try:
-                exclude_experiments = json.loads(exclude_experiments.replace("'", '"'))
+                exclude_experiments = json.loads(
+                    str(exclude_experiments).replace("'", '"')
+                )
                 logger.info("Loaded experiments from EXCLUDE_EXPERIMENTS")
 
             except json.JSONDecodeError:
@@ -73,7 +75,7 @@ class GlobalVariables:
                     "Config EXCLUDE_EXPERIMENTS is not a json list! "
                     "Using default..."
                 )
-                return
+                exclude_experiments = []
 
             exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
 

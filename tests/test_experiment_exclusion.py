@@ -19,7 +19,8 @@ def app_param(default_config):
     """Flask application fixture."""
 
     def _app_with_config(exclude=None):
-        app = create_app(**default_config, EXCLUDE_EXPERIMENTS=exclude)
+        excl_env = str(exclude) if isinstance(exclude, list) else exclude
+        app = create_app(**default_config, EXCLUDE_EXPERIMENTS=excl_env)
 
         with app.app_context():
             return app
