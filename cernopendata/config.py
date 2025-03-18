@@ -626,6 +626,3 @@ ANNOUNCEMENT_BANNER_MESSAGE = os.getenv("ANNOUNCEMENT_BANNER_MESSAGE", "")
 
 # THIS ONE IS ONLY FOR THE DEVELOPMENT
 RATELIMIT_PER_ENDPOINT = {"static": "600 per minute"}
-
-# Set this to a python list or a json-list (string) to exclude multiple experiments
-EXCLUDE_EXPERIMENTS = os.environ.get("EXCLUDE_EXPERIMENTS")
