@@ -33,9 +33,12 @@ history = open("CHANGES.rst").read()
 
 # Get the version string. Cannot be done with import!
 g = {}
-with open(os.path.join("cernopendata", "version.py"), "rt") as fp:
-    exec(fp.read(), g)
-    version = g["__version__"]
+try:
+    with open(os.path.join("cernopendata", "version.py"), "rt") as fp:
+        exec(fp.read(), g)
+        version = g["__version__"]
+except FileNotFoundError:
+    version = None
 
 tests_require = [
     "check-manifest>=0.25",

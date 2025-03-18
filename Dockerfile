@@ -72,19 +72,23 @@ ENV PATH=$PATH:${INVENIO_INSTANCE_PATH}/python/bin
 
 # Add CERN Open Data Portal sources to `code` and work there
 WORKDIR ${CODE_DIR}
-COPY . ${CODE_DIR}
-USER root
-RUN chown -R "${INVENIO_USER_ID}":root "${CODE_DIR}"
-USER ${INVENIO_USER_ID}
 
 # Debug off by default
 ARG DEBUG=""
 ENV DEBUG=${DEBUG:-""}
 
-# Install CERN Open Data Portal sources
+# Install deps to speed up re-building the image
+COPY setup.py README.rst CHANGES.rst ${CODE_DIR}/
 # hadolint ignore=DL3013,SC2086
 RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
-    pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check
+  pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check
+
+# Install CERN Open Data Portal sources
+COPY . ${CODE_DIR}
+# hadolint ignore=DL3013,SC2086
+RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
+    pip install --no-cache-dir --user --no-deps ${FLAGS} ".[all]" && pip check
+
 # Create instance
 RUN scripts/create-instance.sh
 
