@@ -2,6 +2,7 @@
 
 import logging
 import typing
+import json
 
 from flask import Flask, request
 from counter_robots import is_robot_or_machine
@@ -23,6 +24,7 @@ class GlobalVariables:
         "atlas": {"name": "ATLAS", "url": "atlas.cern"},
         "cms": {"name": "CMS", "url": "cms.cern"},
         "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch"},
+        "jade": {"name": "JADE", "url": "wwwjade.mpp.mpg.de"},
         "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch"},
         "opera": {"name": "OPERA", "url": "en.wikipedia.org/wiki/OPERA_experiment"},
         "phenix": {
@@ -50,7 +52,9 @@ class GlobalVariables:
     def set_experiments(app):
         """Sets the experiments to be displayed in templates.
 
-        Use config `CERNOPENDATA_EXPERIMENTS` to exclude experiments.
+        Use config `EXCLUDE_EXPERIMENTS` to exclude experiments.
+        Please pass a JSON list of experiments to exclude.
+
         For the experiment_data the following fields are currently supported:
         name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
         """
