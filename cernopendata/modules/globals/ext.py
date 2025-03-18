@@ -1,7 +1,6 @@
 """Global variables and methods for Flask app."""
 
 import logging
-import typing
 import json
 
 from flask import Flask, request
@@ -52,39 +51,41 @@ class GlobalVariables:
     def set_experiments(app):
         """Sets the experiments to be displayed in templates.
 
-        Use config `EXCLUDE_EXPERIMENTS` to exclude experiments.
-        Please pass a JSON list of experiments to exclude.
+        Use environment variable `EXCLUDE_EXPERIMENTS` to exclude experiments.
+        Pass a JSON valid list of experiments to exclude them.
 
-        For the experiment_data the following fields are currently supported:
-        name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
+        For the `experiment_data` the following fields are currently supported:
+        name, url (of experiment), no_opendata_docs (exclude from about page), height and width
+        (image in footer).
         """
         experiment_data = GlobalVariables._experiments
         experiments = list(experiment_data.keys())
 
         # check config for custom setting
         if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
-            if isinstance(exclude_experiments, str):
+            try:
                 exclude_experiments = json.loads(exclude_experiments.replace("'", '"'))
+                logger.info("Loaded experiments from EXCLUDE_EXPERIMENTS")
 
-                logger.info("Loaded experiments from string")
-
-            if not isinstance(exclude_experiments, typing.Iterable):
+            except json.JSONDecodeError:
                 logger.error(
-                    f"Failed to exclude any experiments. Config EXCLUDE_EXPERIMENTS is not a list! "
-                    f"Using default option..."
+                    "Failed to exclude experiments from view. "
+                    "Config EXCLUDE_EXPERIMENTS is not a json list! "
+                    "Using default..."
                 )
                 return
 
             exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
 
             if set(experiments).issuperset(exclude_experiments):
-                logger.info(f"Loaded following experiments in view: {experiments}.")
+                logger.info("Loading following experiments in view: %s.", experiments)
             else:
                 invalid_choice = sorted(
                     set(exclude_experiments).difference(experiments)
                 )
                 logger.warning(
-                    f"Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: {invalid_choice}."
+                    "Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: %s.",
+                    invalid_choice,
                 )
 
             experiments = list(set(experiments).difference(exclude_experiments))
