@@ -67,7 +67,14 @@ class GlobalVariables:
         # check config for custom setting
         if exclude_experiments := os.getenv("CERNOPENDATA_EXCLUDE_EXPERIMENTS"):
             try:
-                exclude_experiments = json.loads(exclude_experiments.replace("'", '"'))
+                excl_list = json.loads(exclude_experiments.replace("'", '"'))
+
+                if not all([isinstance(exp, str) for exp in excl_list]):
+                    raise json.JSONDecodeError(
+                        "CERNOPENDATA_EXCLUDE_EXPERIMENTS is not an iterable yielding strings!",
+                        *("", 0),
+                    )
+
                 logger.info("Loaded experiments from CERNOPENDATA_EXCLUDE_EXPERIMENTS")
 
             except json.JSONDecodeError as e:
@@ -77,7 +84,7 @@ class GlobalVariables:
                 )
                 raise e
 
-            exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
+            exclude_experiments = [exp.lower() for exp in list(excl_list)]
 
             if set(experiments).issuperset(exclude_experiments):
                 logger.info("Loading following experiments in view: %s.", experiments)

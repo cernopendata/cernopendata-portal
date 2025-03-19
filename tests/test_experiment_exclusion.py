@@ -1,5 +1,8 @@
 """Tests for the display experiment exclusion feature."""
 
+import json
+import os
+
 import pytest
 from bs4 import BeautifulSoup
 from conftest import default_config
@@ -18,9 +21,11 @@ EXCLUDE_ABOUT = sorted(
 def app_param(default_config):
     """Flask application fixture."""
 
-    def _app_with_config(exclude=None):
+    def _app_with_config(exclude=""):
         excl_env = str(exclude) if isinstance(exclude, list) else exclude
-        app = create_app(**default_config, EXCLUDE_EXPERIMENTS=excl_env)
+        os.environ["CERNOPENDATA_EXCLUDE_EXPERIMENTS"] = excl_env
+
+        app = create_app(**default_config)
 
         with app.app_context():
             return app
@@ -148,19 +153,9 @@ def test_display_experiments_invalid_setting(app_param):
     # setup
     cases = ["i am not a valid setting", 0, True, {"key": "value"}]
     for case in cases:
-        expected_result = ALL_EXPERIMENTS
-
-        flask_app = app_param(exclude=case)
-
-        # query
-        about, body, footer = run_queries(flask_app)
-
-        # assert content
-        assert body == expected_result
-        assert footer == expected_result
-        assert set(about).difference(EXCLUDE_ABOUT) == set(expected_result).difference(
-            EXCLUDE_ABOUT
-        )
+        # assert
+        with pytest.raises(tuple([json.JSONDecodeError, TypeError])):
+            _ = app_param(exclude=case)
 
 
 def test_display_experiments_json_strings(app_param):
