@@ -31,11 +31,7 @@ class GlobalVariables:
             "width": "auto",
             "no_opendata_docs": True,
         },
-        "totem": {
-            "name": "TOTEM",
-            "url": "totem-experiment.web.cern.ch",
-            "width": "auto",
-        },
+        "totem": {"name": "TOTEM", "url": "totem-experiment.web.cern.ch"},
     }
 
     def __init__(self, app):
