@@ -91,9 +91,8 @@ def database(app):
     from invenio_db import db as db_
     from sqlalchemy_utils.functions import create_database, database_exists
 
-    if not database_exists(str(db_.engine.url)):
-        create_database(str(db_.engine.url))
-
+    if not database_exists(os.environ["INVENIO_SQLALCHEMY_DATABASE_URI"]):
+        create_database(os.environ["INVENIO_SQLALCHEMY_DATABASE_URI"])
     # Use unlogged tables for PostgreSQL (see https://github.com/sqlalchemy/alembic/discussions/1108)
     if db_.engine.name == "postgresql":
         from sqlalchemy.ext.compiler import compiles

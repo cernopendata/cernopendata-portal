@@ -248,10 +248,6 @@ JSONSCHEMAS_URL_SCHEME = "http"
 # HOST_URI
 HOST_URI = "{}://{}".format(JSONSCHEMAS_URL_SCHEME, JSONSCHEMAS_HOST)
 
-# OAI Server
-OAISERVER_RECORD_INDEX = "records"
-OAISERVER_ID_PREFIX = "oai:cernopendata:recid/"
-
 # Records
 # Add tuple as array type on record validation
 # http://python-jsonschema.readthedocs.org/en/latest/validate/#validating-types
@@ -585,10 +581,43 @@ SEARCH_UI_SEARCH_VIEW = search_legacy
 # OAI-PMH
 # =======
 #: Default OpenSearch index.
-OAISERVER_RECORD_INDEX = "records"
+OAISERVER_RECORD_INDEX = "records-record-v1.0.0"
 #: OAI ID prefix.
+# This should be the default value...
 OAISERVER_ID_PREFIX = "oai:opendata.cern.ch:recid/"
-
+OAISERVER_ADMIN_EMAILS = ["cernopendata-team@cern.ch"]
+OAISERVER_XSL_URL = "/static/oai2.xsl"
+OAISERVER_SEARCH_CLS = "cernopendata.modules.records.oai.query:OAIServerSearch"
+OAISERVER_ID_FETCHER = (
+    "cernopendata.modules.records.fetchers.recid:cernopendata_oai_fetcher"
+)
+OAISERVER_METADATA_FORMATS = {
+    "oai_dc": {
+        "namespace": "http://www.openarchives.org/OAI/2.0/oai_dc/",
+        "schema": "http://www.openarchives.org/OAI/2.0/oai_dc.xsd",
+        "serializer": "cernopendata.modules.records.serializers.dublincore:dumps_etree",
+    },
+    "oai_datacite": {
+        "serializer": "cernopendata.modules.datacite.serializers:datacite_etree",
+        "schema": "http://schema.datacite.org/meta/kernel-4.1/metadata.xsd",
+        "namespace": "http://schema.datacite.org/meta/kernel-4.1",
+    },
+    "datacite4": {
+        "namespace": "http://datacite.org/schema/kernel-4",
+        "schema": "http://schema.datacite.org/meta/kernel-4.1/metadata.xsd",
+        "serializer": "cernopendata.modules.datacite.serializers:datacite_etree",
+    },
+    "datacite": {
+        "namespace": "http://datacite.org/schema/kernel-4",
+        "schema": "http://schema.datacite.org/meta/kernel-4.1/metadata.xsd",
+        "serializer": "cernopendata.modules.datacite.serializers:datacite_etree",
+    },
+    "oai_openaire": {
+        "namespace": "http://namespace.openaire.eu/schema/oaire/",
+        "schema": "https://www.openaire.eu/schema/repo-lit/4.0/openaire.xsd",
+        "serializer": "cernopendata.modules.openaire.serializers:openaire_etree",
+    },
+}
 SQLALCHEMY_DATABASE_URI = os.environ.get(
     "APP_SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://localhost/cernopendata"
 )

@@ -42,6 +42,7 @@ RUN yum install -y \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 
+
 RUN echo "Will install xrootd version: $XROOTD_VERSION (latest if empty)" && \
     yum install -y xrootd-"$XROOTD_VERSION" python3-xrootd-"$XROOTD_VERSION" && \
     yum clean -y all
@@ -80,15 +81,14 @@ ENV DEBUG=${DEBUG:-""}
 # Install deps to speed up re-building the image
 COPY setup.py README.rst CHANGES.rst ${CODE_DIR}/
 # hadolint ignore=DL3013,SC2086
-RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
+RUN git config --global url.https://github.com/.insteadOf git://github.com/ && if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
   pip install --no-cache-dir --user ${FLAGS} ".[all]" && pip check
 
 # Install CERN Open Data Portal sources
 COPY . ${CODE_DIR}
 # hadolint ignore=DL3013,SC2086
-RUN if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
+RUN git config --global url.https://github.com/.insteadOf git://github.com/ && if [ "$DEBUG" ]; then FLAGS="-e"; fi && \
     pip install --no-cache-dir --user --no-deps ${FLAGS} ".[all]" && pip check
-
 # Create instance
 RUN scripts/create-instance.sh
 
