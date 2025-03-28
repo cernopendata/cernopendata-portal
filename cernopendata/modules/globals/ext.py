@@ -1,6 +1,8 @@
 """Global variables and methods for Flask app."""
 
 import logging
+import json
+import os
 
 from flask import Flask, request
 from counter_robots import is_robot_or_machine
@@ -15,6 +17,12 @@ class GlobalVariables:
 
     This class loads and holds global variables
     to be used in templates with context_processor.
+
+    For the `_experiments` the following fields are currently supported:
+    - name (of the experiment)
+    - url (of the experiment)
+    - no_opendata_docs (exclude mention from about page)
+    - height and width (image in footer)
     """
 
     _experiments = {
@@ -22,6 +30,7 @@ class GlobalVariables:
         "atlas": {"name": "ATLAS", "url": "atlas.cern"},
         "cms": {"name": "CMS", "url": "cms.cern"},
         "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch"},
+        "jade": {"name": "JADE", "url": "wwwjade.mpp.mpg.de"},
         "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch"},
         "opera": {"name": "OPERA", "url": "en.wikipedia.org/wiki/OPERA_experiment"},
         "phenix": {
@@ -49,37 +58,51 @@ class GlobalVariables:
     def set_experiments(app):
         """Sets the experiments to be displayed in templates.
 
-        Use config `CERNOPENDATA_EXPERIMENTS` to exclude experiments.
-        For the experiment_data the following fields are currently supported:
-        name, url (of experiment), no_opendata_docs (exclude from about), height and width (image in footer)
+        Use environment variable `CERNOPENDATA_EXCLUDE_EXPERIMENTS` to exclude experiments.
+        Pass a JSON valid list of experiment names to exclude them.
         """
         experiment_data = GlobalVariables._experiments
         experiments = list(experiment_data.keys())
 
         # check config for custom setting
-        if exclude_experiments := app.config.get("EXCLUDE_EXPERIMENTS"):
+        if exclude_experiments := os.getenv("CERNOPENDATA_EXCLUDE_EXPERIMENTS"):
             try:
-                exclude_experiments = [exp.lower() for exp in list(exclude_experiments)]
-            except TypeError:
-                logger.error(
-                    f"Failed to exclude any experiments. Config EXCLUDE_EXPERIMENTS is not a list! "
-                    f"Using default option..."
-                )
-            else:
-                if set(experiments).issuperset(exclude_experiments):
-                    logger.info(f"Loaded following experiments in view: {experiments}.")
-                else:
-                    invalid_choice = sorted(
-                        set(exclude_experiments).difference(experiments)
-                    )
-                    logger.warning(
-                        f"Loaded EXCLUDE_EXPERIMENTS with errors. Following are invalid: {invalid_choice}."
+                excl_list = json.loads(exclude_experiments.replace("'", '"'))
+
+                if not all([isinstance(exp, str) for exp in excl_list]):
+                    raise json.JSONDecodeError(
+                        "CERNOPENDATA_EXCLUDE_EXPERIMENTS is not an iterable yielding strings!",
+                        *("", 0),
                     )
 
-                experiments = list(set(experiments).difference(exclude_experiments))
+                logger.info("Loaded experiments from CERNOPENDATA_EXCLUDE_EXPERIMENTS")
+
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "Failed to exclude experiments from view. "
+                    "Config CERNOPENDATA_EXCLUDE_EXPERIMENTS is not a json list!"
+                )
+                raise e
+
+            exclude_experiments = [exp.lower() for exp in list(excl_list)]
+
+            if set(experiments).issuperset(exclude_experiments):
+                logger.info("Loading following experiments in view: %s.", experiments)
+            else:
+                invalid_choice = sorted(
+                    set(exclude_experiments).difference(experiments)
+                )
+                logger.warning(
+                    "Loaded CERNOPENDATA_EXCLUDE_EXPERIMENTS with errors. "
+                    "Following are invalid: %s.",
+                    invalid_choice,
+                )
+
+            experiments = list(set(experiments).difference(exclude_experiments))
+
         else:
             logger.info(
-                "EXCLUDE_EXPERIMENTS not set. Using default experiments in view."
+                "CERNOPENDATA_EXCLUDE_EXPERIMENTS not set. Using default experiments in view."
             )
 
         # load settings as a "global" variable for templates
