@@ -91,7 +91,8 @@ install_requires = [
     "jupyter-client==7.1.0",
     "invenio-jsonschemas>=2.0.0,<3.0.0",
     "pluggy==0.13.1",
-    "invenio-oaiserver>=3.2.0,<4.0.0",
+    # Version 3.3.1 rolls back the changes of 3.2.0 :(. Waiting for at least 3.4...
+    "invenio-oaiserver==3.2.0",
     # Custom Invenio `postgresql` bundle
     "invenio-db[versioning,postgresql]>=2.0.0,<3.0.0",
     "invenio-mail>=2.1.1",

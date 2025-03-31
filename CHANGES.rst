@@ -1,5 +1,12 @@
 Changes
 =======
+Version 0.3.0 (released 2025-03-31)
+----------------------------
+- dependencies: Moved to Flask 3
+- openaire: Setting up oai2d server
+- cold_data: Store multiple uri for a single file
+- facets: Changing the availability toggle by a multiple option
+
 Version 0.2.11 (released 2025-02-19)
 ----------------------------
 - ui: fixed bug in selecting the file to download from file indices
