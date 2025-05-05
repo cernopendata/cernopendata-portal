@@ -51,7 +51,7 @@ class DataCiteMDSClientWrapper(DataCiteMDSClient):
 
     def doi_get_all(self):
         """Get list of all registered DOIs."""
-        r = self._request_factory()
+        r = self._create_request()
         r.get("doi")
 
         if r.code == 200:
