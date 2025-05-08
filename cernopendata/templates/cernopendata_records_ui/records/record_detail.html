@@ -175,7 +175,6 @@
             <span><strong>{{record.distribution.size | filesizeformat(true) }}</strong> in total.</span>
             {% endif %}
         </div>
-
         {% if record.distribution.get("availability", "online") != "online" %}
         <div class="ui info message">
             <div class="header">
@@ -430,6 +429,13 @@
 
 {% block files_block %}
     <div>
+        <h3>Files and indexes</h3>
+        <div id="request-record-react-app" data-record-id="{{ record.recid }}"
+             data-availability="{{ record.availability }}" class="pb-20"
+             data-size="{{record.distribution.size}}" data-files="{{record.distribution.number_files}}"
+        >
+
+        </div>
         {{ files_box_react_app() }}
     </div>
 {% endblock files_block %}

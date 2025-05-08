@@ -49,7 +49,6 @@ from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
-
 MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
 
 

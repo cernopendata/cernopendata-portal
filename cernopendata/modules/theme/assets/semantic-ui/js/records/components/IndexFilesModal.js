@@ -98,16 +98,19 @@ export default function IndexFilesModal({ open, setOpen, indexFile }) {
                             {toHumanReadableSize(file.size)}
                           </Table.Cell>
                           <Table.Cell collapsing>
-                          {file.uri && (
-                            <Button
-                              as="a"
-                              icon
-                              size="mini"
-                              primary
-                              {...downloadProp}
-                            >
-                              <Icon name="download" />
-                            </Button>)}
+                             <span
+                             data-html="true"
+                               data-content={
+                                file.availability === "ondemand"
+                                    ? "This file is not currently available. If you want to access it, please request it using the button `Request all files`"
+                                    : "Download file"
+                               }>
+                                <Button as="a" icon size="mini" primary {...downloadProp}
+                                  disabled={file.availability === "ondemand"}
+                                  >
+                                 <Icon name="download" />Download
+                                </Button>
+                             </span>
                           </Table.Cell>
                         </Table.Row>
                       );

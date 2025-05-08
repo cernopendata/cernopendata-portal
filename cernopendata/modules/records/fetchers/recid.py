@@ -2,12 +2,12 @@
 
 from collections import namedtuple
 
-from ..providers.recid import RecordUUIDProvider
-from ..providers.termid import TermUUIDProvider
-from ..providers.docid import DocUUIDProvider
-
 from invenio_oaiserver.provider import OAIIDProvider
 from invenio_pidstore.models import PIDStatus
+
+from ..providers.docid import DocUUIDProvider
+from ..providers.recid import RecordUUIDProvider
+from ..providers.termid import TermUUIDProvider
 
 FetchedPID = namedtuple("FetchedPID", ["provider", "pid_type", "pid_value"])
 

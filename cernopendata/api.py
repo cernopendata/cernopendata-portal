@@ -45,7 +45,7 @@ class FileIndexIterator(object):
         """Get a specific file."""
         obj = FileIndexMetadata.get(self.record, key)
         if obj:
-            return self.file_cls(obj, self.filesmap.get(obj.key, {}))
+            return self.file_cls(obj, self.file_indices.get(obj.key, {}))
         raise KeyError(key)
 
     def flush(self):
@@ -96,7 +96,18 @@ class RecordFilesWithIndex(Record):
         if len(self._avl.keys()) == 1:
             self["availability"] = list(self._avl.keys())[0]
         else:
-            self["availability"] = "sample files"
+            self["availability"] = "partially"
+
+    def flush_indices(self):
+        """Updates the _file_indices information based on what exists on the database."""
+        print("Updating the record with file indices")
+        self["_file_indices"] = []
+        # First, let's get all the file indices that this record has
+        for elem in BucketTag.query.filter_by(value=str(self.id), key="record").all():
+            self["_file_indices"].append(
+                FileIndexMetadata.get(None, str(elem.bucket)).dumps()
+            )
+        self.check_availability()
 
 
 class FileIndexMetadata:
@@ -109,6 +120,7 @@ class FileIndexMetadata:
         self._size = 0
         self._files = []
         self._description = ""
+        self._bucket = ""
 
     def __repr__(self):
         """Representation of the object."""
@@ -131,6 +143,7 @@ class FileIndexMetadata:
         rb._description = description
         BucketTag.create(rb._bucket, "index_name", index_file_name)
         BucketTag.create(rb._bucket, "record", record.model.id)
+        BucketTag.create(rb._bucket, "description", description)
         print(f"The file index contains {len(index_content)} entries.")
         for entry in index_content:
             entry_file = FileInstance.create()
@@ -162,9 +175,13 @@ class FileIndexMetadata:
             .one()
             .value
         )
-        bucket = Bucket.get(bucket_id)
-        for o in ObjectVersion.get_by_bucket(bucket).all():
-            f = FileObject(o, {})
+        tag = BucketTag.query.filter_by(
+            bucket_id=str(bucket_id), key="description"
+        ).first()
+        obj._description = tag.value if tag else obj._index_file_name
+        obj._bucket = Bucket.get(bucket_id)
+        for o in ObjectVersion.get_by_bucket(obj._bucket).all():
+            f = MultiURIFileObject(o, {})
             # Let's put also the uri
             f["uri"] = FileInstance.get(str(o.file_id)).uri
             f["filename"] = f["uri"].split("/")[-1]
@@ -196,6 +213,7 @@ class FileIndexMetadata:
             "size": self._size,
             "files": files,
             "description": self._description,
+            "bucket": str(self._bucket),
         }
 
     def flush(self):
