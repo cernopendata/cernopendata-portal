@@ -1,5 +1,11 @@
 Changes
 =======
+Version 0.4.0 (released 2025-05-26)
+----------------------------
+- First version with Cold Storage Support
+- UI to request staging from tape
+- New celery tasks to check for requests and the status of transfers
+
 Version 0.3.0 (released 2025-03-31)
 ----------------------------
 - dependencies: Moved to Flask 3
