@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.4.1 (released 2025-05-26)
+----------------------------
+- Bug in the celery task for the requests
+
 Version 0.4.0 (released 2025-05-26)
 ----------------------------
 - First version with Cold Storage Support
@@ -36,7 +40,7 @@ Version 0.2.9 (released 2025-01-10)
 Version 0.2.8 (released 2024-12-20)
 ----------------------------
 
-- content: doc for the 10 year aaniversary
+- content: doc for the 10 year anniversary
 - bug fixes: fix to download big files and keeping the original name of files within an index
 
 Version 0.2.7 (released 2024-12-10)

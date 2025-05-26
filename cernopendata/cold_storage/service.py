@@ -33,7 +33,13 @@ from sqlalchemy import func
 
 from cernopendata.api import RecordFilesWithIndex
 
-from .api import FileAvailability, RecordAvailability, Request, Transfer
+from .api import (
+    ColdStorageActions,
+    FileAvailability,
+    RecordAvailability,
+    Request,
+    Transfer,
+)
 from .catalog import Catalog
 from .manager import ColdStorageManager
 from .models import RequestMetadata, TransferMetadata
@@ -103,21 +109,28 @@ class RequestService:
     def check_submitted():
         """Check if there are any new transfers submitted."""
         manager = ColdStorageManager()
-        for action_enum in ColdStorageActions:
-            action = action_enum.value
+        for action in ColdStorageActions:
             active_transfers_count = TransferMetadata.query.filter(
-                TransferMetadata.finished.is_(None), TransferMetadata.action == action
+                TransferMetadata.finished.is_(None),
+                TransferMetadata.action == action.value,
             ).count()
-            threshold = Transfer.get_active_transfers_threshold(action_enum)
+            threshold = Transfer.get_active_transfers_threshold(action)
+
+            if not threshold:
+                logger.info(
+                    f"For the action {action.value} there is no threshold. Ignoring"
+                )
+                continue
 
             logger.info(
-                f"Checking if we can {action} more records: active {active_transfers_count}/{threshold}"
+                f"Checking if we can {action.value} more records: active {active_transfers_count}/{threshold}"
             )
+
             submitted = 0
             limit = threshold - active_transfers_count
             if limit > 0:
                 transfers = RequestMetadata.query.filter_by(
-                    status="submitted", action=action
+                    status="submitted", action=action.value
                 ).all()
 
                 for transfer in transfers:
@@ -155,21 +168,20 @@ class RequestService:
     @staticmethod
     def check_running():
         """Check the records that are being archived."""
-        for action_enum in ColdStorageManager:
-            action = action_enum.value
+        for action in ColdStorageActions:
 
             requests = RequestMetadata.query.filter_by(
-                status="started", action=action
+                status="started", action=action.value
             ).all()
-            logger.debug(f"Checking the {len(requests)} {action} requests")
+            logger.debug(f"Checking the {len(requests)} {action.value} requests")
             completed = 0
             for request in requests:
                 record = RecordFilesWithIndex.get_record(request.record_id)
 
-                if action == "stage":
+                if action == ColdStorageActions.STAGE:
                     if record["availability"] != RecordAvailability.ONLINE.value:
                         continue
-                elif action == "archive":
+                elif action == ColdStorageActions.ARCHIVE:
                     files = (f for index in record.file_indices for f in index["files"])
                     missing = next(
                         (
