@@ -430,12 +430,14 @@
 {% block files_block %}
     <div>
         <h3>Files and indexes</h3>
-        <div id="request-record-react-app" data-record-id="{{ record.recid }}"
-             data-availability="{{ record.availability }}" class="pb-20"
-             data-size="{{record.distribution.size}}" data-files="{{record.distribution.number_files}}"
-        >
+        {% if record.distribution %}
+            <div id="request-record-react-app" data-record-id="{{ record.recid }}"
+                 data-availability="{{ record.availability }}" class="pb-20"
+                 data-size="{{record.distribution.size}}" data-files="{{record.distribution.number_files}}"
+            >
 
-        </div>
+            </div>
+        {% endif %}
         {{ files_box_react_app() }}
     </div>
 {% endblock files_block %}
