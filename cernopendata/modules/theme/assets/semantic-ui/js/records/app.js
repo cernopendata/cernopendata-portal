@@ -50,7 +50,7 @@ if (requestContainer) {
 };
 const domContainer = document.querySelector("#files-box-react-app");
 if (domContainer) {
-    const recordAvailability= domContainer.dataset.recordavailability;
+    const recordAvailability = domContainer.dataset.recordavailability;
     ReactDOM.render(<FilesBoxApp recordAvailability={recordAvailability} /> , domContainer);
 }
 

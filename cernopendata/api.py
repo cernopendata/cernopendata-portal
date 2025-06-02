@@ -13,7 +13,7 @@ from invenio_files_rest.models import (
 )
 from invenio_records_files.api import FileObject, FilesIterator, Record
 
-from cernopendata.cold_storage.api import RecordAvailability
+from cernopendata.cold_storage.api import FileAvailability, RecordAvailability
 
 
 class FileIndexIterator(object):
@@ -95,7 +95,9 @@ class RecordFilesWithIndex(Record):
                 self._avl[avl] = 0
             self._avl[avl] += 1
         self["_availability_details"] = self._avl
-        if len(self._avl.keys()) == 1:
+        if len(self._avl.keys()) == 0:
+            self["availability"] = RecordAvailability.ONLINE.value
+        elif len(self._avl.keys()) == 1:
             self["availability"] = list(self._avl.keys())[0]
         else:
             self["availability"] = RecordAvailability.PARTIAL.value
@@ -259,7 +261,7 @@ class MultiURIFileObject(FileObject):
         """Defines the availability of a file: online (disk) or ondemand (tape)."""
         if "availability" not in self.data:
             if ObjectVersionTag.get(str(self.obj.version_id), "hot_deleted"):
-                self.data["availability"] = "ondemand"
+                self.data["availability"] = FileAvailability.ONDEMAND.value
             else:
-                self.data["availability"] = "online"
+                self.data["availability"] = FileAvailability.ONLINE.value
         return self.data["availability"]
