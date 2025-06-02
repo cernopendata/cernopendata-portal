@@ -43,7 +43,9 @@ class ColdStorageManager:
 
     def _is_qos(self, file, action):
         """Check if a file is in a given QoS."""
-        logger.debug(f"  Checking if the file {file['key']} is already {action}d...")
+        logger.debug(
+            f"  Checking if the file {file['key']} is already {action.value}d..."
+        )
         if action == ColdStorageActions.ARCHIVE:
             return "tags" in file and "uri_cold" in file["tags"]
         return "tags" not in file or "hot_deleted" not in file["tags"]
@@ -127,8 +129,9 @@ class ColdStorageManager:
             transfers += self._move_record_file(
                 record.id, file, action, move_function, register, force, dry
             )
-            if len(transfers) >= limit:
-                logger.info("Reached the limit. Going back")
+            if limit and len(transfers) >= limit:
+                logger.info(f"Reached the limit {limit}. Going back")
+                break
         logger.info(f"{len(transfers)} transfers have been issued")
         return transfers
 
@@ -162,12 +165,12 @@ class ColdStorageManager:
         if not record:
             return []
         for file in self._catalog.get_files_from_record(record, limit):
-            if not self._is_qos(file, "cold"):
+            if not self._is_qos(file, ColdStorageActions.ARCHIVE):
                 logger.info(
                     "I don't want to remove the hot copy, since the cold does not exist!"
                 )
                 continue
-            if not self._is_qos(file, "hot"):
+            if not self._is_qos(file, ColdStorageActions.STAGE):
                 logger.debug("the file is not in hot. Ignoring it")
                 continue
             logger.debug(f"ready to be deleted")
