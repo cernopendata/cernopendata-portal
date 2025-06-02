@@ -46,6 +46,7 @@ function FileActionsDropdown({ file, table_type, setOpenModal, setSelectedFile, 
     }, 0);
     return () => clearTimeout(timeout);
   }, []);
+  const isOnline = Object.keys(file.availability).length === 1 && file.availability.hasOwnProperty('online');
 
   return (
     <div
@@ -62,18 +63,20 @@ function FileActionsDropdown({ file, table_type, setOpenModal, setSelectedFile, 
           title="Download this file in plain text format"
           download
         >
-          Download txt of all files
+          Format: txt
         </a>
-        <a
-          className="item ui fluid button"
-          href={`${getFileUri(table_type, file.key, 'txt')}?qos=hot`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Download this file in plain text format"
-          download
-        >
-          Download txt of hot files
-        </a>
+        { !isOnline && (
+            <a
+              className="item ui fluid button"
+              href={`${getFileUri(table_type, file.key, 'txt')}?qos=hot`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download this file in plain text format"
+              download
+            >
+              Format: txt (online files only)
+            </a>
+        )}
         <a
           className="item ui fluid button"
           href={getFileUri(table_type, file.key)}
@@ -82,18 +85,20 @@ function FileActionsDropdown({ file, table_type, setOpenModal, setSelectedFile, 
           title="Download this file in JSON format"
           download
         >
-          Download json of all files
+          Format: json
         </a>
-        <a
-          className="item ui fluid button"
-          href={`${getFileUri(table_type, file.key)}?qos=hot`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Download this file in JSON format"
-          download
-        >
-          Download json of hot files
-        </a>
+        { !isOnline && (
+            <a
+              className="item ui fluid button"
+              href={`${getFileUri(table_type, file.key)}?qos=hot`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download this file in JSON format"
+              download
+            >
+              Format: json (online files only)
+            </a>
+         )}
       </div>
     </div>
   );
