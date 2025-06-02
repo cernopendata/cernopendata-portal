@@ -62,7 +62,7 @@ class FileAvailability(Enum):
 
 
 class RecordAvailability(Enum):
-    """Define the possible availablities for a record."""
+    """Define the possible availabilities for a record."""
 
     ONLINE = "online"
     ONDEMAND = "on demand"
