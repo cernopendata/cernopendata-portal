@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.4.2 (released 2025-06-03)
+----------------------------
+- cold: Records without any files or file indices will be marked as Online
+
 Version 0.4.1 (released 2025-05-26)
 ----------------------------
 - Bug in the celery task for the requests
