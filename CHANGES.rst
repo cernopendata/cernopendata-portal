@@ -1,6 +1,10 @@
 Changes
 =======
+Version 0.4.3 (released 2025-06-05)
+----------------------------
+- cold: Reduce the number of options for index files with only online files
 Version 0.4.2 (released 2025-06-03)
+
 ----------------------------
 - cold: Records without any files or file indices will be marked as Online
 
