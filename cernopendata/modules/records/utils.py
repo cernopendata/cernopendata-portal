@@ -91,25 +91,26 @@ def get_file_index(pid, record, file_index, **kwargs):
     entry_name = file_index.replace(".txt", ".json")
     qos = request.args.get("qos")
     for entry in record.file_indices:
-        # Apply filtering regardless of return type
-        filtered_files = []
-        for file in entry["files"]:
-            # Exclude deleted hot files if qos=hot
-            if qos == "hot" and "hot_deleted" in file.get("tags", {}):
-                continue
-            filtered_files.append(file)
+        if entry["key"] == entry_name:
+            # Apply filtering regardless of return type
+            filtered_files = []
+            for file in entry["files"]:
+                # Exclude deleted hot files if qos=hot
+                if qos == "hot" and "hot_deleted" in file.get("tags", {}):
+                    continue
+                filtered_files.append(file)
 
-        # Return raw JSON (as before) if .json was explicitly requested
-        if entry_name == file_index:
-            filtered_entry = dict(entry)
-            filtered_entry["files"] = filtered_files
-            return filtered_entry
+            # Return raw JSON (as before) if .json was explicitly requested
+            if entry_name == file_index:
+                filtered_entry = dict(entry)
+                filtered_entry["files"] = filtered_files
+                return filtered_entry
 
-        # Otherwise, return list of URIs in text/plain
-        to_return = [f["uri"] + "\n" for f in filtered_files]
-        resp = Response(to_return)
-        resp.headers["Content-Type"] = "text/plain"
-        return resp
+            # Otherwise, return list of URIs in text/plain
+            to_return = [f["uri"] + "\n" for f in filtered_files]
+            resp = Response(to_return)
+            resp.headers["Content-Type"] = "text/plain"
+            return resp
     abort(404)
 
 
