@@ -37,7 +37,7 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
   if (availability === "partially") {
     message =
       "Please note that only a subset of files are available for this dataset. If you are interested in accessing all of them, please request them. Note that the file transfer to online storage may take several weeks or months in case of a large amount of data.";
-  } else if (availability === "ondemand") {
+  } else if (availability === "on demand") {
     message =
       "Please note this dataset is currently not available. If you are interested in accessing all of them, please request them. Note that the file transfer to online storage may take several weeks or months in case of a large amount of data.";
   } else if (availability === "requested") {

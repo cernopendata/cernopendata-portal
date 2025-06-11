@@ -105,7 +105,8 @@ for filename in record_json:
                             else:
                                 print("DIFFERENT ERROR")
             if update:
-                # my_record.flush_indices()
+                my_record.files.flush()
+                my_record.flush_indices()
                 my_record.commit()
                 try:
                     indexer.index(my_record)

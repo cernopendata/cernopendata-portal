@@ -377,7 +377,7 @@ def transfer_requests(args):
         status=status, action=action, record=record, summary=True
     )
     summary = [
-        {"status": s, "action": a, "count": c, "files": n, "size": size}
+        {"status": s, "action": a, "count": c, "files": n, "size": int(size)}
         for s, a, c, n, size in summary_raw
     ]
 

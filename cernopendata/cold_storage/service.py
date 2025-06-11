@@ -137,7 +137,7 @@ class RequestService:
                     info = manager.doOperation(
                         action,
                         transfer.record_id,
-                        limit=limit,
+                        limit=limit - submitted,
                         register=True,
                         force=False,
                         dry=False,
@@ -157,13 +157,12 @@ class RequestService:
                     else:
                         transfer.status = "started"
                     db.session.add(transfer)
-                    limit -= submitted
-                    if limit <= 0:
+                    db.session.commit()
+                    if limit - submitted <= 0:
                         logger.info("We have submitted enough. Stopping")
                         break
             if submitted:
                 logger.info(f"{submitted} transfers have been submitted!")
-            db.session.commit()
 
     @staticmethod
     def check_running():
