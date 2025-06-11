@@ -140,7 +140,8 @@ class OpenAireSerializer(Schema):
         """Get the access rights. Assume everything is open access."""
         return {
             "rights": {
-                "@rightsURI": "info:eu-repo/semantics/openAccess",
+                "@rightsURI": "http://purl.org/coar/access_right/c_abf2",
+                "#text": "open access",
             }
         }
 

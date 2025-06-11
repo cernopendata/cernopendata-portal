@@ -104,11 +104,11 @@ export default function IndexFilesModal({ open, setOpen, indexFile, recordAvaila
                           </Table.Cell>
                           <Table.Cell collapsing>
                             <Popup
-                              disabled={file.availability !== 'ondemand'}
+                              disabled={file.availability !== 'on demand'}
                               content={`This file is not currently available. ${disableMessage}`}
                               trigger={
                                 <span>
-                                  <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'ondemand'}>
+                                  <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'on demand'}>
                                     <Icon name="download" />Download
                                   </Button>
                                 </span>

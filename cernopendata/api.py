@@ -104,7 +104,6 @@ class RecordFilesWithIndex(Record):
 
     def flush_indices(self):
         """Updates the _file_indices information based on what exists on the database."""
-        print("Updating the record with file indices")
         self["_file_indices"] = []
         # First, let's get all the file indices that this record has
         for elem in BucketTag.query.filter_by(value=str(self.id), key="record").all():
