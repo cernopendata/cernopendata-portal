@@ -25,3 +25,8 @@
  */
 
 export const stripHtml = (input) => input?.replace(/<[^>]*>?/gm, "");
+
+export const safeParse = (v, fallback) => {
+  const num = Number(v);
+  return Number.isFinite(num) ? num : fallback;
+};

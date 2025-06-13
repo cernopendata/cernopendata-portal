@@ -506,7 +506,12 @@ RECORDS_REST_FACETS = {
             experiment=dict(terms=dict(field="experiment", order=dict(_key="asc"))),
             availability=dict(terms=dict(field="availability")),
             year=dict(
-                terms=dict(field="date_created", size=70, order=dict(_key="asc"))
+                date_histogram=dict(
+                    field="date_created",
+                    interval="year",
+                    format="yyyy",
+                    min_doc_count=1,
+                )
             ),
             file_type=dict(
                 terms=dict(
@@ -556,7 +561,7 @@ RECORDS_REST_FACETS = {
             availability=terms_filter("availability"),
             type=nested_filter("type.primary", "type.secondary"),
             experiment=terms_filter("experiment"),
-            year=terms_filter("date_created"),
+            year=range_filter("date_created"),
             file_type=terms_filter("distribution.formats"),
             tags=terms_filter("tags"),
             collision_type=terms_filter("collision_information.type"),
