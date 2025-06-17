@@ -9,7 +9,7 @@
               <img
                 src="{{ url_for('static', filename='img/experiments/{}.gif'.format(id)) }}"
                 alt="{{ exp.name }} experiment"
-                width="{{ exp.get('width', 55) }}"
+                width="{{ exp.get('width', auto) }}"
                 height="{{ exp.get('height', 55) }}"
               />
             </a>
