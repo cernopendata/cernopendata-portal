@@ -55,11 +55,11 @@ class ColdStorageManager:
     ):
         """Create a new copy of the files of a record in a new QoS."""
         if self._is_qos(file, action):
-            logger.debug(f" it is already {action}d")
-            return []
+            logger.debug(f" it is already {action.value}d")
+            return "done", None
         if Transfer.is_scheduled(file["file_id"], action):
             logger.debug("It is already scheduled")
-            return []
+            return "scheduled", None
         source = (
             file["tags"]["uri_cold"]
             if action == ColdStorageActions.STAGE
@@ -68,7 +68,7 @@ class ColdStorageManager:
         dest_file, method = self._storage.find_url(action, source)
         if not dest_file:
             logger.error(f"I can't find the cold url for {file['uri']}")
-            return []
+            return "error", None
         if not force:
             exists = method.exists_file(dest_file)
             if exists:
@@ -80,59 +80,60 @@ class ColdStorageManager:
                         logger.debug(
                             "It exists, and has the same size and checksum. Registering it"
                         )
-                        return [
-                            Transfer.create(
-                                {
-                                    "record_uuid": record_uuid,
-                                    "key": file["key"],
-                                    "file_id": file["file_id"],
-                                    "method": "cernopendata.cold_storage.transfer.cp",
-                                    "action": action.value,
-                                    "new_filename": dest_file,
-                                    "size": file["size"],
-                                }
-                            )
-                        ]
+                        self._catalog.add_copy(
+                            record_uuid, file["file_id"], action.value, dest_file
+                        )
+                        return "registered", None
                     logger.error(
                         "The size or the checksum is different: {file['size']} vs {exists['size']}"
                     )
-                    return []
+                    return "inconsistent", None
                 logger.error(
                     f"The file '{dest_file}' already exists in the destination storage... "
                     "Should it be registered (hint: `--register`)?"
                 )
-                return []
+                return "to_register", None
         if dry:
             logger.info("Dry run: do not issue any transfer")
-            return []
+            return "dry", None
         entry = move_function(file)
         if not entry:
-            return []
+            return "error", None
         entry["record_uuid"] = record_uuid
         entry["key"] = file["key"]
         entry["file_id"] = file["file_id"]
         entry["size"] = file["size"]
 
-        return [Transfer.create(entry)]
+        return "created", Transfer.create(entry)
 
     def _move_record(
         self, record_uuid, limit, action, move_function, register, force, dry
     ):
         """Internal function to move the fiels of a record."""
         # Let's find the files inside the record
+        summary = {}
         transfers = []
         # Get the record
         record = self._catalog.get_record(record_uuid)
         if not record:
             return []
         for file in self._catalog.get_files_from_record(record):
-            transfers += self._move_record_file(
+            status, new_transfer = self._move_record_file(
                 record.id, file, action, move_function, register, force, dry
             )
+            summary[status] = summary.get(status, 0) + 1
+            if new_transfer:
+                transfers.append(new_transfer)
             if limit and len(transfers) >= limit:
                 logger.info(f"Reached the limit {limit}. Going back")
                 break
-        logger.info(f"{len(transfers)} transfers have been issued")
+        if "registered" in summary:
+            self._catalog.reindex_entries()
+        logger.info(
+            "Summary:"
+            + ", ".join(f"{key}: {value}" for key, value in summary.items())
+            + f"{len(transfers)} transfers have been issued"
+        )
         return transfers
 
     def doOperation(self, action, record_uuid, limit, register, force, dry):

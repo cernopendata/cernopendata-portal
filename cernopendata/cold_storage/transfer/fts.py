@@ -31,24 +31,25 @@ import os
 import fts3.rest.client.easy as fts3
 import gfal2
 
+logger = logging.getLogger(__name__)
+
 
 class TransferManager:
     """Plugin to deal with FTS."""
 
     def __init__(self):
         """Create a TransferManager of type FTS."""
-        endpoint = os.environ["INVENIO_FTS_ENDPOINT"]
-        self._context = fts3.Context(endpoint, verify=True)
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(logging.INFO)
+        self.endpoint = os.environ["INVENIO_FTS_ENDPOINT"]
 
     def _submit(self, job):
         """Submit a transfer."""
         # print("Submiting to fts", job)
         try:
+            if not self._context:
+                self._context = fts3.Context(self.endpoint, verify=True)
             job_id = fts3.submit(self._context, job)
         except Exception as my_exc:
-            self._logger.error(f"Error submitting to fts {my_exc}")
+            logger.error(f"Error submitting to fts {my_exc}")
             return None
         return job_id
 
@@ -78,15 +79,17 @@ class TransferManager:
     def transfer_status(self, transfer_id):
         """Check the status of a transfer."""
         try:
+            if not self._context:
+                self._context = fts3.Context(self.endpoint, verify=True)
             fts_status = fts3.get_job_status(self._context, transfer_id)
         except Exception as e:
-            self._logger.error(f"Error connecting to fts: {e}")
+            logger.error(f"Error connecting to fts: {e}")
             return None, None
         if not fts_status:
-            self._logger.error("Error retrieving the status from fts")
+            logger.error("Error retrieving the status from fts")
             return None, None
         if "job_state" not in fts_status:
-            self._logger.error("The response does not have 'job_state'")
+            logger.error("The response does not have 'job_state'")
             return None, None
         # print("The status in fts is", fts_status['job_state'])
         if fts_status["job_state"] == "FINISHED":
@@ -95,10 +98,14 @@ class TransferManager:
 
     def get_endpoint_info(self):
         """Get information from FTS."""
+        if not self._context:
+            self._context = fts3.Context(self.endpoint, verify=True)
         return self._context.get_endpoint_info()
 
     def whoami(self):
         """Get the user from FTS."""
+        if not self._context:
+            self._context = fts3.Context(self.endpoint, verify=True)
         return fts3.whoami(self._context)
 
     def exists_file(self, filename):
@@ -106,7 +113,7 @@ class TransferManager:
         ctx = gfal2.creat_context()
         # gfal needs https protocol, instead of root.
         filename = filename.replace("root://", "https://")
-        self._logger.debug(f"Checking with gfal if {filename} exists")
+        logger.debug(f"Checking with gfal if {filename} exists")
         try:
             info = ctx.stat(filename)
             checksum = ctx.checksum(filename, "ADLER32")
