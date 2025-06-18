@@ -25,7 +25,7 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
 
   if (
     availability !== "partially" &&
-    availability !== "ondemand" &&
+    availability !== "on demand" &&
     availability !== "requested"
   ) {
     return null;

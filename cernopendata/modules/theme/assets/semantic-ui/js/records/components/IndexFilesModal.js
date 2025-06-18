@@ -89,7 +89,7 @@ export default function IndexFilesModal({ open, setOpen, indexFile, recordAvaila
                         file.size > config.downloadThreshold
                           ? {
                               onClick: () => {
-                                setSelectedFile(file.key);
+                                setSelectedFile(file);
                                 setOpenDownloadModal(true);
                               },
                             }

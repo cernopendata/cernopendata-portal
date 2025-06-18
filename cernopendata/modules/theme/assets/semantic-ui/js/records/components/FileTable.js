@@ -35,7 +35,7 @@ import config from "../config";
 import "./FileTable.scss";
 
 
-function FileActionsDropdown({ file, table_type, setOpenModal, setSelectedFile, getFileUri }) {
+function FileActionsDropdown({ file, table_type, getFileUri }) {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
   };
 
   const hasOnDemandColumn = useMemo(() => {
-    return table_type === "file_index" && items.files.some(file => file.availability?.ondemand);
+    return table_type === "file_index" && items.files.some(file => file.availability?.["on demand"]);
   }, [items.files, table_type]);
 
   return (
@@ -153,7 +153,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
               </Table.Cell>
               {hasOnDemandColumn && (
                 <Table.Cell>
-                  {file.availability?.ondemand && (
+                  {file.availability?.["on demand"] && (
                     <Popup
                         content={file.availability.online ? "Some files of the dataset are available for immediate download" : "The files have to be requested before they are available"}
                         trigger={<div className="ui mini message">{file.availability.online ? "Partially" : "On demand"}</div>}
@@ -179,8 +179,6 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                      <FileActionsDropdown
                        file={file}
                        table_type={table_type}
-                       setOpenModal={setOpenModal}
-                       setSelectedFile={setSelectedFile}
                        getFileUri={getFileUri}
                      />
                    </>

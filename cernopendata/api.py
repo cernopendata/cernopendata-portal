@@ -230,7 +230,7 @@ class MultiURIFileObject(FileObject):
     The extra URI will be stored in ObjectVersionTags.
 
     Files will have an availability, depending on the locations that are available.
-    For instance, if a file is only stored on tape, the availability will be `ondemand`, since the file
+    For instance, if a file is only stored on tape, the availability will be `on demand`, since the file
     needs to be staged before users can access it. If the file is available, the availability will be `online`
     """
 
@@ -257,7 +257,7 @@ class MultiURIFileObject(FileObject):
 
     @property
     def availability(self):
-        """Defines the availability of a file: online (disk) or ondemand (tape)."""
+        """Defines the availability of a file: online (disk) or on demand (tape)."""
         if "availability" not in self.data:
             if ObjectVersionTag.get(str(self.obj.version_id), "hot_deleted"):
                 self.data["availability"] = FileAvailability.ONDEMAND.value
