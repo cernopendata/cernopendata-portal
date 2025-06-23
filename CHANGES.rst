@@ -1,5 +1,10 @@
 Changes
 =======
+Version 0.4.6 (released 2025-06-23)
+---------------------------
+- ui: fix link to index files and files bigger than the download warning threshold
+- cold: staging and archiving requests that do not require transfers do not count for the threshold limit
+
 Version 0.4.3 (released 2025-06-05)
 ----------------------------
 - cold: Reduce the number of options for index files with only online files
