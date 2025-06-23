@@ -139,7 +139,7 @@ export default function IndexFilesModal({ open, setOpen, indexFile, recordAvaila
           setOpen={setOpenDownloadModal}
           filename={selectedFile.filename}
           size={selectedFile.size}
-          uri={getFileUri(selectedFile)}
+          uri={getFileUri(selectedFile.key)}
         />
       )}
     </>
