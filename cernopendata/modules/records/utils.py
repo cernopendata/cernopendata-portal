@@ -145,6 +145,7 @@ def file_download_ui(pid, record, _record_file_factory=None, **kwargs):
                 break
 
     fileobj = _record_file_factory(pid, record, filename)
+    obj = None
     if not fileobj:
         for index in record.file_indices:
             for file in index["files"]:
