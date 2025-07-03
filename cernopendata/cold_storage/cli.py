@@ -36,6 +36,7 @@ from .api import ColdStorageActions
 from .manager import ColdStorageManager
 from .models import Location
 from .service import RequestService, TransferService
+from .storage import Storage
 
 argument_record = click.argument("record", nargs=-1, required=True, metavar="RECORD")
 
@@ -58,6 +59,10 @@ option_limit = click.option(
     type=click.INT,
     help="Specify how many files should be affected. The limit can be a positive or a negative. "
     + "In case of negative numbers, it leaves those many files without issuing transfers",
+)
+
+option_verify = click.option(
+    "-v", "--verify", is_flag=True, help="Verifies that all the files listed exist"
 )
 
 
@@ -154,7 +159,8 @@ def list():
 @cold.command()
 @with_appcontext
 @argument_record
-def list(record):
+@option_verify
+def list(record, verify):
     """Print the urls for an entry.
 
     By default, it prints the urls for all the files of the entry.
@@ -185,14 +191,16 @@ def list(record):
         for f in info:
             stats["files"] += 1
             stats["size"] += f["size"]
-            if "tags" not in f or "hot_deleted" not in f["tags"]:
+            if "hot_deleted" not in f.get("tags", {}):
                 print(f"    * Hot copy: {f['uri']}")
                 stats["hot"] += 1
                 stats["size_hot"] += f["size"]
-            if "tags" in f and "uri_cold" in f["tags"]:
+            if "uri_cold" in f.get("tags", {}):
                 print(f"    * Cold copy: {f['tags']['uri_cold']}")
                 stats["cold"] += 1
                 stats["size_cold"] += f["size"]
+            if verify:
+                stats["errors"] += _verify_files(f)
 
     click.secho(
         f"Summary: {stats['files']} files ({file_size(stats['size'])}), with {stats['hot']} hot copies"
@@ -202,6 +210,45 @@ def list(record):
     if stats["errors"]:
         click.secho(f"The following records have issues: {stats['errors']}", fg="red")
         return -1
+
+
+def _verify_files_exists(uri: str, exists: bool, should_exist: bool) -> str:
+    """Check the consistency between the repo and storage for a given uri."""
+    error = []
+    if should_exist and not exists:
+        error = f"The file '{uri}' does not exist"
+    if exists and not should_exist:
+        error = f"The file '{uri}' exists, and it is not registered"
+    if error:
+        click.secho(f"{error}", fg="red")
+    return error
+
+
+def _verify_files(file: dict) -> list:
+    """Verify that the files registered in the repository exists.
+
+    It also checks if there are similar files
+    that exist in the storage and are not registered
+    """
+    errors = []
+    hot_copy = Storage.verify_file(file["uri"], file["size"], file["checksum"])
+    new_error = _verify_files_exists(
+        file["uri"], hot_copy, "hot_deleted" not in file.get("tags", {})
+    )
+    if new_error:
+        errors.append(new_error)
+
+    if "tags" in file and "uri_cold" in file["tags"]:
+        cold_uri = file["tags"]["uri_cold"]
+    else:
+        cold_uri, _ = Storage.find_url(ColdStorageActions.ARCHIVE, file["uri"])
+    cold_copy = Storage.verify_file(cold_uri, file["size"], file["checksum"])
+    new_error = _verify_files_exists(
+        cold_uri, cold_copy, "uri_cold" in file.get("tags", {})
+    )
+    if new_error:
+        errors.append(new_error)
+    return errors
 
 
 @cold.command()

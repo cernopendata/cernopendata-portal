@@ -65,29 +65,23 @@ class ColdStorageManager:
             if action == ColdStorageActions.STAGE
             else file["uri"]
         )
-        dest_file, method = self._storage.find_url(action, source)
+        dest_file, _ = Storage.find_url(action, source)
         if not dest_file:
             logger.error(f"I can't find the cold url for {file['uri']}")
             return "error", None
         if not force:
-            exists = method.exists_file(dest_file)
+            exists, error = Storage.verify_file(
+                dest_file, file["size"], file["checksum"]
+            )
             if exists:
                 if register:
-                    if (
-                        file["size"] == exists["size"]
-                        and file["checksum"] == f"adler32:{exists['checksum']}"
-                    ):
-                        logger.debug(
-                            "It exists, and has the same size and checksum. Registering it"
-                        )
-                        self._catalog.add_copy(
-                            record_uuid, file["file_id"], action.value, dest_file
-                        )
-                        return "registered", None
-                    logger.error(
-                        "The size or the checksum is different: {file['size']} vs {exists['size']}"
+                    logger.debug(
+                        "It exists, and has the same size and checksum. Registering it"
                     )
-                    return "inconsistent", None
+                    self._catalog.add_copy(
+                        record_uuid, file["file_id"], action.value, dest_file
+                    )
+                    return "registered", None
                 logger.error(
                     f"The file '{dest_file}' already exists in the destination storage... "
                     "Should it be registered (hint: `--register`)?"
@@ -107,7 +101,15 @@ class ColdStorageManager:
         return "created", Transfer.create(entry)
 
     def _move_record(
-        self, record_uuid, limit, action, move_function, register, force, dry
+        self,
+        record_uuid,
+        limit,
+        action,
+        move_function,
+        register,
+        force,
+        dry,
+        max_transfers,
     ):
         """Internal function to move the fiels of a record."""
         # Let's find the files inside the record
@@ -117,15 +119,15 @@ class ColdStorageManager:
         record = self._catalog.get_record(record_uuid)
         if not record:
             return []
-        for file in self._catalog.get_files_from_record(record):
+        for file in self._catalog.get_files_from_record(record, limit):
             status, new_transfer = self._move_record_file(
                 record.id, file, action, move_function, register, force, dry
             )
             summary[status] = summary.get(status, 0) + 1
             if new_transfer:
                 transfers.append(new_transfer)
-            if limit and len(transfers) >= limit:
-                logger.info(f"Reached the limit {limit}. Going back")
+            if max_transfers and len(transfers) >= max_transfers:
+                logger.info(f"Reached the limit {max_transfers}. Going back")
                 break
         if "registered" in summary:
             self._catalog.reindex_entries()
@@ -136,7 +138,9 @@ class ColdStorageManager:
         )
         return transfers
 
-    def doOperation(self, action, record_uuid, limit, register, force, dry):
+    def doOperation(
+        self, action, record_uuid, limit, register, force, dry, max_transfers=0
+    ):
         """Internal function."""
         if action in [ColdStorageActions.ARCHIVE, ColdStorageActions.STAGE]:
             if action == ColdStorageActions.ARCHIVE:
@@ -151,6 +155,7 @@ class ColdStorageManager:
                 register,
                 force,
                 dry,
+                max_transfers,
             )
         elif action == ColdStorageActions.CLEAR_HOT:
             return self.clear_hot(record_uuid, limit, dry)

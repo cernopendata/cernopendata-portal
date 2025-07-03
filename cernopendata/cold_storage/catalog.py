@@ -28,6 +28,7 @@ import logging
 from datetime import datetime
 
 from invenio_db import db
+from invenio_files_rest.errors import DuplicateTagError
 from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.models import PersistentIdentifier
@@ -74,7 +75,10 @@ class Catalog:
 
         def _clear_hot_function(version_id):
             """Create a tag for the file identifying that the copy is not available."""
-            ObjectVersionTag.create(version_id, "hot_deleted", str(datetime.now()))
+            try:
+                ObjectVersionTag.create(version_id, "hot_deleted", str(datetime.now()))
+            except DuplicateTagError:
+                logger.warning("The tag `hot_deleted` already existed...")
 
         return self._update_file_and_reindex(record.id, file_id, _clear_hot_function)
 
