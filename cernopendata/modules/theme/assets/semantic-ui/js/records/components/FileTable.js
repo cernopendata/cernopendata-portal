@@ -68,7 +68,7 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         { !isOnline && (
             <a
               className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key, 'txt')}?qos=hot`}
+              href={`${getFileUri(table_type, file.key, 'txt')}?qos=online`}
               target="_blank"
               rel="noopener noreferrer"
               title="Download this file in plain text format"
@@ -90,7 +90,7 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         { !isOnline && (
             <a
               className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key)}?qos=hot`}
+              href={`${getFileUri(table_type, file.key)}?qos=online`}
               target="_blank"
               rel="noopener noreferrer"
               title="Download this file in JSON format"
