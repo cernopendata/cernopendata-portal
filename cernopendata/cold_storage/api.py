@@ -66,7 +66,7 @@ class RecordAvailability(Enum):
 
     ONLINE = "online"
     ONDEMAND = "on demand"
-    PARTIAL = "partially"
+    PARTIAL = "partial"
     REQUESTED = "requested"
 
 
