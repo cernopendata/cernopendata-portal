@@ -24,7 +24,7 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
   };
 
   if (
-    availability !== "partially" &&
+    availability !== "partial" &&
     availability !== "on demand" &&
     availability !== "requested"
   ) {
@@ -34,7 +34,7 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
   let message = "";
   let actionButton = null;
 
-  if (availability === "partially") {
+  if (availability === "partial") {
     message =
       "Please note that only a subset of files are available for this dataset. If you are interested in accessing all of them, please request them. Note that the file transfer to online storage may take several weeks or months in case of a large amount of data.";
   } else if (availability === "on demand") {
