@@ -1,9 +1,6 @@
 import React from 'react';
-import { safeParse } from "../utils";
 
 const RangeSlider = ({ min, max, value, onChange }) => {
-  const rangeMin = safeParse(min, 1900);
-  const rangeMax = safeParse(max, 2025);
   const step = 1;
 
   const [currentMinInputVal, currentMaxInputVal] = value;
@@ -11,8 +8,8 @@ const RangeSlider = ({ min, max, value, onChange }) => {
   const maxVal = Math.max(currentMinInputVal, currentMaxInputVal);
 
   const getPercent = (v) => {
-    if (rangeMax === rangeMin) return 0;
-    const percentage = ((v - rangeMin) / (rangeMax - rangeMin)) * 100;
+    if (max === min) return 0;
+    const percentage = ((v - min) / (max - min)) * 100;
     return Math.min(Math.max(percentage, 0), 100);
   };
 
@@ -68,8 +65,8 @@ const RangeSlider = ({ min, max, value, onChange }) => {
       />
       <input
         type="range"
-        min={rangeMin}
-        max={rangeMax}
+        min={min}
+        max={max}
         step={step}
         value={currentMinInputVal}
         onChange={handleMinChange}
@@ -77,8 +74,8 @@ const RangeSlider = ({ min, max, value, onChange }) => {
       />
       <input
         type="range"
-        min={rangeMin}
-        max={rangeMax}
+        min={min}
+        max={max}
         step={step}
         value={currentMaxInputVal}
         onChange={handleMaxChange}

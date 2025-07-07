@@ -6,7 +6,6 @@ import { FlexibleWidthXYPlot, VerticalRectSeries, Hint } from "react-vis";
 import { Card } from "semantic-ui-react";
 import RangeSlider from './RangeSlider';
 import { withState } from 'react-searchkit';
-import { safeParse } from "../utils";
 
 const HALF_BAR_WIDTH = 0.4;
 const SELECTED_COLOR = "#91d5ff";
@@ -23,7 +22,7 @@ function extractBuckets(resultsAggregations, key) {
 
 function getInitialHistogramData(initialBuckets) {
   const data = initialBuckets.map(item => {
-    const key = Number(item.key_as_string); 
+    const key = Number(item.key_as_string);
     return {
       x0: key - HALF_BAR_WIDTH,
       x: key + HALF_BAR_WIDTH,
@@ -35,12 +34,10 @@ function getInitialHistogramData(initialBuckets) {
 }
 
 function getHistogramData(initialData, [lower, upper]) {
-  const lowerNum = safeParse(lower, 1900);
-  const upperNum = safeParse(upper, 2025);
   const data = initialData.map((item, index) => {
     const { x0, x, y } = item;
     const bucketKey = x - HALF_BAR_WIDTH;
-    const color = (bucketKey >= lowerNum && bucketKey <= upperNum)
+    const color = (bucketKey >= lower && bucketKey <= upper)
       ? SELECTED_COLOR
       : DESELECTED_COLOR;
     return {
@@ -61,8 +58,8 @@ const RangeAggregation = (props) => {
   );
   const initialBuckets = extractBuckets(resultsAggregations, agg.aggName)
   const keys = initialBuckets.map(bucket => Number(bucket.key_as_string));
-  const min = Math.min(...keys) || 1900;
-  const max = Math.max(...keys) || 2025;
+  const min = Math.min(...keys);
+  const max = Math.max(...keys);
   const [range, setRange] = useState([min, max]);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [hoveredBar, setHoveredBar] = useState(null);
@@ -99,7 +96,7 @@ const RangeAggregation = (props) => {
   );
 
   const updateQuery = useRef(
-    _debounce((newRange, queryState) => { 
+    _debounce((newRange, queryState) => {
       newRange.sort();
       const [from, to] = newRange;
       const newFilterValue = `${from}--${to}`;
@@ -134,7 +131,7 @@ const RangeAggregation = (props) => {
 
   const handleValueMouseOut = useCallback(() => {
     setHoveredIndex(null);
-    setHoveredBar(null); 
+    setHoveredBar(null);
   }, []);
 
   const bars = data.map((item, i) => ({
