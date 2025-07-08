@@ -506,6 +506,17 @@
           },
           "type": "object"
         },
+        "validated_runs": {
+          "properties": {
+            "recid": {
+              "type": "keyword"
+            },
+            "validation": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        },
         "validation": {
           "properties": {
             "description": {
