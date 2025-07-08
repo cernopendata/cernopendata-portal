@@ -25,7 +25,8 @@
  */
 
 import React from "react";
-import { BucketAggregation, Toggle, ActiveFilters, withState } from "react-searchkit";
+import { BucketAggregation, ActiveFilters, withState } from "react-searchkit";
+import { default as RangeAggregation } from "./RangeAggregation"
 
 const CODFacets = ({ aggs, updateQueryState, currentQueryState }) => {
   return (
@@ -39,9 +40,13 @@ const CODFacets = ({ aggs, updateQueryState, currentQueryState }) => {
         <div class="content"><ActiveFilters /></div>
       </div>
 
-      {aggs.map((agg) => (
-        <BucketAggregation key={agg.title} title={agg.title} agg={agg.agg} />
-      ))}
+      {aggs.map((agg) =>
+        agg.agg.aggName === 'year' ? (
+          <RangeAggregation key={agg.title} title={agg.title} agg={agg.agg}/>
+        ) : (
+          <BucketAggregation key={agg.title} title={agg.title} agg={agg.agg} />
+        )
+      )}
     </>
   );
 };
