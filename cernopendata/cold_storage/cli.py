@@ -218,7 +218,7 @@ def _verify_files_exists(uri: str, exists: bool, should_exist: bool) -> str:
     if should_exist and not exists:
         error = f"The file '{uri}' does not exist"
     if exists and not should_exist:
-        error = f"The file '{uri}' exists, and it is not registered"
+        error = f"The file '{uri}' exists but it is not registered"
     if error:
         click.secho(f"{error}", fg="red")
     return error
