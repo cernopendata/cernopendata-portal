@@ -22,10 +22,10 @@
 from flask import current_app, render_template
 
 from . import config
-from .generators import urls_generator
+from .generators import sitemap_page_urls, yield_urls
 
 
-class CERNOpenDataSitemap(object):
+class CERNOpenDataSitemap:
     """CERN Open Data sitemap extension."""
 
     def __init__(self, app=None):
@@ -37,10 +37,9 @@ class CERNOpenDataSitemap(object):
         """Flask application initialization."""
         # Follow the Flask guidelines on usage of app.extensions
         if "cernopendata-sitemap" in app.extensions:
-            raise RuntimeError("CERNOpenDataSitemap application already" "initialized")
-        self.app = app
+            raise RuntimeError("CERNOpenDataSitemap application already initialized")
+
         self.init_config(app)
-        self.urls_generator = urls_generator
         app.extensions["cernopendata-sitemap"] = self
 
     @staticmethod
@@ -50,16 +49,28 @@ class CERNOpenDataSitemap(object):
             if k.startswith("CERNOPENDATA_SITEMAP_"):
                 app.config.setdefault(k, getattr(config, k))
 
-    def _generate_all_urls(self):
+    @staticmethod
+    def _generate_sitemap_urls(page):
         """Run all generators and yield the sitemap JSON entries."""
-        for doc_type in current_app.config["CERNOPENDATA_SITEMAP_DOC_TYPES"]:
-            for generated in urls_generator(doc_type):
-                yield generated
+        start = page * config.CERNOPENDATA_SITEMAP_PAGE_SIZE
+        limit = config.CERNOPENDATA_SITEMAP_PAGE_SIZE
 
-    def get_populated_sitemap(self):
-        """Populate sitemap template with current app urls."""
+        doc_types = current_app.config["CERNOPENDATA_SITEMAP_DOC_TYPES"]
+        yield from yield_urls(doc_types, offset=start, limit=limit)
+
+    def get_populated_sitemap(self, page):
+        """Populate the sitemap template with current app urls."""
         site_url = current_app.config["SITE_URL"]
         with current_app.test_request_context(base_url=site_url):
-            urls = iter(self._generate_all_urls())
-            page = render_template("sitemap/sitemap.xml", urlset=filter(None, urls))
-            return page
+            urls = iter(self._generate_sitemap_urls(page))
+            return render_template("sitemap/sitemap_page.xml", urlset=iter(urls))
+
+    @staticmethod
+    def get_sitemap_list():
+        """Return the list of all available sitemaps."""
+        site_url = current_app.config["SITE_URL"]
+        with current_app.test_request_context(base_url=site_url):
+            doc_types = current_app.config["CERNOPENDATA_SITEMAP_DOC_TYPES"]
+            urls = sitemap_page_urls(doc_types)
+
+            return render_template("sitemap/sitemap_list.xml", urls=iter(urls))
