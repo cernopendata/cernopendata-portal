@@ -95,8 +95,8 @@ def get_file_index(pid, record, file_index, **kwargs):
             # Apply filtering regardless of return type
             filtered_files = []
             for file in entry["files"]:
-                # Exclude deleted hot files if qos=hot
-                if qos == "hot" and "hot_deleted" in file.get("tags", {}):
+                # Exclude deleted online files if qos=online
+                if qos == "online" and "hot_deleted" in file.get("tags", {}):
                     continue
                 filtered_files.append(file)
 

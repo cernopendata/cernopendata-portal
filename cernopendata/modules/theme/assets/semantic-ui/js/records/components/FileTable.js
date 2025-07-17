@@ -68,7 +68,7 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         { !isOnline && (
             <a
               className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key, 'txt')}?qos=hot`}
+              href={`${getFileUri(table_type, file.key, 'txt')}?qos=online`}
               target="_blank"
               rel="noopener noreferrer"
               title="Download this file in plain text format"
@@ -90,7 +90,7 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         { !isOnline && (
             <a
               className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key)}?qos=hot`}
+              href={`${getFileUri(table_type, file.key)}?qos=online`}
               target="_blank"
               rel="noopener noreferrer"
               title="Download this file in JSON format"
@@ -156,7 +156,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                   {file.availability?.["on demand"] && (
                     <Popup
                         content={file.availability.online ? "Some files of the dataset are available for immediate download" : "The files have to be requested before they are available"}
-                        trigger={<div className="ui mini message">{file.availability.online ? "Partially" : "On demand"}</div>}
+                        trigger={<div className="ui mini message">{file.availability.online ? "Partial" : "On demand"}</div>}
                         position="top center"
                     />
                   )}

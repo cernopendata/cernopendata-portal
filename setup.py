@@ -77,7 +77,7 @@ install_requires = [
     "invenio-config>=1.0.3,<2.0.0",
     # Custom Invenio `base` bundle
     "importlib-metadata>=6.11.0",
-    "invenio-accounts>=6.0.0,<7.0.0",
+    "invenio-accounts>=6.0.0,<6.1.0",
     "invenio-access>=4.0.0,<5.0.0",
     "invenio-files-rest @git+https://github.com/psaiz/invenio-files-rest@tag_value#egg=invenio-files-rest",
     "invenio-theme>=4.0.0,<5.0.0",

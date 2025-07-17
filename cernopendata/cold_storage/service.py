@@ -127,8 +127,8 @@ class RequestService:
             )
 
             submitted = 0
-            limit = threshold - active_transfers_count
-            if limit > 0:
+            max_transfers = threshold - active_transfers_count
+            if max_transfers > 0:
                 transfers = RequestMetadata.query.filter_by(
                     status="submitted", action=action.value
                 ).all()
@@ -137,10 +137,11 @@ class RequestService:
                     info = manager.doOperation(
                         action,
                         transfer.record_id,
-                        limit=limit - submitted,
+                        limit=None,
                         register=True,
                         force=False,
                         dry=False,
+                        max_transfers=max_transfers - submitted,
                     )
                     logger.debug(f"Got {info}")
                     if info:
@@ -148,8 +149,10 @@ class RequestService:
                         transfer.num_files += len(info)
                         transfer.size += sum(item.size for item in info)
                     transfer.started_at = datetime.utcnow()
-                    logger.info(f"THE LIMIT WAS {limit}, AND WE SUBMITTED {submitted}")
-                    if limit == submitted:
+                    logger.info(
+                        f"THE LIMIT WAS {max_transfers}, AND WE SUBMITTED {submitted}"
+                    )
+                    if max_transfers == submitted:
                         logger.info(
                             f"Reached the threshold of {threshold} transfers. There might be more in this record"
                             f"({submitted + active_transfers_count}). Let's wait before continuing"
@@ -158,7 +161,7 @@ class RequestService:
                         transfer.status = "started"
                     db.session.add(transfer)
                     db.session.commit()
-                    if limit - submitted <= 0:
+                    if max_transfers - submitted <= 0:
                         logger.info("We have submitted enough. Stopping")
                         break
             if submitted:

@@ -24,6 +24,7 @@
 
 """Cold Storage CLI."""
 
+import logging
 from math import log2
 
 import click
@@ -36,6 +37,9 @@ from .api import ColdStorageActions
 from .manager import ColdStorageManager
 from .models import Location
 from .service import RequestService, TransferService
+from .storage import Storage
+
+logger = logging.getLogger(__name__)
 
 argument_record = click.argument("record", nargs=-1, required=True, metavar="RECORD")
 
@@ -60,6 +64,14 @@ option_limit = click.option(
     + "In case of negative numbers, it leaves those many files without issuing transfers",
 )
 
+option_verify = click.option(
+    "-v", "--verify", is_flag=True, help="Verifies that all the files listed exist"
+)
+
+option_debug = click.option(
+    "-d", "--debug", is_flag=True, help="Swicth on the debug messages"
+)
+
 
 # From https://stackoverflow.com/questions/1094841/get-a-human-readable-version-of-a-file-size
 def file_size(size):
@@ -81,13 +93,16 @@ def cold():
 @option_limit
 @option_force
 @option_dry
-def archive(record, register, limit, force, dry):
+@option_debug
+def archive(record, register, limit, force, dry, debug):
     """Move a record to cold."""
-    _doOperation(ColdStorageActions.ARCHIVE, record, register, limit, force, dry)
+    _doOperation(ColdStorageActions.ARCHIVE, record, register, limit, force, dry, debug)
 
 
-def _doOperation(operation, record, register, limit, force, dry):
+def _doOperation(operation, record, register, limit, force, dry, debug):
     """Internal function to do the CLI commands."""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
     m = ColdStorageManager()
     counter = 0
     transfers = 0
@@ -113,9 +128,10 @@ def _doOperation(operation, record, register, limit, force, dry):
 @option_limit
 @option_force
 @option_dry
-def stage(record, register, limit, force, dry):
+@option_debug
+def stage(record, register, limit, force, dry, debug):
     """Move a record from cold."""
-    _doOperation(ColdStorageActions.STAGE, record, register, limit, force, dry)
+    _doOperation(ColdStorageActions.STAGE, record, register, limit, force, dry, debug)
 
 
 @cold.group()
@@ -154,11 +170,15 @@ def list():
 @cold.command()
 @with_appcontext
 @argument_record
-def list(record):
+@option_verify
+@option_debug
+def list(record, verify, debug):
     """Print the urls for an entry.
 
     By default, it prints the urls for all the files of the entry.
     """
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
     m = ColdStorageManager()
     stats = {
         "files": 0,
@@ -185,14 +205,16 @@ def list(record):
         for f in info:
             stats["files"] += 1
             stats["size"] += f["size"]
-            if "tags" not in f or "hot_deleted" not in f["tags"]:
+            if "hot_deleted" not in f.get("tags", {}):
                 print(f"    * Hot copy: {f['uri']}")
                 stats["hot"] += 1
                 stats["size_hot"] += f["size"]
-            if "tags" in f and "uri_cold" in f["tags"]:
+            if "uri_cold" in f.get("tags", {}):
                 print(f"    * Cold copy: {f['tags']['uri_cold']}")
                 stats["cold"] += 1
                 stats["size_cold"] += f["size"]
+            if verify:
+                stats["errors"] += _verify_files(f)
 
     click.secho(
         f"Summary: {stats['files']} files ({file_size(stats['size'])}), with {stats['hot']} hot copies"
@@ -201,7 +223,46 @@ def list(record):
     )
     if stats["errors"]:
         click.secho(f"The following records have issues: {stats['errors']}", fg="red")
-        return -1
+        raise click.exceptions.Exit(1)
+
+
+def _verify_files_exists(uri: str, exists: bool, should_exist: bool) -> str:
+    """Check the consistency between the repo and storage for a given uri."""
+    error = []
+    if should_exist and not exists:
+        error = f"The file '{uri}' does not exist"
+    if exists and not should_exist:
+        error = f"The file '{uri}' exists but it is not registered"
+    if error:
+        click.secho(f"{error}", fg="red")
+    return error
+
+
+def _verify_files(file: dict) -> list:
+    """Verify that the files registered in the repository exists.
+
+    It also checks if there are similar files
+    that exist in the storage and are not registered
+    """
+    errors = []
+    hot_copy, _ = Storage.verify_file(file["uri"], file["size"], file["checksum"])
+    new_error = _verify_files_exists(
+        file["uri"], hot_copy, "hot_deleted" not in file.get("tags", {})
+    )
+    if new_error:
+        errors.append(new_error)
+
+    if "tags" in file and "uri_cold" in file["tags"]:
+        cold_uri = file["tags"]["uri_cold"]
+    else:
+        cold_uri, _ = Storage.find_url(ColdStorageActions.ARCHIVE, file["uri"])
+    cold_copy, _ = Storage.verify_file(cold_uri, file["size"], file["checksum"])
+    new_error = _verify_files_exists(
+        cold_uri, cold_copy, "uri_cold" in file.get("tags", {})
+    )
+    if new_error:
+        errors.append(new_error)
+    return errors
 
 
 @cold.command()
@@ -209,20 +270,27 @@ def list(record):
 @argument_record
 @option_limit
 @option_dry
-def clear_hot(record, limit, dry):
+@option_debug
+def clear_hot(record, limit, dry, debug):
     """Delete the hot copy of a file that has a cold copy."""
-    _doOperation(ColdStorageActions.CLEAR_HOT, record, None, limit, None, dry)
+    _doOperation(ColdStorageActions.CLEAR_HOT, record, None, limit, None, dry, debug)
 
 
 @cold.command()
 @with_appcontext
-def process_transfers():
+@option_debug
+def process_transfers(debug):
     """Check the status of the transfers."""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
     return TransferService.process_transfers()
 
 
 @cold.command()
 @with_appcontext
-def process_requests():
+@option_debug
+def process_requests(debug):
     """Check the status of the requests."""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
     return RequestService.process_requests()

@@ -1,5 +1,13 @@
 Changes
 =======
+Version 0.4.8 (released 2025-07-10)
+---------------------------
+- ui: fix facet of number of events, fix templates to display the title 'Files and Indices' if there are files or indices
+- cold: New option '-v' to verify files in opendata cold list
+- sitemap: Split the sitemap into chunks of 500 entries
+- fix: fixing false positive in cold_storage if the file exists.
+- dependencies: Updating gevent dependency
+
 Version 0.4.6 (released 2025-06-23)
 ---------------------------
 - ui: fix link to index files and files bigger than the download warning threshold

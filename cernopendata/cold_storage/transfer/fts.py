@@ -27,9 +27,7 @@
 import logging
 import os
 
-# This requires to install swig: yum install swig. Let's wait a bit
 import fts3.rest.client.easy as fts3
-import gfal2
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +38,10 @@ class TransferManager:
     def __init__(self):
         """Create a TransferManager of type FTS."""
         self.endpoint = os.environ["INVENIO_FTS_ENDPOINT"]
+        self._context = None
 
     def _submit(self, job):
         """Submit a transfer."""
-        # print("Submiting to fts", job)
         try:
             if not self._context:
                 self._context = fts3.Context(self.endpoint, verify=True)
@@ -73,7 +71,6 @@ class TransferManager:
         }
         # internal retry logic in case of fail and overwrite to true if it has failed
         a = self._submit(job)
-        # print("FTS RETURNS",a)
         return a
 
     def transfer_status(self, transfer_id):
@@ -91,7 +88,6 @@ class TransferManager:
         if "job_state" not in fts_status:
             logger.error("The response does not have 'job_state'")
             return None, None
-        # print("The status in fts is", fts_status['job_state'])
         if fts_status["job_state"] == "FINISHED":
             return "DONE", None
         return fts_status["job_state"], fts_status["reason"]
@@ -107,18 +103,3 @@ class TransferManager:
         if not self._context:
             self._context = fts3.Context(self.endpoint, verify=True)
         return fts3.whoami(self._context)
-
-    def exists_file(self, filename):
-        """Check if a file exists."""
-        ctx = gfal2.creat_context()
-        # gfal needs https protocol, instead of root.
-        filename = filename.replace("root://", "https://")
-        logger.debug(f"Checking with gfal if {filename} exists")
-        try:
-            info = ctx.stat(filename)
-            checksum = ctx.checksum(filename, "ADLER32")
-
-            return {"size": info.st_size, "checksum": checksum}
-        except Exception as e:
-            pass
-        return False

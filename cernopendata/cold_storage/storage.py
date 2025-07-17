@@ -26,12 +26,14 @@
 import logging
 import os
 import re
+import gfal2
 
 from invenio_db import db
 from sqlalchemy import literal
 
 from .api import ColdStorageActions, Transfer
 from .models import Location
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +41,8 @@ logger = logging.getLogger(__name__)
 class Storage:
     """Class to deal with the storage of the files."""
 
-    def find_url(self, action, file):
+    @classmethod
+    def find_url(cls, action, file):
         """Identify the URL that a given file should have."""
         column = (
             Location.cold_path
@@ -73,7 +76,7 @@ class Storage:
         """Create a cold copy for a file."""
         logger.debug(f"Archiving a file")
         filename = file["uri"]
-        dest_file, transfer = self.find_url(ColdStorageActions.ARCHIVE, filename)
+        dest_file, transfer = Storage.find_url(ColdStorageActions.ARCHIVE, filename)
         if not dest_file:
             logger.error(f"WE CAN'T GUESS THE destination path :( of {filename}")
             return []
@@ -91,7 +94,9 @@ class Storage:
     def stage(self, file):
         """Create a hot copy for a file."""
         filename = file["tags"]["uri_cold"]
-        dest_file, transfer = self.find_url(ColdStorageActions.STAGE, filename)
+        dest_file, transfer = Storage.find_url(
+            ColdStorageActions.STAGE, filename.replace("root://", "https://")
+        )
         logger.debug(f" Staging it")
         id = transfer.stage(filename, dest_file)
         if not id:
@@ -107,9 +112,35 @@ class Storage:
 
     def clear_hot(self, filename):
         """Clear the hot copy of a file."""
+        path = re.sub("^((root)|(file))://[^/]*/", "/", filename)
         try:
-            os.remove(re.sub("^file://[^/]*/", "/", filename))
+            os.remove(path)
             return True
         except Exception as e:
-            logger.error(f"Error deleting the file {filename} :*( {e}")
+            logger.error(f"Error deleting the file {path} (from {filename}) :*( {e}")
         return False
+
+    @classmethod
+    def verify_file(cls, uri: str, size: int, checksum: str) -> (bool, str):
+        """Check if a file exists and has the given size and checksum."""
+        parsed = urlparse(uri)
+
+        if parsed.scheme in ("root", "https"):
+            ctx = gfal2.creat_context()
+            # gfal needs https protocol, instead of root.
+            filename = uri.replace("root://", "https://")
+            logger.debug(f"Checking with gfal if {filename} exists")
+            try:
+                info = ctx.stat(filename)
+                if info.st_size != size:
+                    return False, "different size"
+                file_checksum = ctx.checksum(filename, "ADLER32")
+                if checksum != f"adler32:{file_checksum}":
+                    return False, "different checksum"
+                return True, None
+            except Exception as e:
+                return False, "File does not exist"
+        elif parsed.scheme == "" or parsed.scheme == "file":
+            return cls._verify_file(parsed.path, size, checksum)
+        else:
+            raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
