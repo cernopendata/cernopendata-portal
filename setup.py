@@ -115,7 +115,7 @@ install_requires = [
     # Pin XRootD consistently with Dockerfile
     "xrootd==5.8.3",
     "gevent==25.5.1",
-    "greenlet==3.0.3",
+    "greenlet>=3.2.2",
     "flask-babel==4.0.0",
     "raven<6.11",
     "dcxml",
