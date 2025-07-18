@@ -27,6 +27,7 @@ import shutil
 import tempfile
 
 import pytest
+from click.testing import CliRunner
 
 from cernopendata.factory import create_app
 
@@ -146,3 +147,9 @@ def search(app):
     _search_create_indexes(current_search, current_search_client)
     yield current_search_client
     _search_delete_indexes(current_search)
+
+
+@pytest.fixture(scope="module")
+def cli_runner():
+    """Provides a Click CliRunner instance."""
+    return CliRunner()
