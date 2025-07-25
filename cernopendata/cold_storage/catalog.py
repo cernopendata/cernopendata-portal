@@ -70,12 +70,14 @@ class Catalog:
             files = files[-limit:]
         return files
 
-    def clear_hot(self, record, file_id):
+    def clear_hot(self, record, file_id, force):
         """Marking the hot copy as deleted."""
 
         def _clear_hot_function(version_id):
             """Create a tag for the file identifying that the copy is not available."""
             try:
+                if ObjectVersionTag.get(version_id, "hot_deleted") and force:
+                    raise DuplicateTagError
                 ObjectVersionTag.create(version_id, "hot_deleted", str(datetime.now()))
             except DuplicateTagError:
                 logger.warning("The tag `hot_deleted` already existed...")
@@ -93,7 +95,6 @@ class Catalog:
             logger.error(f"Can't find the object associated to that file :( {file_id}")
             return False
         update_function(objectVersion.version_id)
-        db.session.commit()
         if record_uuid not in self._reindex_queue:
             self._reindex_queue += [record_uuid]
         return True
@@ -111,7 +112,6 @@ class Catalog:
             record.files.flush()
             record.flush_indices()
             record.commit()
-            db.session.commit()
             try:
                 self._indexer.index(record)
             except Exception as e:
@@ -122,6 +122,7 @@ class Catalog:
                     logger.info("The second time worked!")
                 except Exception as e:
                     logger.error(f"Doing it again did not help :( {e}")
+        db.session.commit()
 
     def add_copy(self, record_uuid, file_id, action, new_filename):
         """Adds a copy to a particular file. It reindexes the record."""
