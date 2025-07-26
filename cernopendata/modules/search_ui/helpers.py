@@ -63,3 +63,20 @@ class CODSearchAppInvenioRestConfigHelper(SearchAppInvenioRestConfigHelper):
                     )
             agg_list.append(item)
         return agg_list
+
+    @classmethod
+    def generate(cls, options, **kwargs):
+        """Create JSON config for Invenio-Search-JS with InvenioREST config and custom parameters.
+
+        Overridden to add skip_files parameter
+        """
+        config = super(CODSearchAppInvenioRestConfigHelper, cls).generate(
+            options, **kwargs
+        )
+
+        initial_query_state = config.setdefault("initialQueryState", {})
+        hidden_params = initial_query_state.get("hiddenParams") or []
+        hidden_params.append(["skip_files", "1"])
+        initial_query_state["hiddenParams"] = hidden_params
+
+        return config

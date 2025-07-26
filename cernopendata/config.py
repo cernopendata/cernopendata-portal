@@ -406,6 +406,7 @@ RECORDS_REST_ENDPOINTS["recid"].update(
                 "cernopendata.modules.records.serializers" ":json_v1_search"
             ),
         },
+        "search_factory_imp": "cernopendata.modules.records.queries:search_factory",
     }
 )
 
@@ -429,6 +430,7 @@ RECORDS_REST_ENDPOINTS["termid"] = {
     "search_serializers": {
         "application/json": ("invenio_records_rest.serializers" ":json_v1_search"),
     },
+    "search_factory_imp": "cernopendata.modules.records.queries:search_factory",
 }
 
 RECORDS_REST_ENDPOINTS["docid"] = {
@@ -451,6 +453,7 @@ RECORDS_REST_ENDPOINTS["docid"] = {
     "search_serializers": {
         "application/json": ("invenio_records_rest.serializers" ":json_v1_search"),
     },
+    "search_factory_imp": "cernopendata.modules.records.queries:search_factory",
 }
 
 RECORDS_REST_SORT_OPTIONS = {
