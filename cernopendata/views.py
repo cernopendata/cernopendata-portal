@@ -111,8 +111,8 @@ def translate_search_url(args, facets):
         if FACET_HIERARCHY is None:
             FACET_HIERARCHY = initialize_facet_hierarchy()
         for subagg, agg in subagg_agg_mapping.items():
-            # if the subagg takes part of the request args
-            if subagg in args:
+            # if the agg and subagg takes part of the request args
+            if agg in args and subagg in args:
                 # extract the values from args dict so we don't take them
                 # into account in the future for plain aggs.
                 agg_values = args.pop(agg)
