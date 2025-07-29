@@ -40,6 +40,13 @@ try:
 except FileNotFoundError:
     version = None
 
+
+def xrootd_version():
+    """Reads the xrootd version from environment."""
+    xrootd = os.getenv("XROOTD_VERSION")
+    return f"=={xrootd}" if xrootd else ""
+
+
 tests_require = [
     "check-manifest>=0.25",
     "coverage>=4.0",
@@ -112,8 +119,8 @@ install_requires = [
     "uwsgitop>=0.11",
     # Pin Celery due to worker runtime issues
     "celery==5.2.7",
-    # Pin XRootD consistently with Dockerfile
-    "xrootd==5.8.3",
+    # Automatically pin XRootD consistently with Dockerfile
+    "xrootd" + xrootd_version(),
     "gevent==25.5.1",
     "greenlet==3.2.2",
     "zope.event==5.0",
