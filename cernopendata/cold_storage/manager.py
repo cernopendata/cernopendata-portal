@@ -26,6 +26,8 @@
 
 import logging
 
+from invenio_db import db
+
 from .api import ColdStorageActions, Transfer
 from .catalog import Catalog
 from .storage import Storage
@@ -131,6 +133,7 @@ class ColdStorageManager:
                 break
         if "registered" in summary:
             self._catalog.reindex_entries()
+        db.session.commit()
         logger.info(
             "Summary:"
             + ", ".join(f"{key}: {value}" for key, value in summary.items())
@@ -158,12 +161,12 @@ class ColdStorageManager:
                 max_transfers,
             )
         elif action == ColdStorageActions.CLEAR_HOT:
-            return self.clear_hot(record_uuid, limit, dry)
+            return self.clear_hot(record_uuid, limit, force, dry)
         raise ValueError(
             f"The cold manager does not understand the operation '{action}'"
         )
 
-    def clear_hot(self, record_uuid, limit, dry):
+    def clear_hot(self, record_uuid, limit, force, dry):
         """Remove the hot copy of a file that has a copy on cold storage."""
         # Let's find the files inside the record
         cleared = False
@@ -186,9 +189,11 @@ class ColdStorageManager:
                 logger.info(
                     "Dry run: do not remove the file (but cleaning the repository)"
                 )
-            self._catalog.clear_hot(record, file["file_id"])
-            cleared = True
+            cleared = self._catalog.clear_hot(record, file["file_id"], force)
+            if not cleared:
+                return
         self._catalog.reindex_entries()
+        db.session.commit()
         return [cleared]
 
     def list(self, record_id):
