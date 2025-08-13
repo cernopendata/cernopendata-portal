@@ -28,10 +28,9 @@ import logging
 from datetime import datetime
 
 from invenio_db import db
-from invenio_files_rest.errors import DuplicateTagError
 from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
 from invenio_indexer.api import RecordIndexer
-from invenio_pidstore.models import PersistentIdentifier
+from sqlalchemy.exc import IntegrityError
 
 from cernopendata.api import RecordFilesWithIndex
 
@@ -76,11 +75,11 @@ class Catalog:
         def _clear_hot_function(version_id):
             """Create a tag for the file identifying that the copy is not available."""
             try:
-                if ObjectVersionTag.get(version_id, "hot_deleted") and force:
-                    raise DuplicateTagError
                 ObjectVersionTag.create(version_id, "hot_deleted", str(datetime.now()))
-            except DuplicateTagError:
+                return True
+            except IntegrityError:
                 logger.warning("The tag `hot_deleted` already existed...")
+                return force
 
         return self._update_file_and_reindex(record.id, file_id, _clear_hot_function)
 
@@ -94,10 +93,10 @@ class Catalog:
         if not objectVersion:
             logger.error(f"Can't find the object associated to that file :( {file_id}")
             return False
-        update_function(objectVersion.version_id)
-        if record_uuid not in self._reindex_queue:
+        updated = update_function(objectVersion.version_id)
+        if updated and record_uuid not in self._reindex_queue:
             self._reindex_queue += [record_uuid]
-        return True
+        return updated
 
     def reindex_entries(self):
         """Reindexes all the entries that have been modified."""
@@ -131,7 +130,9 @@ class Catalog:
             """Function to add a file tag with a new uri for the file."""
             if action == "archive":
                 ObjectVersionTag.create_or_update(version_id, "uri_cold", new_filename)
+                return True
             elif action == "stage":
                 ObjectVersionTag.delete(version_id, "hot_deleted")
+                return True
 
         return self._update_file_and_reindex(record_uuid, file_id, _add_copy_function)

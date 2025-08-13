@@ -117,6 +117,9 @@ def _doOperation(operation, record, register, limit, force, dry, debug):
             click.secho(f"The entry {r} does not exist", fg="red")
             continue
         t = m.doOperation(operation, uuid, limit, register, force, dry)
+        if operation == ColdStorageActions.CLEAR_HOT and not t:
+            click.secho(f"Unable to complete operation for record {r}", fg="red")
+            continue
         transfers += len(t)
         counter += 1
         click.secho(

@@ -189,8 +189,9 @@ class ColdStorageManager:
                 logger.info(
                     "Dry run: do not remove the file (but cleaning the repository)"
                 )
-            self._catalog.clear_hot(record, file["file_id"], force)
-            cleared = True
+            cleared = self._catalog.clear_hot(record, file["file_id"], force)
+            if not cleared:
+                return
         self._catalog.reindex_entries()
         db.session.commit()
         return [cleared]
