@@ -2,12 +2,19 @@ import _debounce from 'lodash/debounce';
 import PropTypes from "prop-types";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { FlexibleWidthXYPlot, VerticalRectSeries, Hint } from "react-vis";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+} from "recharts";
 import { Card } from "semantic-ui-react";
 import RangeSlider from './RangeSlider';
 import { withState } from 'react-searchkit';
 
-const HALF_BAR_WIDTH = 0.4;
 const SELECTED_COLOR = "#91d5ff";
 const DESELECTED_COLOR = "#bfbfbf";
 const HIGHLIGHT_COLOR = "#69c0ff";
@@ -20,49 +27,76 @@ function extractBuckets(resultsAggregations, key) {
     return [];
 }
 
-function getInitialHistogramData(initialBuckets) {
-  const data = initialBuckets.map(item => {
+function getInitialHistogramData(initialBuckets, min, max) {
+  const dataMap = new Map();
+
+  initialBuckets.forEach(item => {
     const key = Number(item.key_as_string);
-    return {
-      x0: key - HALF_BAR_WIDTH,
-      x: key + HALF_BAR_WIDTH,
+    dataMap.set(key, {
+      name: key,
       y: item.doc_count,
-      color: DESELECTED_COLOR,
-    };
+      color: DESELECTED_COLOR
+    });
   });
-  return data;
+
+  const completeData = [];
+  for (let year = min; year <= max; year++) {
+    if (dataMap.has(year)) {
+      completeData.push(dataMap.get(year));
+    } else {
+      completeData.push({
+        name: year,
+        y: 0,
+        color: DESELECTED_COLOR
+      });
+    }
+  }
+
+  return completeData;
 }
 
 function getHistogramData(initialData, [lower, upper]) {
-  const data = initialData.map((item, index) => {
-    const { x0, x, y } = item;
-    const bucketKey = x - HALF_BAR_WIDTH;
-    const color = (bucketKey >= lower && bucketKey <= upper)
-      ? SELECTED_COLOR
-      : DESELECTED_COLOR;
+  return initialData.map((item, index) => {
+    const { name } = item;
+    const color = (name >= lower && name <= upper) ?
+      SELECTED_COLOR :
+      DESELECTED_COLOR;
+
     return {
-      x0,
-      x,
-      y,
-      index,
+      ...item,
       color,
+      index,
     };
   });
-  return data;
 }
+
+const CustomTooltip = ({ active, payload, label, title }) => {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0].payload;
+    if (dataPoint.y) {
+      return (
+        <div className="range-tooltip">
+          <p style={{ margin: 0 }}><strong>Results:</strong> {dataPoint.y}</p>
+          <p style={{ margin: 0 }}><strong>{title}:</strong> {dataPoint.name}</p>
+        </div>
+      );
+    }
+  }
+  return null;
+};
 
 const RangeAggregation = (props) => {
   const { title, agg, currentQueryState } = props;
   const resultsAggregations = useSelector(
     (state) => state.results.data.aggregations
   );
-  const initialBuckets = extractBuckets(resultsAggregations, agg.aggName)
+  const initialBuckets = extractBuckets(resultsAggregations, agg.aggName);
   const keys = initialBuckets.map(bucket => Number(bucket.key_as_string));
-  const min = Math.min(...keys);
-  const max = Math.max(...keys);
+  const min = keys.length ? Math.min(...keys) : 0;
+  const max = keys.length ? Math.max(...keys) : 0;
+
   const [range, setRange] = useState([min, max]);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const [hoveredBar, setHoveredBar] = useState(null);
+  const [hoveredData, setHoveredData] = useState(null);
 
   useEffect(() => {
     const currentFilter = currentQueryState.filters.find(
@@ -81,10 +115,10 @@ const RangeAggregation = (props) => {
   }, [currentQueryState.filters, agg.aggName, min, max]);
 
   useEffect(() => {
-    if (Number.isFinite(min) && Number.isFinite(max) && range[0] === undefined && range[1] === undefined) {
+    if (Number.isFinite(min) && Number.isFinite(max) && (range[0] === undefined || range[1] === undefined)) {
       setRange([min, max]);
     }
-  }, [min, max]);
+  }, [min, max, range]);
 
   const initialData = useMemo(
     () => getInitialHistogramData(initialBuckets, min, max),
@@ -116,28 +150,21 @@ const RangeAggregation = (props) => {
   }
 
   const onBarClick = useCallback(
-    ({ x }) => {
-      const bucketKey = x - HALF_BAR_WIDTH;
+    (dataPoint) => {
+      const bucketKey = dataPoint.name;
       const endpoints = [bucketKey, bucketKey];
       onSliderChange(endpoints);
     },
     [onSliderChange]
   );
 
-  const handleValueMouseOver = useCallback((datapoint) => {
-    setHoveredIndex(datapoint.index);
-    setHoveredBar(datapoint);
+  const handleBarMouseOver = useCallback((data) => {
+    setHoveredData(data);
   }, []);
 
-  const handleValueMouseOut = useCallback(() => {
-    setHoveredIndex(null);
-    setHoveredBar(null);
+  const handleBarMouseOut = useCallback(() => {
+    setHoveredData(null);
   }, []);
-
-  const bars = data.map((item, i) => ({
-    ...item,
-    color: i === hoveredIndex ? HIGHLIGHT_COLOR : item.color,
-  }));
 
   if (!initialData.length) {
     return (<></>)
@@ -149,34 +176,35 @@ const RangeAggregation = (props) => {
         <Card.Header>{title}</Card.Header>
       </Card.Content>
       <Card.Content>
-        <FlexibleWidthXYPlot height={100} margin={0}>
-          <VerticalRectSeries
-            colorType="literal"
-            data={initialData}
-            onValueClick={onBarClick}
-            onValueMouseOver={handleValueMouseOver}
-            onValueMouseOut={handleValueMouseOut}
-          />
-          {hoveredBar && (
-            <Hint
-              value={hoveredBar}
-              align={{ vertical: 'bottom', horizontal: 'auto' }}
-              format={({ x, y }) => {
-                return [
-                  { title: 'Results', value: y },
-                  { title: title, value: x - 0.4 },
-                ];
-              }}
+        <ResponsiveContainer width="100%" height={100}>
+          <BarChart
+            data={data}
+          >
+            <XAxis dataKey="name" hide />
+            <YAxis hide />
+
+            <Tooltip
+              cursor={{ fill: 'transparent' }}
+              content={<CustomTooltip title={title} />}
             />
-          )}
-          <VerticalRectSeries
-            colorType="literal"
-            data={bars}
-            onValueClick={onBarClick}
-            onValueMouseOver={handleValueMouseOver}
-            onValueMouseOut={handleValueMouseOut}
-          />
-        </FlexibleWidthXYPlot>
+
+            <Bar
+              dataKey="y"
+              onClick={onBarClick}
+              onMouseOver={handleBarMouseOver}
+              onMouseOut={handleBarMouseOut}
+            >
+              {
+                data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={hoveredData && hoveredData.index === index ? HIGHLIGHT_COLOR : entry.color}
+                  />
+                ))
+              }
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
         <div style={{ margin: "1em 0" }}>
           <RangeSlider
             min={min}
