@@ -19,11 +19,11 @@
 
 """Command line interface for CERN Open Data Portal."""
 
-import glob
 import json
+import logging
 import os
+import time
 import uuid
-from datetime import datetime
 from os.path import exists, isdir
 
 import click
@@ -31,13 +31,7 @@ import pkg_resources
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
-from invenio_files_rest.models import (
-    Bucket,
-    BucketTag,
-    FileInstance,
-    ObjectVersion,
-    ObjectVersionTag,
-)
+from invenio_files_rest.models import FileInstance, ObjectVersion
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
@@ -52,6 +46,25 @@ from cernopendata.modules.records.minters.termid import cernopendata_termid_mint
 MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
 
 
+def setup_cli_logger(verbose=False):
+    """Sets up a dedicated logger for CLI commands."""
+    logger = logging.getLogger("cli_logger")
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+    return logger
+
+
+option_verbose = click.option(
+    "verbose", "-v", "--verbose", is_flag=True, help="Output verbose logging messages"
+)
+
+
 def get_jsons_from_dir(dir):
     """Get JSON files inside a dir."""
     res = []
@@ -62,9 +75,11 @@ def get_jsons_from_dir(dir):
     return res
 
 
-def _handle_record_files(record, data):
+def _handle_record_files(record, data, logger=None):
     """Handles record files."""
     # let's make a copy of files, since we might change it
+    logger = logging.getLogger(__name__) if not logger else logger
+    verbose = logger.getEffectiveLevel() == logging.DEBUG
     real_files = []
     if "files" not in data:
         if "distribution" in record and "availability" in record["distribution"]:
@@ -72,8 +87,8 @@ def _handle_record_files(record, data):
         return
     data["_file_indices"] = []
     record["_file_indices"] = []
-    if data["files"]:
-        print(f"  The record has {len(data['files'])} files")
+    if data["files"] and verbose:
+        logger.info(f"  -> Detected {len(data['files'])} files")
     for file in data["files"]:
         assert "uri" in file
         assert "size" in file
@@ -82,20 +97,20 @@ def _handle_record_files(record, data):
         filename = file.get("uri").split("/")[-1:][0]
         f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
         if "type" in file and file["type"] == "index.json":
-            print(
-                datetime.now(),
-                "    This is an index file. Let's check the entries that it has.",
-                end=" ",
-            )
             # We don't need to store the index
             FileIndexMetadata.create(
-                record, f, description=file.get("description", filename)
+                record,
+                f,
+                description=file.get("description", filename),
+                logger=logger,
             )
             f.delete()
         elif "type" in file and file["type"] == "index.txt":
             # The txt indexes should be ignored. Just delete the file
             f.delete()
         else:
+            if verbose:
+                logger.info(f"  -> Detected direct file {file.get('uri')}")
             real_files.append(file)
             try:
                 obj = MultiURIFileObject.create_version(record.bucket, filename, f.id)
@@ -108,11 +123,8 @@ def _handle_record_files(record, data):
                 }
                 file.update(file_info)
             except Exception as e:
-                click.secho(
-                    "Recid {0} file {1} could not be loaded due "
-                    "to {2}.".format(data.get("recid"), filename, str(e)),
-                    fg="red",
-                    err=True,
+                logger.error(
+                    f"  -> Recid {data.get('recid')} file {filename} could not be loaded due to {str(e)}."
                 )
     record["files"] = real_files
     data["files"] = real_files
@@ -124,18 +136,18 @@ def _handle_record_files(record, data):
     record.check_availability()
 
 
-def create_record(data, skip_files):
+def create_record(data, skip_files, logger=None):
     """Creates a new record."""
     id = uuid.uuid4()
     cernopendata_recid_minter(id, data)
     record = RecordFilesWithIndex.create(data, id_=id, with_bucket=not skip_files)
     if not skip_files:
-        _handle_record_files(record, data)
+        _handle_record_files(record, data, logger)
 
     return record
 
 
-def update_record(pid, data, skip_files):
+def update_record(pid, data, skip_files, logger=None):
     """Updates the given record."""
     record = RecordFilesWithIndex.get_record(pid.object_uuid)
     if not skip_files:
@@ -153,13 +165,13 @@ def update_record(pid, data, skip_files):
         del record[k]
     record.update(data)
     if not skip_files:
-        _handle_record_files(record, data)
+        _handle_record_files(record, data, logger)
         record.update(data)
         db.session.commit()
     return record
 
 
-def create_doc(data, skip_files):
+def create_doc(data, skip_files, logger=None):
     """Creates a new doc record."""
     id = uuid.uuid4()
     cernopendata_docid_minter(id, data)
@@ -167,7 +179,7 @@ def create_doc(data, skip_files):
     return record
 
 
-def update_doc_or_glossary(pid, data, skip_files):
+def update_doc_or_glossary(pid, data, skip_files, logger=None):
     """Updates the given doc/glossary record."""
     record = Record.get_record(pid.object_uuid)
     # This is to ensure that fields that do not appear in the new data
@@ -178,7 +190,7 @@ def update_doc_or_glossary(pid, data, skip_files):
     return record
 
 
-def create_glossary_term(data, skip_files):
+def create_glossary_term(data, skip_files, logger=None):
     """Creates a new glossary term record."""
     id = uuid.uuid4()
     cernopendata_termid_minter(id, data)
@@ -191,16 +203,12 @@ def fixtures():
     """Automate site bootstrap process and testing."""
 
 
-def _get_list_of_fixture_files(files, type):
+def _get_list_of_fixture_files(files, type, logger):
     """Return the list of files that should be loaded."""
     data_dir = None
     if files:
         if not exists(files[0]):
-            click.secho(
-                f"The path {files[0]} does not exist",
-                fg="red",
-                err=True,
-            )
+            logger.error(f"The path {files[0]} does not exist")
             return
         if isdir(files[0]):
             data_dir = files[0]
@@ -224,70 +232,88 @@ def _process_fixture_files(
     pid_field,
     update_function=update_record,
     create_function=create_record,
+    logger=None,
 ):
+    logger = logging.getLogger(__name__) if not logger else logger
     if mode not in MODE_OPTIONS:
-        click.secho(
-            f"Error: mode '{mode}' not understood. Available options are '{MODE_OPTIONS}'",
-            fg="red",
-            err=True,
+        logger.error(
+            f"Error: mode '{mode}' not understood. Available options are '{MODE_OPTIONS}'"
         )
         return
     indexer = RecordIndexer()
     schema = current_app.extensions["invenio-jsonschemas"].path_to_url(schema_name)
+    verbose = logger.getEffectiveLevel() == logging.DEBUG
 
-    record_json = _get_list_of_fixture_files(files, entry_type)
+    record_json = _get_list_of_fixture_files(files, entry_type, logger)
 
     i = 1
     total_files = len(record_json)
+    statistics = {"inserted": 0, "updated": 0, "error": 0, "skipped": 0}
     for filename in record_json:
-        click.echo(f"Loading records from {filename} ({i}/{total_files})...")
+        logger.info(f"Loading records from {filename} ({i}/{total_files})...")
         i += 1
         with open(filename, "rb") as source:
-            j = 1
             json_data = json.load(source)
-            records_file = len(json_data)
             for data in json_data:
                 pid = load_entry_data(data, filename)
                 if not pid:
                     continue
+                logger.info(f"==> Processing {entry_type} {pid}")
+                if verbose:
+                    logger.info(f"  -> Detected DOI {data.get('doi')}")
                 data["$schema"] = schema
                 try:
                     pid_object = PersistentIdentifier.get(pid_field, pid)
                     if mode == "insert":
-                        click.secho(
-                            f"{entry_type} {pid} exists already; cannot insert it.",
-                            fg="red",
-                            err=True,
+                        logger.error(
+                            f"==> {entry_type.capitalize()} {pid} exists already; cannot insert it."
                         )
-                        return
+                        statistics["error"] += 1
+                        return statistics
                     if mode == "insert-or-skip":
-                        click.secho(f"{entry_type} {pid} already exists... skipping")
+                        logger.warning(
+                            f"==> {entry_type.capitalize()} {pid} already exists... skipping"
+                        )
+                        statistics["skipped"] += 1
                         continue
-                    record = update_function(pid_object, data, skip_files)
+                    record = update_function(pid_object, data, skip_files, logger)
                     action = "updated"
                 except PIDDoesNotExistError:
                     if mode == "replace":
-                        click.secho(
-                            f"{entry_type} {pid} does not exist; cannot replace it.",
-                            fg="red",
-                            err=True,
+                        logger.error(
+                            f"==> {entry_type.capitalize()} {pid} does not exist; cannot replace it."
                         )
-                        return
-                    record = create_function(data, skip_files)
+                        statistics["error"] += 1
+                        return statistics
+                    record = create_function(data, skip_files, logger)
                     action = "inserted"
                 try:
                     record.commit()
                     db.session.commit()
+                    statistics[action] += 1
                 except Exception as e:
-                    click.secho(
-                        f"There was an exception during the commit: {e}",
-                        fg="red",
-                        err=True,
-                    )
-                    return
-                click.echo(f"{entry_type} {pid} {action}")
+                    logger.error(f"==> There was an exception during the commit: {e}")
+                    statistics["error"] += 1
+                    return statistics
+                logger.info(f"==> {entry_type.capitalize()} {pid} {action}")
                 indexer.index(record)
                 db.session.expunge_all()
+    return statistics
+
+
+def _log_statistics(statistics, type, start_time, logger):
+    total_records = sum([value for value in statistics.values()])
+    logger.info(
+        f"Processed {total_records} {type} ({statistics['inserted']} created, {statistics['updated']} updated, "
+        f"{statistics['error']} error, {statistics['skipped']} skipped)"
+    )
+    end_time = time.time()
+    duration_seconds = end_time - start_time
+    records_per_second = total_records / duration_seconds if duration_seconds > 0 else 0
+    logger.info(
+        f"Processing took {(duration_seconds / 60):.2f} minutes "
+        f"({records_per_second:.2f} {type} per second)"
+    )
 
 
 @fixtures.command()
@@ -308,9 +334,12 @@ def _process_fixture_files(
     type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
+@option_verbose
 @with_appcontext
-def records(skip_files, files, profile, mode):
+def records(skip_files, files, profile, mode, verbose):
     """Load all records."""
+    start_time = time.time()
+    logger = setup_cli_logger(verbose)
     if profile:
         import cProfile
         import pstats
@@ -321,14 +350,13 @@ def records(skip_files, files, profile, mode):
 
     def load_record_data(data, filename):
         if not data:
-            click.echo(
-                "IGNORING a possibly broken or corrupted "
-                "record entry in file {0} ...".format(filename)
+            logger.warning(
+                f"IGNORING a possibly broken or corrupted record entry in file {filename} ..."
             )
             return False
         return data["recid"]
 
-    _process_fixture_files(
+    result = _process_fixture_files(
         files,
         "record",
         "records/record-v1.0.0.json",
@@ -338,6 +366,7 @@ def records(skip_files, files, profile, mode):
         pid_field="recid",
         update_function=update_record,
         create_function=create_record,
+        logger=logger,
     )
 
     if profile:
@@ -348,6 +377,8 @@ def records(skip_files, files, profile, mode):
         ps.print_stats()
         print(s.getvalue())
 
+    _log_statistics(result, "records", start_time, logger)
+
 
 @fixtures.command()
 @with_appcontext
@@ -366,13 +397,16 @@ def records(skip_files, files, profile, mode):
     type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
-def glossary(files, mode):
+@option_verbose
+def glossary(files, mode, verbose):
     """Load glossary term records."""
+    start_time = time.time()
+    logger = setup_cli_logger(verbose)
 
     def load_glossary_data(data, filename):
         return data["anchor"]
 
-    _process_fixture_files(
+    result = _process_fixture_files(
         files,
         "terms",
         "records/glossary-term-v1.0.0.json",
@@ -382,7 +416,10 @@ def glossary(files, mode):
         "termid",
         update_doc_or_glossary,
         create_glossary_term,
+        logger,
     )
+
+    _log_statistics(result, "terms", start_time, logger)
 
 
 @fixtures.command()
@@ -401,9 +438,12 @@ def glossary(files, mode):
     type=click.Choice(MODE_OPTIONS),
     default="insert-or-replace",
 )
+@option_verbose
 @with_appcontext
-def docs(files, mode):
+def docs(files, mode, verbose):
     """Load demo article records."""
+    start_time = time.time()
+    logger = setup_cli_logger(verbose)
 
     def read_doc_content(data, filename):
         assert data["body"]["content"]
@@ -424,7 +464,7 @@ def docs(files, mode):
             data["body"]["content"] = body_field.read()
         return data["slug"]
 
-    _process_fixture_files(
+    result = _process_fixture_files(
         files,
         entry_type="docs",
         schema_name="records/docs-v1.0.0.json",
@@ -434,7 +474,10 @@ def docs(files, mode):
         pid_field="docid",
         update_function=update_doc_or_glossary,
         create_function=create_doc,
+        logger=logger,
     )
+
+    _log_statistics(result, "docs", start_time, logger)
 
 
 @fixtures.command()
@@ -442,13 +485,14 @@ def docs(files, mode):
 def pids():
     """Fetch and register PIDs."""
     from invenio_db import db
-    from invenio_oaiserver.fetchers import onaiid_fetcher
+    from invenio_oaiserver.fetchers import oaiid_fetcher
     from invenio_oaiserver.minters import oaiid_minter
     from invenio_pidstore.errors import PIDDoesNotExistError
     from invenio_pidstore.fetchers import recid_fetcher
     from invenio_pidstore.models import PersistentIdentifier, PIDStatus
     from invenio_records.models import RecordMetadata
 
+    logger = setup_cli_logger()
     recids = [r.id for r in RecordMetadata.query.all()]
     db.session.expunge_all()
 
@@ -462,7 +506,7 @@ def pids():
                     pid_value=pid.pid_value,
                     pid_provider=pid.provider.pid_provider,
                 )
-                click.echo("Found {0}.".format(found))
+                logger.info(f"Found {found}.")
             except PIDDoesNotExistError:
                 db.session.add(
                     PersistentIdentifier.create(
@@ -474,7 +518,7 @@ def pids():
                     )
                 )
             except KeyError:
-                click.echo("Skiped: {0}".format(record.id))
+                logger.warning(f"Skipped: {record.id}")
                 continue
 
             pid_value = record.json.get("_oai", {}).get("id")
@@ -493,7 +537,7 @@ def pids():
                     pid_value=pid.pid_value,
                     pid_provider=pid.provider.pid_provider,
                 )
-                click.echo("Found {0}.".format(found))
+                logger.info(f"Found {found}.")
             except PIDDoesNotExistError:
                 pid = oaiid_minter(record.id, record.json)
                 db.session.add(pid)
