@@ -2,6 +2,7 @@
 """API for manipulating file indices associated to a record."""
 
 import json
+import logging
 from collections import OrderedDict
 
 from invenio_files_rest.models import (
@@ -130,14 +131,20 @@ class FileIndexMetadata:
         return str(self.dumps())
 
     @classmethod
-    def create(cls, record, file_object, description=""):
+    def create(cls, record, file_object, description="", logger=None):
         """Method to create a FileIndex."""
         rb = cls()
         rb.model = record.model
+        logger = logging.getLogger(__name__) if not logger else logger
+        verbose = logger.getEffectiveLevel() == logging.DEBUG
         # Let's read the file
         my_file = file_object.storage().open()
         index_content = json.load(my_file)
         my_file.close()
+        if verbose:
+            logger.info(
+                f"  -> Detected index file with {len(index_content)} entries {file_object.uri}"
+            )
 
         index_file_name = file_object.uri.split("/")[-1:][0]
 
@@ -147,7 +154,6 @@ class FileIndexMetadata:
         BucketTag.create(rb._bucket, "index_name", index_file_name)
         BucketTag.create(rb._bucket, "record", record.model.id)
         BucketTag.create(rb._bucket, "description", description)
-        print(f"The file index contains {len(index_content)} entries.")
         for entry in index_content:
             entry_file = FileInstance.create()
             entry_file.set_uri(entry["uri"], entry["size"], entry["checksum"])
@@ -162,11 +168,15 @@ class FileIndexMetadata:
             rb._avl[f.availability] += 1
             entry["file_id"] = str(entry_file.id)
             rb._number_files += 1
-            if not rb._number_files % 1000:
-                print(f"    {rb._number_files} done")
+            if not rb._number_files % 1000 and verbose:
+                logger.info(f"       {rb._number_files} entries processed")
             rb._size += entry["size"]
             rb._files.append(f)
         record["_file_indices"].append(rb.dumps())
+        if verbose:
+            logger.info(
+                f"  -> Processed index file with {len(index_content)} entries {file_object.uri}"
+            )
         return rb
 
     @classmethod
