@@ -55,7 +55,11 @@ option_force = click.option(
     default=False,
     help="Force the transfer, without checking if the file exists",
 )
-
+option_ignore_tag = click.option(
+    "--force",
+    is_flag=True,
+    help="Force the deletion even if hot_deleted tag already exists",
+)
 option_limit = click.option(
     "--limit",
     default=False,
@@ -113,6 +117,9 @@ def _doOperation(operation, record, register, limit, force, dry, debug):
             click.secho(f"The entry {r} does not exist", fg="red")
             continue
         t = m.doOperation(operation, uuid, limit, register, force, dry)
+        if operation == ColdStorageActions.CLEAR_HOT and not t:
+            click.secho(f"Unable to complete operation for record {r}", fg="red")
+            continue
         transfers += len(t)
         counter += 1
         click.secho(
@@ -269,11 +276,12 @@ def _verify_files(file: dict) -> list:
 @with_appcontext
 @argument_record
 @option_limit
+@option_ignore_tag
 @option_dry
 @option_debug
-def clear_hot(record, limit, dry, debug):
+def clear_hot(record, limit, force, dry, debug):
     """Delete the hot copy of a file that has a cold copy."""
-    _doOperation(ColdStorageActions.CLEAR_HOT, record, None, limit, None, dry, debug)
+    _doOperation(ColdStorageActions.CLEAR_HOT, record, None, limit, force, dry, debug)
 
 
 @cold.command()
