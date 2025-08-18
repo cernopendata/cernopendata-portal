@@ -39,6 +39,7 @@ theme = WebpackThemeBundle(
             dependencies={
                 "open-iconic": "~1.1.1",
                 "popper.js": "~1.11.0",
+                "recharts": "^1.8.5",
             },
             aliases={
                 "../../theme.config$": "less/cernopendata/theme.config",
