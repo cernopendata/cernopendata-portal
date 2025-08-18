@@ -1,5 +1,18 @@
 Changes
 =======
+Version 0.5.0 (released 2025-08-18)
+---------------------------
+- Specifying the maximum number of transfers from the CLI
+- UI: Created a new year facet (#171)
+- fix: commit changes in clear-hot after all steps are completed (#191)
+- ui: improve hover over links containing LaTeX formatting
+- fixtures: prettify output messages
+- XrootD: Automatically read version from environment/container
+- test: added tests for cold storage
+- fix: ignore subagg if agg is not in the request arguments
+- XrootD: Bumped version from 5.8.3 to 5.8.4
+- search: create parameter for search query to not return files and file indices
+
 Version 0.4.8 (released 2025-07-10)
 ---------------------------
 - ui: fix facet of number of events, fix templates to display the title 'Files and Indices' if there are files or indices
