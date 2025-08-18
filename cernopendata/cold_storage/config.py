@@ -28,5 +28,5 @@
 
 COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD = 1000
 # Maximum number of transfers that should be active at a given moment
-COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD = 50
+COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD = 100
 # Maximum number of transfers that should be active at a given moment

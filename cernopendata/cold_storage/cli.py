@@ -76,6 +76,13 @@ option_debug = click.option(
     "-d", "--debug", is_flag=True, help="Swicth on the debug messages"
 )
 
+option_max_transfers = click.option(
+    "-m",
+    "--max_transfers",
+    type=click.INT,
+    help="Maximum number of transfers that could be issued.",
+)
+
 
 # From https://stackoverflow.com/questions/1094841/get-a-human-readable-version-of-a-file-size
 def file_size(size):
@@ -98,12 +105,24 @@ def cold():
 @option_force
 @option_dry
 @option_debug
-def archive(record, register, limit, force, dry, debug):
+@option_max_transfers
+def archive(record, register, limit, force, dry, debug, max_transfers):
     """Move a record to cold."""
-    _doOperation(ColdStorageActions.ARCHIVE, record, register, limit, force, dry, debug)
+    _doOperation(
+        ColdStorageActions.ARCHIVE,
+        record,
+        register,
+        limit,
+        force,
+        dry,
+        debug,
+        max_transfers,
+    )
 
 
-def _doOperation(operation, record, register, limit, force, dry, debug):
+def _doOperation(
+    operation, record, register, limit, force, dry, debug, max_transfers=0
+):
     """Internal function to do the CLI commands."""
     if debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -116,7 +135,7 @@ def _doOperation(operation, record, register, limit, force, dry, debug):
         except PIDDoesNotExistError as e:
             click.secho(f"The entry {r} does not exist", fg="red")
             continue
-        t = m.doOperation(operation, uuid, limit, register, force, dry)
+        t = m.doOperation(operation, uuid, limit, register, force, dry, max_transfers)
         if operation == ColdStorageActions.CLEAR_HOT and not t:
             click.secho(f"Unable to complete operation for record {r}", fg="red")
             continue
@@ -136,9 +155,19 @@ def _doOperation(operation, record, register, limit, force, dry, debug):
 @option_force
 @option_dry
 @option_debug
-def stage(record, register, limit, force, dry, debug):
+@option_max_transfers
+def stage(record, register, limit, force, dry, debug, max_transfers):
     """Move a record from cold."""
-    _doOperation(ColdStorageActions.STAGE, record, register, limit, force, dry, debug)
+    _doOperation(
+        ColdStorageActions.STAGE,
+        record,
+        register,
+        limit,
+        force,
+        dry,
+        debug,
+        max_transfers,
+    )
 
 
 @cold.group()
