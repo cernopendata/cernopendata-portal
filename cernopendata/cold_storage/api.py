@@ -219,7 +219,7 @@ class Request:
     @staticmethod
     def subscribe(transfer_id, email):
         """Add an email to the subscribers of a transfer."""
-        transfer = TransferMetadata.query.filter_by(id=transfer_id).first()
+        transfer = RequestMetadata.query.filter_by(id=transfer_id).first()
 
         if email not in transfer.subscribers:
             transfer.subscribers.append(email)

@@ -1,8 +1,11 @@
 from unittest.mock import patch
 
 import pytest
+from invenio_pidstore.models import PersistentIdentifier
 
+from cernopendata.cold_storage.api import Request
 from cernopendata.cold_storage.cli import cold
+from cernopendata.cold_storage.models import RequestMetadata
 from cernopendata.cold_storage.storage import Storage
 from cernopendata.modules.fixtures.cli import create_record
 
@@ -73,3 +76,27 @@ def test_cold_storage_workflow(
 
     result = run_command(cli_runner, app, cold, ["list", record_id])
     assert_list_output(result, hot_file_paths, cold_file_paths, 1, 1)
+
+
+def test_subscribe(app, database):
+    """
+    Tests a subscribtion to a transfer
+    """
+    s = PersistentIdentifier.query.first()
+    request = Request.create(s.object_uuid, None)
+    database.session.add(request)
+    database.session.commit()
+
+    # test a successful subscription
+    subscriber = "new@domain.com"
+    result = Request.subscribe(request.id, subscriber)
+    assert result is True
+    request_md = RequestMetadata.query.filter_by(id=request.id).first()
+    assert subscriber in request_md.subscribers
+
+    # test trying to subscribe when already subscribed
+    result = Request.subscribe(request.id, subscriber)
+    assert result is False
+    request_md = RequestMetadata.query.filter_by(id=request.id).first()
+    assert subscriber in request_md.subscribers
+    assert len(request_md.subscribers) == 1
