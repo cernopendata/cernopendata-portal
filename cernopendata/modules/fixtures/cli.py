@@ -36,6 +36,7 @@ from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records import Record
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
 
 from cernopendata.api import FileIndexMetadata, MultiURIFileObject, RecordFilesWithIndex
@@ -43,7 +44,14 @@ from cernopendata.modules.records.minters.docid import cernopendata_docid_minter
 from cernopendata.modules.records.minters.recid import cernopendata_recid_minter
 from cernopendata.modules.records.minters.termid import cernopendata_termid_minter
 
-MODE_OPTIONS = ["insert", "replace", "insert-or-replace", "insert-or-skip"]
+MODE_OPTIONS = [
+    "insert",
+    "replace",
+    "insert-or-replace",
+    "insert-or-skip",
+    "delete",
+    "delete-or-skip",
+]
 
 
 def setup_cli_logger(verbose=False):
@@ -136,6 +144,19 @@ def _handle_record_files(record, data, logger=None):
     record.check_availability()
 
 
+def delete_record(pid, logger=None):
+    """Deletes a record."""
+    logger.info("Ready to delete the object {pid}")
+    record = RecordFilesWithIndex.get_record(pid.object_uuid)
+
+    for o in ObjectVersion.get_by_bucket(record.bucket).all():
+        o.remove()
+        FileInstance.query.filter_by(id=o.file_id).delete()
+    FileIndexMetadata.delete_by_record(record=record)
+    record.delete()
+    return None
+
+
 def create_record(data, skip_files, logger=None):
     """Creates a new record."""
     id = uuid.uuid4()
@@ -171,6 +192,27 @@ def update_record(pid, data, skip_files, logger=None):
     return record
 
 
+def delete_record(pid, pid_field, logger=None):
+    """Deletes a record, including its pid and all the buckets and files."""
+    try:
+        record = RecordFilesWithIndex.get_record(pid.object_uuid)
+        for o in ObjectVersion.get_by_bucket(record.bucket).all():
+            o.remove()
+            FileInstance.query.filter_by(id=o.file_id).delete()
+        FileIndexMetadata.delete_by_record(record=record)
+        record.delete()
+    except NoResultFound:
+        logger.error(
+            "The record does not exist (even if the pid does!). Removing the pid"
+        )
+
+    pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
+    db.session.delete(pid)
+    pid2 = PersistentIdentifier.get("oai", f"oai:cernopendata.cern:{pid.pid_value}")
+    db.session.delete(pid2)
+    return None
+
+
 def create_doc(data, skip_files, logger=None):
     """Creates a new doc record."""
     id = uuid.uuid4()
@@ -188,6 +230,14 @@ def update_doc_or_glossary(pid, data, skip_files, logger=None):
         del record[k]
     record.update(data)
     return record
+
+
+def delete_doc_or_glossary(pid, pid_field, logger=None):
+    """Deletes a document or a glossary term."""
+    record = Record.get_record(pid.object_uuid)
+    record.delete()
+    pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
+    db.session.delete(pid)
 
 
 def create_glossary_term(data, skip_files, logger=None):
@@ -232,6 +282,7 @@ def _process_fixture_files(
     pid_field,
     update_function=update_record,
     create_function=create_record,
+    delete_function=delete_record,
     logger=None,
 ):
     logger = logging.getLogger(__name__) if not logger else logger
@@ -248,7 +299,7 @@ def _process_fixture_files(
 
     i = 1
     total_files = len(record_json)
-    statistics = {"inserted": 0, "updated": 0, "error": 0, "skipped": 0}
+    statistics = {"inserted": 0, "updated": 0, "error": 0, "skipped": 0, "deleted": 0}
     for filename in record_json:
         logger.info(f"Loading records from {filename} ({i}/{total_files})...")
         i += 1
@@ -276,19 +327,26 @@ def _process_fixture_files(
                         )
                         statistics["skipped"] += 1
                         continue
-                    record = update_function(pid_object, data, skip_files, logger)
-                    action = "updated"
+                    if mode in ("delete", "delete-or-skip"):
+                        record = delete_function(pid_object, pid_field)
+                        action = "deleted"
+                    else:
+                        record = update_function(pid_object, data, skip_files, logger)
+                        action = "updated"
                 except PIDDoesNotExistError:
-                    if mode == "replace":
+                    if mode in ("replace", "delete", "delete-or-skip"):
                         logger.error(
-                            f"==> {entry_type.capitalize()} {pid} does not exist; cannot replace it."
+                            f"==> {entry_type.capitalize()} {pid} does not exist; cannot {mode} it."
                         )
                         statistics["error"] += 1
+                        if mode == "delete-or-skip":
+                            continue
                         return statistics
                     record = create_function(data, skip_files, logger)
                     action = "inserted"
                 try:
-                    record.commit()
+                    if record:
+                        record.commit()
                     db.session.commit()
                     statistics[action] += 1
                 except Exception as e:
@@ -296,7 +354,8 @@ def _process_fixture_files(
                     statistics["error"] += 1
                     return statistics
                 logger.info(f"==> {entry_type.capitalize()} {pid} {action}")
-                indexer.index(record)
+                if record:
+                    indexer.index(record)
                 db.session.expunge_all()
     return statistics
 
@@ -305,7 +364,7 @@ def _log_statistics(statistics, type, start_time, logger):
     total_records = sum([value for value in statistics.values()])
     logger.info(
         f"Processed {total_records} {type} ({statistics['inserted']} created, {statistics['updated']} updated, "
-        f"{statistics['error']} error, {statistics['skipped']} skipped)"
+        f"{statistics['error']} error, {statistics['skipped']} skipped, {statistics['deleted']} deleted))"
     )
     end_time = time.time()
     duration_seconds = end_time - start_time
@@ -366,6 +425,7 @@ def records(skip_files, files, profile, mode, verbose):
         pid_field="recid",
         update_function=update_record,
         create_function=create_record,
+        delete_function=delete_record,
         logger=logger,
     )
 
@@ -414,9 +474,10 @@ def glossary(files, mode, verbose):
         mode,
         load_glossary_data,
         "termid",
-        update_doc_or_glossary,
-        create_glossary_term,
-        logger,
+        update_function=update_doc_or_glossary,
+        create_function=create_glossary_term,
+        delete_function=delete_doc_or_glossary,
+        logger=logger,
     )
 
     _log_statistics(result, "terms", start_time, logger)
@@ -474,6 +535,7 @@ def docs(files, mode, verbose):
         pid_field="docid",
         update_function=update_doc_or_glossary,
         create_function=create_doc,
+        delete_function=delete_doc_or_glossary,
         logger=logger,
     )
 
