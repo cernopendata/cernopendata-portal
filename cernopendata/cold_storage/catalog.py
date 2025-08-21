@@ -64,9 +64,13 @@ class Catalog:
             if "_file_indices" in record:
                 for f in record["_file_indices"]:
                     files += f["files"]
-        if limit and limit < 0:
-            logger.debug(f"Skipping the first {limit} files")
-            files = files[-limit:]
+        if limit:
+            if limit < 0:
+                logger.debug(f"Skipping the first {limit} files")
+                files = files[-limit:]
+            else:
+                logger.debug(f"Returning the first {limit} files")
+                files = files[:limit]
         return files
 
     def clear_hot(self, record, file_id, force):
