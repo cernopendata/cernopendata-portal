@@ -129,6 +129,8 @@ def _search_create_indexes(current_search, current_search_client):
 def _search_delete_indexes(current_search):
     """Delete all registered search indexes."""
     list(current_search.delete(ignore=[404]))
+    for my_index in current_search.index_templates.keys():
+        current_search.client.indices.delete(my_index, ignore=[404])
 
 
 @pytest.fixture(scope="module")

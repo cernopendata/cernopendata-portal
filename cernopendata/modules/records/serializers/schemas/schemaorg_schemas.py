@@ -33,7 +33,7 @@ class RecordSchemaorgSchema(Schema):
     """schema.org JSON-LD schema for CERN Opendata Record."""
 
     # JSON-LD minimum requirements
-    context_ = fields.Field(dump_default="https://schema.org/", data_key="@context")
+    context_ = fields.Raw(dump_default="https://schema.org/", data_key="@context")
     id_ = fields.Method("get_identifier", data_key="@id")
 
     # Minimum functional
