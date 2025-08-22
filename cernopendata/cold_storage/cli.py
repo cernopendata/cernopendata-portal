@@ -96,6 +96,13 @@ option_record = click.option(
     help="Show the transfers of only this record",
 )
 
+option_file = click.option(
+    "-f",
+    "--file",
+    type=click.STRING,
+    help="Do the action only for this file (or index file).",
+)
+
 
 # From https://stackoverflow.com/questions/1094841/get-a-human-readable-version-of-a-file-size
 def file_size(size):
@@ -119,7 +126,8 @@ def cold():
 @option_dry
 @option_debug
 @option_max_transfers
-def archive(record, register, limit, force, dry, debug, max_transfers):
+@option_file
+def archive(record, register, limit, force, dry, debug, max_transfers, file):
     """Move a record to cold."""
     _doOperation(
         ColdStorageActions.ARCHIVE,
@@ -130,11 +138,20 @@ def archive(record, register, limit, force, dry, debug, max_transfers):
         dry,
         debug,
         max_transfers,
+        file,
     )
 
 
 def _doOperation(
-    operation, record, register, limit, force, dry, debug, max_transfers=0
+    operation,
+    record,
+    register,
+    limit,
+    force,
+    dry,
+    debug,
+    max_transfers=0,
+    file=None,
 ):
     """Internal function to do the CLI commands."""
     if debug:
@@ -148,7 +165,9 @@ def _doOperation(
         except PIDDoesNotExistError as e:
             click.secho(f"The entry {r} does not exist", fg="red")
             continue
-        t = m.doOperation(operation, uuid, limit, register, force, dry, max_transfers)
+        t = m.doOperation(
+            operation, uuid, limit, register, force, dry, max_transfers, file
+        )
         if operation == ColdStorageActions.CLEAR_HOT and not t:
             click.secho(f"Unable to complete operation for record {r}", fg="red")
             continue
@@ -169,7 +188,8 @@ def _doOperation(
 @option_dry
 @option_debug
 @option_max_transfers
-def stage(record, register, limit, force, dry, debug, max_transfers):
+@option_file
+def stage(record, register, limit, force, dry, debug, max_transfers, file):
     """Move a record from cold."""
     _doOperation(
         ColdStorageActions.STAGE,
@@ -180,6 +200,7 @@ def stage(record, register, limit, force, dry, debug, max_transfers):
         dry,
         debug,
         max_transfers,
+        file,
     )
 
 
@@ -221,7 +242,8 @@ def list():
 @argument_record
 @option_verify
 @option_debug
-def list(record, verify, debug):
+@option_file
+def list(record, verify, debug, file):
     """Print the urls for an entry.
 
     By default, it prints the urls for all the files of the entry.
@@ -244,7 +266,7 @@ def list(record, verify, debug):
         except Exception as e:
             click.secho(f"The record '{r}' does not exist.", fg="red")
             continue
-        info = m.list(uuid)
+        info = m.list(uuid, file=file)
         if not info:
             click.secho(f"The record {r} does not exist!")
             stats["errors"] += [r]
@@ -321,9 +343,12 @@ def _verify_files(file: dict) -> list:
 @option_ignore_tag
 @option_dry
 @option_debug
-def clear_hot(record, limit, force, dry, debug):
+@option_file
+def clear_hot(record, limit, force, dry, debug, file):
     """Delete the hot copy of a file that has a cold copy."""
-    _doOperation(ColdStorageActions.CLEAR_HOT, record, None, limit, force, dry, debug)
+    _doOperation(
+        ColdStorageActions.CLEAR_HOT, record, None, limit, force, dry, debug, file=file
+    )
 
 
 @cold.command()

@@ -3,7 +3,7 @@ import { Button, Modal, Form, Checkbox, Message } from "semantic-ui-react";
 import axios from "axios";
 import { toHumanReadableSize } from "../utils";
 
-const RequestRecordApp = ({ recordId, availability, files, size }) => {
+const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -13,8 +13,11 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
     if (!confirmed) return;
     setLoading(true);
     try {
-      await axios.post(`/record/${recordId}/stage`, { email: email.trim() });
-      window.location.reload();
+        await axios.post(`/record/${recordId}/stage`, {
+          email: email.trim(),
+          ...(file ? { file: file } : {}),
+        });
+        window.location.reload();
     } catch (error) {
       console.error("Request failed", error);
     } finally {
@@ -55,17 +58,19 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
     actionButton = (
       <>
         <Button className="ml-10" size="tiny" color="blue" onClick={() => setOpen(true)}>
-          Request all files
+          Request { (file)? 'file':'all files' }
         </Button>
 
         <Modal open={open} onClose={() => setOpen(false)} size="small">
           <Modal.Header>Request to make data available</Modal.Header>
           <Modal.Content>
-            <p>Please confirm you want to request all files of the record.</p>
+            <p>Please confirm you want to request {(file)?'this file':'all files of the record'}.</p>
             <Message warning>
               <p>This action takes time. The more data requested, the longer it will take.</p>
               <Checkbox
-                label={`I confirm that I want to request ${files} files (${toHumanReadableSize(size)} of data)`}
+                label={`I confirm that I want to request ${
+                    num_files ? `${num_files} files` : "this file"
+                    }${size ? ` (${toHumanReadableSize(size)} of data)` : ""}`}
                 checked={confirmed}
                 onChange={(e, data) => setConfirmed(data.checked)}
               />
@@ -100,6 +105,11 @@ const RequestRecordApp = ({ recordId, availability, files, size }) => {
       </>
     );
   }
+  if (file ) {
+     /* If we want only a file, we just need the button */
+     return actionButton;
+  }
+
 
   return (
     <div className="ui info message">
