@@ -32,7 +32,12 @@ for exp in ["ALICE", "ATLAS", "CMS", "DELPHI", "LHCb", "TOTEM"]:
         description=f"Records created by the experiment {exp} Collaboration.",
         system_created=True,
     )
-    oaiset.search_pattern = f'collaboration.name:"{exp} Collaboration"'
+    if exp == "DELPHI":
+        collaboration = exp
+    else:
+        collaboration = f"{exp} Collaboration"
+
+    oaiset.search_pattern = f'collaboration.name:"{collaboration}"'
     db.session.add(oaiset)
 db.session.commit()
 print("All sets have been added :-)")
