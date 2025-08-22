@@ -135,9 +135,9 @@ class ColdStorageManager:
             self._catalog.reindex_entries()
         db.session.commit()
         logger.info(
-            "Summary:"
-            + ", ".join(f"{key}: {value}" for key, value in summary.items())
-            + f"{len(transfers)} transfers have been issued"
+            "Summary: "
+            + ", ".join(f"{value} {key}" for key, value in summary.items())
+            + f". {len(transfers)} transfers have been issued."
         )
         return transfers
 

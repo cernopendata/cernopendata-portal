@@ -28,12 +28,13 @@ import logging
 from math import log2
 
 import click
+from datetime import datetime
 from flask.cli import with_appcontext
 from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 
-from .api import ColdStorageActions
+from .api import ColdStorageActions, Transfer
 from .manager import ColdStorageManager
 from .models import Location
 from .service import RequestService, TransferService
@@ -81,6 +82,18 @@ option_max_transfers = click.option(
     "--max_transfers",
     type=click.INT,
     help="Maximum number of transfers that could be issued.",
+)
+option_action = click.option(
+    "-a",
+    "--action",
+    type=click.Choice(["stage", "archive"]),
+)
+
+option_record = click.option(
+    "-r",
+    "--record",
+    type=click.INT,
+    help="Show the transfers of only this record",
 )
 
 
@@ -331,3 +344,33 @@ def process_requests(debug):
     if debug:
         logging.basicConfig(level=logging.DEBUG)
     return RequestService.process_requests()
+
+
+@cold.command()
+@with_appcontext
+@option_debug
+@option_action
+@option_record
+def transfers(debug, action, record):
+    """List the transfers."""
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    logger.info("Checking if there are transfers")
+    transfers = Transfer.get_ongoing_transfers(datetime.utcnow())
+    if record:
+        try:
+            uuid = PersistentIdentifier.get("recid", record).object_uuid
+        except PIDDoesNotExistError as e:
+            click.secho(f"The entry {r} does not exist", fg="red")
+            return
+        logger.info(f"Printing only for record {record} ({uuid})")
+    for transfer in transfers:
+        if action and action != transfer.action:
+            continue
+        if record and str(uuid) != str(transfer.record_uuid):
+            print(f"'{uuid}' != {transfer.record_uuid}")
+            continue
+        logger.info(
+            f" * Transfer {transfer.id}: {transfer.action} {transfer.status}"
+            f" {transfer.new_filename} {transfer.record_uuid}"
+        )

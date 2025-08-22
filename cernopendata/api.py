@@ -84,6 +84,9 @@ class RecordFilesWithIndex(Record):
     def check_availability(self):
         """Calculate the availability of the record based on the files and file indices."""
         self._avl = {}
+        previous_availability = None
+        if "availability" in self:
+            previous_availability = self["availability"]
         for index in self.file_indices:
             # And let's propagate the availability to the record
             for avl in index["availability"]:
@@ -102,6 +105,11 @@ class RecordFilesWithIndex(Record):
             self["availability"] = list(self._avl.keys())[0]
         else:
             self["availability"] = RecordAvailability.PARTIAL.value
+        # If the record was in requested, and it is still not online, it should stay in requested
+        if previous_availability == RecordAvailability.REQUESTED.value and self[
+            "availability"
+        ] in [RecordAvailability.PARTIAL.value, RecordAvailability.ONDEMAND.value]:
+            self["availability"] = RecordAvailability.REQUESTED.value
 
     def flush_indices(self):
         """Updates the _file_indices information based on what exists on the database."""
