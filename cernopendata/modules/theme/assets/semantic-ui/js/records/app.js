@@ -44,7 +44,7 @@ if (requestContainer) {
     const size = requestContainer.dataset.size;
     const files = requestContainer.dataset.files;
     ReactDOM.render(
-      <RequestRecordApp recordId={recordId}  availability={availability} files={files} size={size}/>,
+      <RequestRecordApp recordId={recordId}  availability={availability} num_files={files} size={size}/>,
       requestContainer
     );
 };
