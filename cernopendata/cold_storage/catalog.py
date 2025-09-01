@@ -54,19 +54,35 @@ class Catalog:
             return
         return record
 
-    def get_files_from_record(self, record, limit=None):
+    def get_files_from_record(self, record, limit=None, file=None):
         """Getting the files from a record."""
         files = []
-        logger.debug(f"The catalog got the record:  {record}")
+        possible_files = []
+        logger.debug(f"The catalog got the record")
         if record:
             if "_files" in record:
-                files += record["_files"]
+                if file and file not in record["_files"]:
+                    possible_files += record["_files"]
+                else:
+                    files += record["_files"]
             if "_file_indices" in record:
                 for f in record["_file_indices"]:
+                    if file and f["key"] != file:
+                        possible_files.append(f["key"])
+                        continue
                     files += f["files"]
-        if limit and limit < 0:
-            logger.debug(f"Skipping the first {limit} files")
-            files = files[-limit:]
+        if file and not files:
+            logger.error(
+                f"This record does not have a file called '{file}'. Possible values are: {possible_files}"
+            )
+            return []
+        if limit:
+            if limit < 0:
+                logger.debug(f"Skipping the first {limit} files")
+                files = files[-limit:]
+            else:
+                logger.debug(f"Returning the first {limit} files")
+                files = files[:limit]
         return files
 
     def clear_hot(self, record, file_id, force):

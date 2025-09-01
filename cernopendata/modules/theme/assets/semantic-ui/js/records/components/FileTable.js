@@ -31,6 +31,7 @@ import $ from "jquery"; // You need jQuery for Semantic UI's JS
 import { IndexFilesModal, DownloadWarningModal } from "../components";
 import { toHumanReadableSize } from "../utils";
 import config from "../config";
+import RequestRecordApp from "./RequestRecord"
 
 import "./FileTable.scss";
 
@@ -144,7 +145,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
               : { href: getFileUri(table_type, file.key) };
 
           return (
-            <Table.Row key={file.version_id}>
+            <Table.Row key={file.key}>
               <Table.Cell className="filename-cell">
                 {table_type === 'file_index' ? file.description : file.key}
               </Table.Cell>
@@ -152,15 +153,30 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                 {toHumanReadableSize(file.size)}
               </Table.Cell>
               {hasOnDemandColumn && (
-                <Table.Cell>
-                  {file.availability?.["on demand"] && (
-                    <Popup
-                        content={file.availability.online ? "Some files of the dataset are available for immediate download" : "The files have to be requested before they are available"}
-                        trigger={<div className="ui mini message">{file.availability.online ? "Partial" : "On demand"}</div>}
-                        position="top center"
-                    />
-                  )}
-                </Table.Cell>
+                    <Table.Cell>
+                      {file.availability?.["on demand"] && (
+                        <Popup
+                          content={
+                            file.availability.online
+                              ? "Some files of the dataset are available for immediate download"
+                              : "The files have to be requested before they are available"
+                          }
+                          trigger={
+                            <div className="ui mini message" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5em" }}>
+                              <span>{file.availability.online ? "Partial" : "On demand"}</span>
+                                <RequestRecordApp
+                                  recordId={config.pidValue}
+                                  num_files={file.number_files}
+                                  size={file.size}
+                                  availability={recordAvailability}
+                                  file={file.key}
+                                />
+                            </div>
+                          }
+                          position="top center"
+                        />
+                      )}
+                    </Table.Cell>
               )}
               <Table.Cell collapsing>
                 {table_type === 'file_index' ? (

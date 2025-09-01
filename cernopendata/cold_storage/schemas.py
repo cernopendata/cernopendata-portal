@@ -37,7 +37,7 @@ class TransferRequestQuerySchema(Schema):
     action = fields.List(fields.Str())
     record = fields.Str()
     sort = fields.Str()
-    direction = fields.Str(validate=validate.OneOf(["asc", "desc"]), missing="asc")
+    direction = fields.Str(validate=validate.OneOf(["asc", "desc"]), load_default="asc")
 
 
 class TransferRequestSchema(Schema):
