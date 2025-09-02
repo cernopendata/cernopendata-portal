@@ -50,6 +50,12 @@ def search_legacy():
         qs = translate_search_url(args, facets)
         return redirect(url_for("invenio_search_ui.search", **qs))
 
+    # translate legacy year facet to new range type
+    if "f" in args and args["f"] and is_single_year_present(args["f"]):
+        return redirect(
+            url_for("invenio_search_ui.search", **translate_legacy_year_facet(args))
+        )
+
     # translate p parameter to q (backwards compatibility)
     # only if q itself not passed
     if "p" in request.args and "q" not in request.args:
@@ -158,6 +164,26 @@ def translate_search_url(args, facets):
         else:
             qs_values[arg] = arg_values
     return qs_values
+
+
+def is_single_year_present(filters_list):
+    """Check if a list of filter strings contains a single year."""
+    return any(
+        "year" in s and ":" in s and "--" not in s.split(":")[1] for s in filters_list
+    )
+
+
+def translate_legacy_year_facet(args):
+    """Translate a single year filter to a year range."""
+    new_values = []
+    for value in args["f"]:
+        split_value = value.split(":")
+        if "year" in value and "--" not in split_value[1]:
+            new_values.append(f"{split_value[0]}:{split_value[1]}--{split_value[1]}")
+        else:
+            new_values.append(value)
+    args["f"] = new_values
+    return args
 
 
 @blueprint.route("/ping", methods=["HEAD", "GET"])
