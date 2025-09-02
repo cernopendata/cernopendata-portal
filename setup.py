@@ -122,7 +122,7 @@ install_requires = [
     # Automatically pin XRootD consistently with Dockerfile
     "xrootd" + xrootd_version(),
     "gevent==25.5.1",
-    "greenlet==3.2.2",
+    "greenlet>=3.2.2",
     "zope.event==5.0",
     "flask-babel==4.0.0",
     "raven<6.11",

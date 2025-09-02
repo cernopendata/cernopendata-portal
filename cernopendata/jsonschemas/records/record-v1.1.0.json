@@ -703,6 +703,23 @@
       },
       "type": "object"
     },
+    "validated_runs": {
+      "description": "Links to the validated run lists for this dataset.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recid": {
+            "description": "The record ID of the validated run list.",
+            "type": "string"
+          },
+          "validation": {
+            "description": "The type of validation (e.g., 'full', 'muonsonly').",
+            "type": "string"
+          }
+        }
+      }
+    },
     "use_with": {
       "properties": {
         "description": {
