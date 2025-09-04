@@ -130,7 +130,7 @@ def translate_search_url(args, facets):
                         subagg_v
                         for subagg_v in FACET_HIERARCHY[agg]
                         .get(agg_v, {})
-                        .get(subagg, {})
+                        .get(subagg, set())
                         .intersection(set(subagg_values))
                     ]
                     # once we have the matching subaggs for a certain agg
