@@ -24,17 +24,35 @@
  * as an Intergovernmental Organization or submit itself to any jurisdiction.
  */
 
-const config = document.querySelector("#files-box-react-app").dataset;
+import { SELECTORS, ITEMS_PER_PAGE, FILE_FORMATS } from './constants';
 
-export const ITEMS_PER_PAGE = 5;
+// Get configuration from DOM dataset
+const getConfig = () => {
+  const configElement = document.querySelector(SELECTORS.FILES_BOX_APP);
+  return configElement ? configElement.dataset : {};
+};
 
+const config = getConfig();
+
+// URL builders
 export const RECORD_FILEPAGE_URL = (pid, page, type = null) =>
   `/record/${pid}/filepage/${page}?${type ? `type=${type}` : "group=1"}`;
 
 export const INDEX_FILES_URL = (pid, indexFile) => {
-  if (indexFile.endsWith("index.txt")) {
-    const fileKey = indexFile.replace(".txt", ".json");
+  if (indexFile.endsWith(`index.${FILE_FORMATS.TXT}`)) {
+    const fileKey = indexFile.replace(`.${FILE_FORMATS.TXT}`, `.${FILE_FORMATS.JSON}`);
     return `/record/${pid}/files/${fileKey}`;
   }
+  return null;
 };
+
+export const RECORD_FILES_URL = (pid, fileKey) => `/record/${pid}/files/${fileKey}`;
+
+export const RECORD_STAGE_URL = (pid) => `/record/${pid}/stage`;
+
+export const TRANSFER_REQUESTS_URL = (recordId) => `/transfer_requests?record_id=${recordId}`;
+
+// Re-export constants for backwards compatibility
+export { ITEMS_PER_PAGE };
+
 export default config;

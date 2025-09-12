@@ -24,71 +24,106 @@
  * as an Intergovernmental Organization or submit itself to any jurisdiction.
  */
 
-import React, { useEffect, useState } from "react";
-import { Pagination } from "semantic-ui-react";
+import React, { useState } from "react";
+import { Pagination, Dimmer, Loader, Message } from "semantic-ui-react";
+import PropTypes from "prop-types";
 
 import { FileTable } from "./components";
-import config, { ITEMS_PER_PAGE, RECORD_FILEPAGE_URL } from "./config";
+import { useFileData } from "./hooks";
+import { ITEMS_PER_PAGE, TABLE_TYPES } from "./constants";
+import config from "./config";
 
-const FilesBoxApp = ({recordAvailability}) => {
-  const [page, setPage] = useState(1);
-  const [files, setFiles] = useState({});
-  const [indexFiles, setIndexFiles] = useState({});
+/**
+ * Component for rendering file tables with pagination
+ */
+const FileTableWithPagination = ({ items, tableType, page, onPageChange, recordAvailability }) => {
   const { pidValue } = config;
 
-  useEffect(() => {
-    const type = getType();
-    fetch(RECORD_FILEPAGE_URL(pidValue, page, type))
-      .then((response) => response.json())
-      .then((data) => {
-        if (type === "files") {
-          setFiles(data);
-        } else if (type === "index_files") {
-          setIndexFiles(data);
-        } else {
-          setFiles(data.files);
-          setIndexFiles(data.index_files);
-        }
-      });
-  }, [page]);
-
-  const getType = () => {
-    if (files.total) {
-      return "files";
-    } else if (indexFiles.total) {
-      return "index_files";
-    }
+  if (items.total === 0) {
     return null;
-  };
+  }
+
+  return (
+    <>
+      <FileTable 
+        items={items} 
+        pidValue={pidValue} 
+        table_type={tableType} 
+        recordAvailability={recordAvailability}
+      />
+      {items.total > ITEMS_PER_PAGE && (
+        <Pagination
+          activePage={page}
+          onPageChange={onPageChange}
+          totalPages={Math.ceil(items.total / ITEMS_PER_PAGE)}
+        />
+      )}
+    </>
+  );
+};
+
+FileTableWithPagination.propTypes = {
+  items: PropTypes.shape({
+    total: PropTypes.number.isRequired,
+    files: PropTypes.array.isRequired
+  }).isRequired,
+  tableType: PropTypes.string.isRequired,
+  page: PropTypes.number.isRequired,
+  onPageChange: PropTypes.func.isRequired,
+  recordAvailability: PropTypes.string.isRequired
+};
+
+/**
+ * Main Files Box Application component
+ */
+const FilesBoxApp = ({ recordAvailability }) => {
+  const [page, setPage] = useState(1);
+  const { pidValue } = config;
+  const { files, indexFiles, loading, error } = useFileData(pidValue, page);
 
   const handlePaginationChange = (e, { activePage }) => {
     setPage(activePage);
   };
 
-  const renderFileTable = (items, title, table_type) => (
-    <>
-      {items.total > 0 && (
-        <>
-          <FileTable items={items} pidValue={pidValue} table_type={table_type} recordAvailability={recordAvailability}/>
-        </>
-      )}
-      {items.total > ITEMS_PER_PAGE && (
-        <Pagination
-          activePage={page}
-          onPageChange={handlePaginationChange}
-          totalPages={Math.ceil(items.total / ITEMS_PER_PAGE)}
-          recordAvailability={recordAvailability}
-        />
-      )}
-    </>
-  );
+  if (loading) {
+    return (
+      <Dimmer active inverted>
+        <Loader inverted>Loading files...</Loader>
+      </Dimmer>
+    );
+  }
+
+  if (error) {
+    return (
+      <Message negative>
+        <Message.Header>Error loading files</Message.Header>
+        <p>{error}</p>
+      </Message>
+    );
+  }
 
   return (
     <>
-      {renderFileTable(files, "Files", "files")}
-      {renderFileTable(indexFiles, "File Indexes", "file_index")}
+      <FileTableWithPagination
+        items={files}
+        tableType={TABLE_TYPES.FILES}
+        page={page}
+        onPageChange={handlePaginationChange}
+        recordAvailability={recordAvailability}
+      />
+      <FileTableWithPagination
+        items={indexFiles}
+        tableType={TABLE_TYPES.FILE_INDEX}
+        page={page}
+        onPageChange={handlePaginationChange}
+        recordAvailability={recordAvailability}
+      />
     </>
   );
+};
+
+FilesBoxApp.propTypes = {
+  recordAvailability: PropTypes.string.isRequired
 };
 
 export default FilesBoxApp;

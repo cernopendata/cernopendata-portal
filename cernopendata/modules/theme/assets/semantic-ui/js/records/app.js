@@ -26,31 +26,89 @@
 
 import React from "react";
 import ReactDOM from "react-dom";
-
+import { SELECTORS } from './constants';
 import FilesBoxApp from "./FilesBoxApp";
-
 import CitationsApp from "./CitationsApp";
+import RequestRecordApp from "./components/RequestRecord";
 
-import RequestRecordApp from "./components/RequestRecord"
+/**
+ * Application initializer for React components
+ */
+class RecordsAppInitializer {
+  /**
+   * Initialize all React applications
+   */
+  static init() {
+    this.initCitationsApp();
+    this.initRequestRecordApp();
+    this.initFilesBoxApp();
+  }
 
-const citeContainer = document.querySelector("#citations-react-app");
-if (citeContainer) {
-    ReactDOM.render(React.createElement(CitationsApp), citeContainer);
-};
-const requestContainer = document.querySelector("#request-record-react-app");
-if (requestContainer) {
-    const recordId = requestContainer.dataset.recordId;
-    const availability = requestContainer.dataset.availability;
-    const size = requestContainer.dataset.size;
-    const files = requestContainer.dataset.files;
-    ReactDOM.render(
-      <RequestRecordApp recordId={recordId}  availability={availability} num_files={files} size={size}/>,
-      requestContainer
-    );
-};
-const domContainer = document.querySelector("#files-box-react-app");
-if (domContainer) {
-    const recordAvailability = domContainer.dataset.recordavailability;
-    ReactDOM.render(<FilesBoxApp recordAvailability={recordAvailability} /> , domContainer);
+  /**
+   * Initialize Citations React app
+   */
+  static initCitationsApp() {
+    const container = document.querySelector(SELECTORS.CITATIONS_APP);
+    if (!container) return;
+
+    try {
+      ReactDOM.render(<CitationsApp />, container);
+    } catch (error) {
+      console.error('Failed to initialize Citations app:', error);
+    }
+  }
+
+  /**
+   * Initialize Request Record React app
+   */
+  static initRequestRecordApp() {
+    const container = document.querySelector(SELECTORS.REQUEST_RECORD_APP);
+    if (!container) return;
+
+    try {
+      const { recordId, availability, size, files } = container.dataset;
+      
+      ReactDOM.render(
+        <RequestRecordApp 
+          recordId={recordId}
+          availability={availability}
+          num_files={files}
+          size={size}
+        />,
+        container
+      );
+    } catch (error) {
+      console.error('Failed to initialize Request Record app:', error);
+    }
+  }
+
+  /**
+   * Initialize Files Box React app
+   */
+  static initFilesBoxApp() {
+    const container = document.querySelector(SELECTORS.FILES_BOX_APP);
+    if (!container) return;
+
+    try {
+      const { recordavailability } = container.dataset;
+      
+      ReactDOM.render(
+        <FilesBoxApp recordAvailability={recordavailability} />,
+        container
+      );
+    } catch (error) {
+      console.error('Failed to initialize Files Box app:', error);
+    }
+  }
+}
+
+// Initialize all React applications when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  RecordsAppInitializer.init();
+});
+
+// Fallback initialization if DOMContentLoaded has already fired
+if (document.readyState !== 'loading') {
+  RecordsAppInitializer.init();
 }
 

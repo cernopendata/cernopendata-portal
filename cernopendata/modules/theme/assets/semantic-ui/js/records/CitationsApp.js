@@ -25,38 +25,58 @@
  */
 
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { Loader, Message } from "semantic-ui-react";
+import PropTypes from "prop-types";
+
+import { useCitations } from "./hooks";
+import { SELECTORS } from "./constants";
+
+/**
+ * Citations application component that displays publication references
+ */
 const CitationsApp = () => {
-  const [references, setReferences] = useState(0);
-  const [message, setMessage] = useState("");
+  // Get DOI and record ID from DOM attributes
+  const getDOMData = () => {
+    const container = document.querySelector(SELECTORS.CITATIONS_APP);
+    if (!container) return { doi: null, recid: null };
+    
+    return {
+      doi: container.getAttribute("data-doi"),
+      recid: container.getAttribute("data-recid")
+    };
+  };
 
-  const doi = document.querySelector("#citations-react-app").getAttribute("data-doi");
-  const recid = document.querySelector("#citations-react-app").getAttribute("data-recid");
-  
-  const inspireHost = "https://inspirehep.net"
-  const inspireURL = `/literature?sort=mostrecent&page=1&q=references.reference.dois%3A${doi}%20or%20references.reference.urls.value%3Ahttps%3A%2F%2Fopendata.cern.ch%2Frecord%2F${recid}`;
-  const inspireFullPath = `${inspireHost}${inspireURL}`;
+  const { doi, recid } = getDOMData();
+  const { references, message, loading, error, inspireURL } = useCitations(doi, recid);
 
-  useEffect(() => {
-    fetch(`${inspireHost}/api${inspireURL}&size=1`)
-      .then((response) => response.json())
-      .then((data) => {
-        setReferences(data.hits.total);
-        if (data.hits.total == 1) {
-           setMessage("There is one publication referring to these data");
-         } else {
-           setMessage("There are "+data.hits.total+" publications referring to these data");
-         }
-      });
-  }, []);
+  // Don't render anything if no DOI or record ID is available
+  if (!doi || !recid) {
+    return null;
+  }
+
+  if (loading) {
+    return <Loader active inline size="mini">Loading citations...</Loader>;
+  }
+
+  if (error) {
+    console.warn('Failed to load citations:', error);
+    return null; // Fail silently for citations as it's not critical
+  }
+
+  if (references === 0) {
+    return null;
+  }
 
   return (
-    <>
-        { references > 0 &&
-          <a href={inspireFullPath}>{message}</a>
-        }
-    </>
+    <a href={inspireURL} target="_blank" rel="noopener noreferrer">
+      {message}
+    </a>
   );
 };
+
+CitationsApp.propTypes = {};
+
+CitationsApp.displayName = 'CitationsApp';
 
 export default CitationsApp;

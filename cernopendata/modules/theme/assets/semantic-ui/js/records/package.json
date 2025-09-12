@@ -1,0 +1,71 @@
+{
+  "name": "cernopendata-records-ui",
+  "version": "1.0.0",
+  "description": "React components for CERN Open Data Portal records interface",
+  "main": "app.js",
+  "scripts": {
+    "test": "npx jest",
+    "test:watch": "npx jest --watch",
+    "test:coverage": "npx jest --coverage",
+    "test:coverage:watch": "npx jest --coverage --watch",
+    "test:ci": "npx jest --coverage --watchAll=false --passWithNoTests",
+    "test:debug": "npx jest --no-cache --runInBand",
+    "test:verbose": "npx jest --verbose",
+    "lint": "npx eslint *.js components/*.js __tests__/*.js",
+    "lint:fix": "npx eslint --fix *.js components/*.js __tests__/*.js",
+    "install:deps": "npm install",
+    "setup": "npm install && npm test"
+  },
+  "keywords": [
+    "react",
+    "cern",
+    "open-data",
+    "records",
+    "ui"
+  ],
+  "author": "CERN",
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@babel/preset-react": "^7.22.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.5.0",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.50.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-transform-stub": "^2.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "prop-types": "^15.8.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "semantic-ui-react": "^2.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}
