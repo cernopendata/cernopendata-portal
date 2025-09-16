@@ -83,7 +83,7 @@ def test_subscribe(app, database):
     Tests a subscribtion to a transfer
     """
     s = PersistentIdentifier.query.first()
-    request = Request.create(s.object_uuid, None)
+    request = Request.create(s.object_uuid)
     database.session.add(request)
     database.session.commit()
 
@@ -107,7 +107,7 @@ def test_send_email(app, database, smtp_server):
     Tests sending an email
     """
     s = PersistentIdentifier.query.first()
-    request = Request.create(s.object_uuid, None)
+    request = Request.create(s.object_uuid)
     database.session.add(request)
     database.session.commit()
 
