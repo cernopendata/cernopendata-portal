@@ -187,11 +187,13 @@ class Request:
             logger.error(f"Failed to send email to {emails}: {e}")
 
     @staticmethod
-    def create(record_id, subscribers):
+    def create(record_id, subscribers, availability):
         """Create a new request."""
         rb = RequestMetadata()
         rb.record_id = record_id
         rb.subscribers = subscribers if subscribers else []
+        rb.num_hot_files = availability.get("online")
+        rb.num_cold_files = availability.get("on demand")
         db.session.add(rb)
         return rb
 
