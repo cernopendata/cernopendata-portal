@@ -108,7 +108,8 @@ check_docker_build () {
 }
 
 check_pytest () {
-    python setup.py test
+    pip install ".[tests]"
+    pytest
 }
 
 check_all () {
