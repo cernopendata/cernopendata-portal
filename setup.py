@@ -72,10 +72,6 @@ extras_require["all"] = []
 for reqs in extras_require.values():
     extras_require["all"].extend(reqs)
 
-setup_requires = [
-    "pytest-runner>=2.6.2",
-]
-
 install_requires = [
     "counter-robots>=2025.2",
     # General Invenio dependencies
@@ -121,7 +117,7 @@ install_requires = [
     "celery==5.2.7",
     # Automatically pin XRootD consistently with Dockerfile
     "xrootd" + xrootd_version(),
-    "gevent==25.5.1",
+    "gevent==25.8.2",
     "greenlet==3.2.2",
     "zope.event==5.0",
     "flask-babel==4.0.0",
@@ -230,8 +226,6 @@ setup(
     },
     extras_require=extras_require,
     install_requires=install_requires,
-    setup_requires=setup_requires,
-    tests_require=tests_require,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
