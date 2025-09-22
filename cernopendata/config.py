@@ -57,8 +57,11 @@ warnings.filterwarnings(
 DEBUG = os.environ.get("DEBUG", False)
 TEMPLATES_AUTO_RELOAD = DEBUG
 
-# Mail debug
+# Mail
 MAIL_DEBUG = 0
+MAIL_SUPPRESS_SEND = False
+MAIL_SERVER = "cernmx.cern.ch"
+MAIL_PORT = 25
 
 # Piwik tracking code: set None to disabled it
 THEME_PIWIK_ID = os.environ.get("PIWIK_ID", None)
