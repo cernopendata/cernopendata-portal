@@ -100,3 +100,25 @@ def test_subscribe(app, database):
     request_md = RequestMetadata.query.filter_by(id=request.id).first()
     assert subscriber in request_md.subscribers
     assert len(request_md.subscribers) == 1
+
+
+def test_send_email(app, database, smtp_server):
+    """
+    Tests sending an email
+    """
+    s = PersistentIdentifier.query.first()
+    request = Request.create(s.object_uuid, None)
+    database.session.add(request)
+    database.session.commit()
+
+    emails = ["my-email@test.ch"]
+    Request.send_email(request, emails)
+    assert len(smtp_server.inbox) == 1
+    captured_email = smtp_server.inbox[0]
+    assert captured_email["from"] == "opendata-noreply@cern.ch"
+    assert captured_email["to"] == emails
+    assert f"Transfer {request.id} Completed".encode() in captured_email["data"]
+    assert (
+        f"Your transfer with ID {request.id} has been completed successfully".encode()
+        in captured_email["data"]
+    )

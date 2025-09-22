@@ -59,6 +59,7 @@ tests_require = [
     "pytest-cov==4.1.0",
     "pytest==7.4.4",
     "beautifulsoup4==4.12.3",
+    "aiosmtpd>=1.4.6",
 ]
 
 extras_require = {

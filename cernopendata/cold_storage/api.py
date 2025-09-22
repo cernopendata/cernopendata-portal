@@ -176,7 +176,9 @@ class Request:
         """Send an email notification using Invenio's mail system."""
         subject = f"Transfer {req.id} Completed"
         body = f"Hello,\n\nYour transfer with ID {req.id} has been completed successfully.\n\nBest regards."
-        msg = Message(subject, sender="no-reply@cern.ch", recipients=emails, body=body)
+        msg = Message(
+            subject, sender="opendata-noreply@cern.ch", recipients=emails, body=body
+        )
         # Use InvenioMail's send_email function with a simple text template
         try:
             current_app.extensions["mail"].send(msg)

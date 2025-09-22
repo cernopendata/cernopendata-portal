@@ -27,9 +27,40 @@ import shutil
 import tempfile
 
 import pytest
+from aiosmtpd.controller import Controller
 from click.testing import CliRunner
 
 from cernopendata.factory import create_app
+
+
+class MockSMTPHandler:
+    """A mock mail server handler that captures messages."""
+
+    def __init__(self):
+        self.inbox = []
+
+    async def handle_DATA(self, server, session, envelope):
+        """Called when a message is received."""
+        self.inbox.append(
+            {
+                "from": envelope.mail_from,
+                "to": envelope.rcpt_tos,
+                "data": envelope.content,
+            }
+        )
+        return "250 OK"
+
+
+@pytest.fixture
+def smtp_server():
+    """Fixture to set up and tear down the mock mail server."""
+    handler = MockSMTPHandler()
+    controller = Controller(handler, hostname="localhost", port=1026)
+
+    controller.start()
+    yield handler
+
+    controller.stop()
 
 
 @pytest.fixture(scope="session")
@@ -66,6 +97,9 @@ def default_config(instance_path):
             "SQLALCHEMY_DATABASE_URI", "sqlite:///test.db"
         ),
         TESTING=True,
+        MAIL_SERVER="localhost",
+        MAIL_PORT=1026,
+        MAIL_SUPPRESS_SEND=False,
     )
 
 
