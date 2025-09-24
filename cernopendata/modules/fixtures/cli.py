@@ -92,6 +92,9 @@ def _handle_record_files(record, data, logger=None):
     if "files" not in data:
         if "distribution" in record and "availability" in record["distribution"]:
             record["availability"] = record["distribution"]["availability"]
+        else:
+            # If the record doesn't have any files, it should be online
+            record["availability"] = "online"
         return
     data["_file_indices"] = []
     record["_file_indices"] = []
