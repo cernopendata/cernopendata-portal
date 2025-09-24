@@ -120,6 +120,7 @@ install_requires = [
     "gevent==25.8.2",
     "greenlet==3.2.2",
     "zope.event==5.0",
+    "zope.interface==7.2",
     "flask-babel==4.0.0",
     "raven<6.11",
     "dcxml",
