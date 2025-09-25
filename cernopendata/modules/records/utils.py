@@ -62,7 +62,9 @@ def stage(pid, record, **kwargs):
     data = request.get_json()  # Parse JSON data from request
 
     print("REQUESTING THE STAGE OF A FILE", file=sys.stderr)
-    id = Request.create(record.id, [data.get("email", None)])
+    id = Request.create(
+        record.id, [data.get("email", None)], record["_availability_details"]
+    )
     db.session.commit()
     print(f"Transfer requested {id}", file=sys.stderr)
     try:
