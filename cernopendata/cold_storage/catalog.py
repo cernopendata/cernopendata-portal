@@ -54,16 +54,31 @@ class Catalog:
             return
         return record
 
-    def get_files_from_record(self, record, limit=None):
+    def get_files_from_record(self, record, limit=None, file=None):
         """Getting the files from a record."""
         files = []
-        logger.debug(f"The catalog got the record:  {record}")
+        possible_files = []
+        logger.debug(f"The catalog got the record")
         if record:
             if "_files" in record:
-                files += record["_files"]
+                if file:
+                    if file in record["_files"]:
+                        files = record["_files"][file]
+                    else:
+                        possible_files += record["_files"]
+                else:
+                    files = record["_files"]
             if "_file_indices" in record:
                 for f in record["_file_indices"]:
-                    files += f["files"]
+                    if not file or f["key"] == file:
+                        files += f["files"]
+                        continue
+                    possible_files.append(f["key"])
+        if file and not files:
+            logger.error(
+                f"This record does not have a file called '{file}'. Possible values are: {possible_files}"
+            )
+            return []
         if limit:
             if limit < 0:
                 logger.debug(f"Skipping the first {limit} files")

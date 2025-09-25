@@ -142,6 +142,7 @@ class RequestService:
                         force=False,
                         dry=False,
                         max_transfers=max_transfers - submitted,
+                        file=transfer.file,
                     )
                     logger.debug(f"Got {info}")
                     if info:

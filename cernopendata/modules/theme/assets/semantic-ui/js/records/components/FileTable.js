@@ -31,6 +31,7 @@ import $ from "jquery"; // You need jQuery for Semantic UI's JS
 import { IndexFilesModal, DownloadWarningModal } from "../components";
 import { toHumanReadableSize } from "../utils";
 import config from "../config";
+import RequestRecordApp from "./RequestRecord"
 
 import "./FileTable.scss";
 
@@ -117,9 +118,17 @@ export default function FileTable({ items, table_type, recordAvailability }) {
     return url;
   };
 
+  function isOnDemand(file) {
+    return (
+      file.availability === "on demand" ||
+      (typeof file.availability === "object" && file.availability?.["on demand"])
+    );
+  }
+
+
   const hasOnDemandColumn = useMemo(() => {
-    return table_type === "file_index" && items.files.some(file => file.availability?.["on demand"]);
-  }, [items.files, table_type]);
+    return items.files.some(isOnDemand);
+  }, [items.files]);
 
   return (
     <Table singleLine>
@@ -144,7 +153,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
               : { href: getFileUri(table_type, file.key) };
 
           return (
-            <Table.Row key={file.version_id}>
+            <Table.Row key={file.key}>
               <Table.Cell className="filename-cell">
                 {table_type === 'file_index' ? file.description : file.key}
               </Table.Cell>
@@ -153,11 +162,26 @@ export default function FileTable({ items, table_type, recordAvailability }) {
               </Table.Cell>
               {hasOnDemandColumn && (
                 <Table.Cell>
-                  {file.availability?.["on demand"] && (
+                  {isOnDemand(file) && (
                     <Popup
-                        content={file.availability.online ? "Some files of the dataset are available for immediate download" : "The files have to be requested before they are available"}
-                        trigger={<div className="ui mini message">{file.availability.online ? "Partial" : "On demand"}</div>}
-                        position="top center"
+                      content={
+                         file.availability?.online
+                          ? "Some files of the dataset are available for immediate download"
+                          : "The files have to be requested before they are available"
+                      }
+                      trigger={
+                        <div className="ui mini message" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5em" }}>
+                          <span>{file.availability.online ? "Partial" : "On demand"}</span>
+                            <RequestRecordApp
+                              recordId={config.pidValue}
+                              num_files={file.number_files}
+                              size={file.size}
+                              availability={recordAvailability}
+                              file={file.key}
+                            />
+                        </div>
+                      }
+                      position="top center"
                     />
                   )}
                 </Table.Cell>
@@ -183,9 +207,18 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                      />
                    </>
                 ) : (
-                  <Button as="a" icon size="mini" primary {...downloadProp}>
-                    <Icon name="download" /> Download
-                  </Button>
+                    <Popup
+                      disabled={file.availability !== 'on demand'}
+                      content={`This file is not currently available.`}
+                      trigger={
+                        <span>
+                          <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'on demand'}>
+                            <Icon name="download" />Download
+                          </Button>
+                        </span>
+                      }
+                      position="top center"
+                    />
                 )}
               </Table.Cell>
             </Table.Row>

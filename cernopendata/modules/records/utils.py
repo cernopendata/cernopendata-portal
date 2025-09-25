@@ -61,17 +61,18 @@ def stage(pid, record, **kwargs):
     RecordIndexer().index(record)
     data = request.get_json()  # Parse JSON data from request
 
-    print("REQUESTING THE STAGE OF A FILE", file=sys.stderr)
-    id = Request.create(record.id, [data.get("email", None)])
+    id = Request.create(
+        record.id, [data.get("email", None)], file=data.get("file", None)
+    )
     db.session.commit()
     print(f"Transfer requested {id}", file=sys.stderr)
-    try:
-        response = requests.get(purge_url)
-        response.raise_for_status()
-    except Exception as e:
-        # Log error or fallback
-        print(f"Failed to purge cache: {e}", file=sys.stderr)
-    print("AND CACHE PURGED!!!", file=sys.stderr)
+    # try:
+    #    response = requests.get(purge_url)
+    #    response.raise_for_status()
+    # except Exception as e:
+    #    # Log error or fallback
+    #    print(f"Failed to purge cache: {e}", file=sys.stderr)
+    # print("AND CACHE PURGED!!!", file=sys.stderr)
     return Response("OK", status=200)
 
 
@@ -218,7 +219,8 @@ def record_file_page(pid, record, page=1, **kwargs):
     except Exception:
         items_per_page = 5
 
-    _files = record.get("files", [])
+    # We have to get '_files' (instead of 'files') since that contains the latest info about the cold storage
+    _files = record.get("_files", [])
     index_files = list(record.file_indices)
     if request.args.get("group"):
         grouped_files = {

@@ -112,6 +112,7 @@ class ColdStorageManager:
         force,
         dry,
         max_transfers,
+        file,
     ):
         """Internal function to move the fiels of a record."""
         # Let's find the files inside the record
@@ -121,9 +122,9 @@ class ColdStorageManager:
         record = self._catalog.get_record(record_uuid)
         if not record:
             return []
-        for file in self._catalog.get_files_from_record(record, limit):
+        for my_file in self._catalog.get_files_from_record(record, limit, file):
             status, new_transfer = self._move_record_file(
-                record.id, file, action, move_function, register, force, dry
+                record.id, my_file, action, move_function, register, force, dry
             )
             summary[status] = summary.get(status, 0) + 1
             if new_transfer:
@@ -142,7 +143,15 @@ class ColdStorageManager:
         return transfers
 
     def doOperation(
-        self, action, record_uuid, limit, register, force, dry, max_transfers=0
+        self,
+        action,
+        record_uuid,
+        limit,
+        register,
+        force,
+        dry,
+        max_transfers=0,
+        file=None,
     ):
         """Internal function."""
         if action in [ColdStorageActions.ARCHIVE, ColdStorageActions.STAGE]:
@@ -159,44 +168,47 @@ class ColdStorageManager:
                 force,
                 dry,
                 max_transfers,
+                file,
             )
         elif action == ColdStorageActions.CLEAR_HOT:
-            return self.clear_hot(record_uuid, limit, force, dry)
+            return self.clear_hot(record_uuid, limit, force, dry, file)
         raise ValueError(
             f"The cold manager does not understand the operation '{action}'"
         )
 
-    def clear_hot(self, record_uuid, limit, force, dry):
+    def clear_hot(self, record_uuid, limit, force, dry, file):
         """Remove the hot copy of a file that has a copy on cold storage."""
         # Let's find the files inside the record
         cleared = False
         record = self._catalog.get_record(record_uuid)
         if not record:
             return []
-        for file in self._catalog.get_files_from_record(record, limit):
-            if not self._is_qos(file, ColdStorageActions.ARCHIVE):
+        for my_file in self._catalog.get_files_from_record(record, limit, file):
+            if not self._is_qos(my_file, ColdStorageActions.ARCHIVE):
                 logger.info(
                     "I don't want to remove the hot copy, since the cold does not exist!"
                 )
                 continue
-            if not self._is_qos(file, ColdStorageActions.STAGE):
+            if not self._is_qos(my_file, ColdStorageActions.STAGE):
                 logger.debug("the file is not in hot. Ignoring it")
                 continue
             logger.debug(f"ready to be deleted")
             if not dry:
-                self._storage.clear_hot(file["uri"])
+                self._storage.clear_hot(my_file["uri"])
             else:
                 logger.info(
                     "Dry run: do not remove the file (but cleaning the repository)"
                 )
-            cleared = self._catalog.clear_hot(record, file["file_id"], force)
+            cleared = self._catalog.clear_hot(record, my_file["file_id"], force)
             if not cleared:
                 return
+        if not cleared:
+            return
         self._catalog.reindex_entries()
         db.session.commit()
         return [cleared]
 
-    def list(self, record_id):
+    def list(self, record_id, limit=None, file=None):
         """Returns the location of the files for a particular record."""
         record = self._catalog.get_record(record_id)
-        return self._catalog.get_files_from_record(record)
+        return self._catalog.get_files_from_record(record, limit, file)
