@@ -82,16 +82,19 @@ def initialize_facet_hierarchy():
         all_aggs,
         {},
     )
+
     search_result = search.execute()
     aggs = search_result["aggregations"]
+
     for k in aggs:
         facet_hierarchy[k] = {}
         for j in aggs[k]["buckets"]:
-            facet_hierarchy[k][j["key"]] = {}
+            key = j.get("key_as_string", j["key"])
+            facet_hierarchy[k][key] = {}
             if f"sub{k}" in j:
-                facet_hierarchy[k][j["key"]][f"sub{k}"] = set()
+                facet_hierarchy[k][key][f"sub{k}"] = set()
                 for sub in j[f"sub{k}"]["buckets"]:
-                    facet_hierarchy[k][j["key"]][f"sub{k}"].add(sub["key"])
+                    facet_hierarchy[k][key][f"sub{k}"].add(sub["key"])
     return facet_hierarchy
 
 

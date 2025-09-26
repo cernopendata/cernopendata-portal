@@ -541,9 +541,14 @@ RECORDS_REST_FACETS = {
             stripping_version=dict(
                 terms=dict(field="stripping.version", order=dict(_term="asc"))
             ),
+            # this is using the script filter because of date_histogram and range incompatibilities
+            # see issue https://github.com/opensearch-project/OpenSearch/issues/19365
             number_events={
                 "range": {
-                    "field": "distribution.number_events",
+                    "script": {
+                        "source": "doc['distribution.number_events'].size() == 0 ? 0 : doc['distribution.number_events']",
+                        "lang": "painless"
+                    },
                     "ranges": [
                         {"key": "0--999", "from": 0, "to": 1000},
                         {"key": "1000--9999", "from": 1000, "to": 10000},
