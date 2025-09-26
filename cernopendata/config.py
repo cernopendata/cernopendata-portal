@@ -234,7 +234,6 @@ STATS_QUERIES = {
     },
 }
 
-
 CELERY_BEAT_SCHEDULE = {
     # indexing of statistics events & aggregations
     "stats-process-events": {
@@ -546,8 +545,9 @@ RECORDS_REST_FACETS = {
             number_events={
                 "range": {
                     "script": {
-                        "source": "doc['distribution.number_events'].size() == 0 ? 0 : doc['distribution.number_events']",
-                        "lang": "painless"
+                        "source": "doc['distribution.number_events'].size() == 0 ? 0 : "
+                        "doc['distribution.number_events']",
+                        "lang": "painless",
                     },
                     "ranges": [
                         {"key": "0--999", "from": 0, "to": 1000},
@@ -613,7 +613,6 @@ SEARCH_UI_SEARCH_INDEX = "records"
 SEARCH_UI_SEARCH_CONFIG_GEN = {
     "invenio_records_rest": CODSearchAppInvenioRestConfigHelper,
 }
-
 
 SEARCH_UI_SEARCH_VIEW = search_legacy
 # OAI-PMH
