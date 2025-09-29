@@ -1,5 +1,18 @@
 Changes
 =======
+Version 0.6.0 (released 2025-09-29)
+---------------------------
+- cold: Add possibility to request only one dataset
+- cold: keep the status of the record in REQUESTED until all files have been staged
+- fix: Records without files are marked as online
+- build: update dependencies to ensure building succeeds locally
+- mail: added missing configuration and created test for sending email
+- build: remove deprecated pytest-runner and update test setup
+- oai2d: Change the percolator for DELPHI
+- fixtures: add mode to delete entries
+- fix: added backward compatibility for the year facet
+- fix: ensure subscribing to a transfer works without errors
+
 Version 0.5.0 (released 2025-08-18)
 ---------------------------
 - Specifying the maximum number of transfers from the CLI
