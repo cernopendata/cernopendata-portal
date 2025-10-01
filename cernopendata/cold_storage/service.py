@@ -183,7 +183,11 @@ class RequestService:
 
                 if action == ColdStorageActions.STAGE:
                     if record["availability"] != RecordAvailability.ONLINE.value:
-                        continue
+                        logger.info("Let's check the availability just in case...")
+                        Catalog().save_record_availability(record)
+                        if record["availability"] == RecordAvailability.REQUESTED.value:
+                            logger.info("The transfer is still waiting")
+                            continue
                 elif action == ColdStorageActions.ARCHIVE:
                     files = (f for index in record.file_indices for f in index["files"])
                     missing = next(

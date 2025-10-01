@@ -155,3 +155,10 @@ class Catalog:
                 return True
 
         return self._update_file_and_reindex(record_uuid, file_id, _add_copy_function)
+
+    def save_record_availability(self, record):
+        """Checks the availability of a record and saves it in the database and search."""
+        record.check_availability()
+        record.commit()
+        db.session.commit()
+        self._indexer.index(record)

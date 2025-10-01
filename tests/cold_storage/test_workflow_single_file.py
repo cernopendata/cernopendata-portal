@@ -80,7 +80,7 @@ def test_cold_storage_workflow(
 
 def test_subscribe(app, database):
     """
-    Tests a subscribtion to a transfer
+    Tests a subscription to a transfer
     """
     s = PersistentIdentifier.query.first()
     request = Request.create(s.object_uuid)
