@@ -1,0 +1,19 @@
+[
+  {
+    "author": "CERN Open Data team",
+    "body": {
+      "content": "cod-colddata.md",
+      "format": "md"
+    },
+    "date_published": "2025-10-07",
+    "featured": 1,
+    "short_description": {
+      "content": "The increasing amount of data hosted in the portal calls for storing the data in a more cost-effective way."
+    },
+    "slug": "colddata",
+    "title": "Introducing cold data in the CERN Open Data portal",
+    "type": {
+      "primary": "News"
+    }
+  }
+]
