@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.7.0 (released 2025-10-01)
+---------------------------
+- cold: improve the statistics of the transfer requests
+
 Version 0.6.0 (released 2025-09-29)
 ---------------------------
 - cold: Add possibility to request only one dataset
