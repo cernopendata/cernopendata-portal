@@ -521,3 +521,12 @@ a {
         }
     }
 }
+
+.hoverable-row-table tr:hover {
+  background-color: #f9fafb !important;
+}
+
+.narrow-filter {
+  width: 150px !important;
+  min-width: 150px !important;
+}
