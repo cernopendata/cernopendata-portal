@@ -59,7 +59,13 @@ const DetailedTable = ({
 
   return (
     <>
-      <Table celled sortable>
+      <Table
+        celled
+        sortable
+        compact
+        size="small"
+        className="hoverable-row-table"
+      >
         <Table.Header>
           <Table.Row>
             <Table.HeaderCell>Record</Table.HeaderCell>
@@ -76,12 +82,8 @@ const DetailedTable = ({
             >
               Status
             </Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2" singleLine>
-              Request date
-            </Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2" singleLine>
-              Started date
-            </Table.HeaderCell>
+            <Table.HeaderCell rowSpan="2">Request date</Table.HeaderCell>
+            <Table.HeaderCell rowSpan="2">Started date</Table.HeaderCell>
             <Table.HeaderCell
               sorted={
                 sortField === "num_record_files"
@@ -120,9 +122,10 @@ const DetailedTable = ({
               }
               onClick={() => handleSort("num_files")}
               rowSpan="2"
-              singleLine
             >
-              # issued transfers
+              # issued
+              <br />
+              transfers
             </Table.HeaderCell>
             <Table.HeaderCell
               sorted={
@@ -134,12 +137,15 @@ const DetailedTable = ({
               }
               onClick={() => handleSort("size")}
               rowSpan="2"
-              singleLine
             >
-              Size of issued transfers
+              Size of issued
+              <br />
+              transfers
             </Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2" singleLine>
-              Completion date
+            <Table.HeaderCell rowSpan="2">
+              Completion
+              <br />
+              date
             </Table.HeaderCell>
             <Table.HeaderCell rowSpan="2">Subscribe</Table.HeaderCell>
           </Table.Row>
@@ -154,6 +160,7 @@ const DetailedTable = ({
                   setRecordFilter(value);
                   updateURLParam("record_id", value);
                 }}
+                className="narrow-filter"
               ></Input>
             </Table.HeaderCell>
             <Table.HeaderCell>
@@ -172,6 +179,7 @@ const DetailedTable = ({
                   setActionFilter(value);
                   updateURLParam("action", value);
                 }}
+                className="narrow-filter"
               />
             </Table.HeaderCell>
             <Table.HeaderCell>
@@ -190,68 +198,100 @@ const DetailedTable = ({
                   setStatusFilters(value);
                   updateURLParam("status", value);
                 }}
+                className="narrow-filter"
               />
             </Table.HeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {results.length > 0 ? (
-            results.map((item) => (
-              <Table.Row key={item.id}>
-                <Table.Cell>
-                  <a href={`/record/${item.recid}`}>{item.recid}</a>
-                </Table.Cell>
-                <Table.Cell>{item.action}</Table.Cell>
-                <Table.Cell>{item.status}</Table.Cell>
-                <Table.Cell>
-                  {item.created_at
-                    ? new Date(item.created_at).toLocaleString()
-                    : ""}
-                </Table.Cell>
-                <Table.Cell>
-                  {item.started_at
-                    ? new Date(item.started_at).toLocaleString()
-                    : ""}
-                </Table.Cell>
-                <Table.Cell>
-                  <Popup
-                    content={
+            results.map((item) => {
+              const hasHotFiles = item.num_hot_files != null;
+              const hasColdFiles = item.num_cold_files != null;
+              const rowContent = (
+                <Table.Row key={item.id}>
+                  <Table.Cell>
+                    <a href={`/record/${item.recid}`}>{item.recid}</a>
+                  </Table.Cell>
+                  <Table.Cell>{item.action}</Table.Cell>
+                  <Table.Cell>{item.status}</Table.Cell>
+                  <Table.Cell>
+                    {item.created_at
+                      ? new Date(item.created_at).toLocaleString()
+                      : ""}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {item.started_at
+                      ? new Date(item.started_at).toLocaleString()
+                      : ""}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {abbreviateNumber(item.num_record_files)}
+                  </Table.Cell>
+                  <Table.Cell singleLine>
+                    {formatBytes(item.record_size)}
+                  </Table.Cell>
+                  <Table.Cell>{abbreviateNumber(item.num_files)}</Table.Cell>
+                  <Table.Cell singleLine>{formatBytes(item.size)}</Table.Cell>
+                  <Table.Cell>
+                    {item.completed_at
+                      ? new Date(item.completed_at).toLocaleString()
+                      : ""}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {!item.completed_at && (
+                      <Button
+                        color="blue"
+                        size="mini"
+                        onClick={() => openSubscribeModal(item.recid, item.id)}
+                      >
+                        Subscribe
+                      </Button>
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              );
+
+              return (
+                <Popup
+                  key={`popup-${item.id}`}
+                  trigger={rowContent}
+                  position="top center"
+                  on="hover"
+                  content={
+                    <div style={{ textAlign: "left" }}>
                       <>
-                        <span>{item.num_hot_files} files on hot</span>
-                        <br />
-                        <span>{item.num_cold_files} files on cold</span>
+                        {(hasHotFiles || hasColdFiles) && (
+                          <>
+                            {hasHotFiles && (
+                              <span>{item.num_hot_files} files on hot</span>
+                            )}
+                            {hasColdFiles && (
+                              <>
+                                {hasHotFiles && <br />}
+                                <span>{item.num_cold_files} files on cold</span>
+                              </>
+                            )}
+                            <div
+                              style={{
+                                margin: "10px 0",
+                                borderTop: "1px solid #ccc",
+                              }}
+                            />
+                          </>
+                        )}
+
+                        <span>
+                          {item.file
+                            ? "One file requested"
+                            : "All files requested"}
+                        </span>
                       </>
-                    }
-                    trigger={
-                      <span style={{ borderBottom: "1px dotted" }}>
-                        {abbreviateNumber(item.num_record_files)}
-                      </span>
-                    }
-                  />
-                </Table.Cell>
-                <Table.Cell singleLine>
-                  {formatBytes(item.record_size)}
-                </Table.Cell>
-                <Table.Cell>{abbreviateNumber(item.num_files)}</Table.Cell>
-                <Table.Cell singleLine>{formatBytes(item.size)}</Table.Cell>
-                <Table.Cell>
-                  {item.completed_at
-                    ? new Date(item.completed_at).toLocaleString()
-                    : ""}
-                </Table.Cell>
-                <Table.Cell>
-                  {!item.completed_at && (
-                    <Button
-                      color="blue"
-                      size="mini"
-                      onClick={() => openSubscribeModal(item.recid, item.id)}
-                    >
-                      Subscribe
-                    </Button>
-                  )}
-                </Table.Cell>
-              </Table.Row>
-            ))
+                    </div>
+                  }
+                />
+              );
+            })
           ) : (
             <Table.Row>
               <Table.Cell colSpan="11">No transfer requests found.</Table.Cell>
