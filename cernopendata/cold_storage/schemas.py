@@ -50,8 +50,8 @@ class TransferRequestSchema(Schema):
     created_at = fields.DateTime()
     started_at = fields.DateTime(allow_none=True)
     completed_at = fields.DateTime(allow_none=True)
-    num_hot_files = fields.Int()
-    num_cold_files = fields.Int()
+    num_hot_files = fields.Int(allow_none=True)
+    num_cold_files = fields.Int(allow_none=True)
     num_record_files = fields.Method("get_num_record_files")
     record_size = fields.Method("get_record_size")
 

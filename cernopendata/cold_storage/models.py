@@ -59,8 +59,8 @@ class RequestMetadata(db.Model):
     subscribers = db.Column(MutableList.as_mutable(JSONB), default=list)
     size = db.Column(db.BigInteger, default=0, nullable=True)
     file = db.Column(db.String(255), nullable=True)
-    num_hot_files = db.Column(db.Integer, default=0, nullable=True)
-    num_cold_files = db.Column(db.Integer, default=0, nullable=True)
+    num_hot_files = db.Column(db.Integer, nullable=True)
+    num_cold_files = db.Column(db.Integer, nullable=True)
 
 
 class Location(db.Model):
