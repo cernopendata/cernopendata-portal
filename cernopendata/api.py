@@ -12,9 +12,9 @@ from invenio_files_rest.models import (
     ObjectVersion,
     ObjectVersionTag,
 )
-from invenio_records_files.api import FileObject, FilesIterator, Record
+from invenio_records_files.api import FileObject, FilesIterator
 
-from cernopendata.cold_storage.api import FileAvailability, RecordAvailability
+from cernopendata.cold_storage.api import ColdRecord, FileAvailability
 
 
 class FileIndexIterator(object):
@@ -68,7 +68,7 @@ class FileIndexIterator(object):
         return indices
 
 
-class RecordFilesWithIndex(Record):
+class RecordFilesWithIndex(ColdRecord):
     """Class for a Record with File Indices."""
 
     def __init__(self, *args, **kwargs):
@@ -80,36 +80,6 @@ class RecordFilesWithIndex(Record):
     def file_indices(self):
         """Here we keep the file indices."""
         return FileIndexIterator(self)
-
-    def check_availability(self):
-        """Calculate the availability of the record based on the files and file indices."""
-        self._avl = {}
-        previous_availability = None
-        if "availability" in self:
-            previous_availability = self["availability"]
-        for index in self.file_indices:
-            # And let's propagate the availability to the record
-            for avl in index["availability"]:
-                if avl not in self._avl:
-                    self._avl[avl] = 0
-                self._avl[avl] += index["availability"][avl]
-        for file in self.files:
-            avl = file["availability"]
-            if avl not in self._avl:
-                self._avl[avl] = 0
-            self._avl[avl] += 1
-        self["_availability_details"] = self._avl
-        if len(self._avl.keys()) == 0:
-            self["availability"] = RecordAvailability.ONLINE.value
-        elif len(self._avl.keys()) == 1:
-            self["availability"] = list(self._avl.keys())[0]
-        else:
-            self["availability"] = RecordAvailability.PARTIAL.value
-        # If the record was in requested, and it is still not online, it should stay in requested
-        if previous_availability == RecordAvailability.REQUESTED.value and self[
-            "availability"
-        ] in [RecordAvailability.PARTIAL.value, RecordAvailability.ONDEMAND.value]:
-            self["availability"] = RecordAvailability.REQUESTED.value
 
     def flush_indices(self):
         """Updates the _file_indices information based on what exists on the database."""

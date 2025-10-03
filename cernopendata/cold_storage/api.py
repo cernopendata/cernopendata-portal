@@ -40,6 +40,7 @@ from invenio_files_rest.models import (
     ObjectVersionTag,
 )
 from invenio_records_files.api import FileObject, FilesIterator, Record
+from sqlalchemy import func
 
 from .models import RequestMetadata, TransferMetadata
 
@@ -232,3 +233,52 @@ class Request:
             db.session.commit()
             return True
         return False
+
+
+class ColdRecord(Record):
+    """Extends the record class to have the calculation of the availability."""
+
+    def check_availability(self):
+        """Calculate the availability of the record based on the files and file indices."""
+        self._avl = {}
+
+        for index in self.file_indices:
+            # And let's propagate the availability to the record
+            for avl in index["availability"]:
+                if avl not in self._avl:
+                    self._avl[avl] = 0
+                self._avl[avl] += index["availability"][avl]
+        for file in self.files:
+            avl = file["availability"]
+            if avl not in self._avl:
+                self._avl[avl] = 0
+            self._avl[avl] += 1
+        self["_availability_details"] = self._avl
+        if len(self._avl.keys()) == 0:
+            self["availability"] = RecordAvailability.ONLINE.value
+        elif len(self._avl.keys()) == 1:
+            self["availability"] = list(self._avl.keys())[0]
+        else:
+            self["availability"] = RecordAvailability.PARTIAL.value
+
+        count_requests = (
+            db.session.query(func.count())
+            .filter(
+                RequestMetadata.record_id == str(self.id),
+                RequestMetadata.status == "submitted",
+                RequestMetadata.action == ColdStorageActions.STAGE.value,
+            )
+            .scalar()
+        )
+        count_transfers = (
+            db.session.query(func.count())
+            .filter(
+                TransferMetadata.record_uuid == str(self.id),
+                TransferMetadata.finished.is_(None),
+                TransferMetadata.action == ColdStorageActions.STAGE.value,
+            )
+            .scalar()
+        )
+        # If there are staging requests or transfers that have not finished, it should be in requested
+        if count_requests or count_transfers:
+            self["availability"] = RecordAvailability.REQUESTED.value
