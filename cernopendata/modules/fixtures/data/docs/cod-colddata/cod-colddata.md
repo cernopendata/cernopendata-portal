@@ -21,9 +21,9 @@ Since a record can contain multiple files, there are more possible status for a 
 <li><strong>Online</strong>: If all the files of the record are online.</li>
 <li><strong>Offline</strong>: If all the files of the record are offline.</li>
 <li><strong>Partial</strong>: There are some files available online.</li>
-<li><strong>Requested</strong>: The record contains the at least one file that has been requested for staging and that it is still not online.</li>
+<li><strong>Requested</strong>: The record contains at least one file that has been requested for staging and that it is still not online.</li>
 </ul>
 
 The records that are not online will include a button to request the staging. Any user can issue such a request. They might also introduce their email, and they will be notified when the staging request has finished. The status of the requests can also be found on a <a href="../transfer_requests">dedicated page</a>.
 
-In conclusion, introducing cold storage is a strategic move to ensure that the CERN Open Data Portal can keep growing — in terms of data volume, longevity, and impact — without compromising cost, preservation, or user expectations
+In conclusion, introducing cold storage is a strategic move to ensure that the CERN Open Data Portal can keep growing — in terms of data volume, longevity, and impact — without compromising cost, preservation, or user expectations.
