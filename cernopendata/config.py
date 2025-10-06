@@ -155,6 +155,7 @@ STATS_AGGREGATIONS = {
         "cls": StatAggregator,
         "params": {
             "event": "file-download",
+            "field": "unique_id",
             "index_interval": "year",
             "copy_fields": {
                 "file_key": "file_key",
