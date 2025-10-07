@@ -36,6 +36,8 @@ from invenio_records_rest.utils import allow_all
 from invenio_search.engine import dsl
 from invenio_stats.aggregations import StatAggregator
 from invenio_stats.contrib.config import EVENTS_CONFIG
+from invenio_stats.contrib.event_builders import build_record_unique_id
+from invenio_stats.processors import EventsIndexer, anonymize_user, flag_robots
 from invenio_stats.queries import TermsQuery
 from invenio_stats.tasks import StatsAggregationTask, StatsEventTask
 from urllib3.exceptions import InsecureRequestWarning
@@ -148,6 +150,18 @@ CACHE_TYPE = "redis"
 CELERY_ACCEPT_CONTENT = ["json", "msgpack", "yaml"]
 
 STATS_EVENTS = EVENTS_CONFIG
+
+# Add one more stats for the staging requests
+STATS_EVENTS["record-stage"] = {
+    "templates": "cernopendata.cold_storage.stats.contrib.record_stage",
+    "signal": "cernopendata.cold_storage.stats.signals.record_stage",
+    "event_builders": [
+        "cernopendata.cold_storage.stats.contrib.event_builders.record_stage_event_builder"
+    ],
+    "cls": EventsIndexer,
+    "params": {"preprocessors": [flag_robots, anonymize_user, build_record_unique_id]},
+}
+
 
 STATS_AGGREGATIONS = {
     "file-download-agg": {

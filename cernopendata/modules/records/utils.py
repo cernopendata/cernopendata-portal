@@ -51,6 +51,7 @@ from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
 
 from cernopendata.cold_storage.api import RecordAvailability, Request
+from cernopendata.cold_storage.stats.signals import record_stage
 
 
 def stage(pid, record, **kwargs):
@@ -69,6 +70,8 @@ def stage(pid, record, **kwargs):
     )
     db.session.commit()
     print(f"Transfer requested {id}", file=sys.stderr)
+    record_stage.send(current_app._get_current_object(), obj=record)
+
     # try:
     #    response = requests.get(purge_url)
     #    response.raise_for_status()
