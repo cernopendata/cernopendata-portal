@@ -1,0 +1,66 @@
+{
+  "index_patterns": ["__SEARCH_INDEX_PREFIX__events-record-stage-*"],
+  "settings": {
+    "index": {
+      "refresh_interval": "5s"
+    }
+  },
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "date_fields": {
+          "match_mapping_type": "date",
+          "mapping": {
+            "type": "date",
+            "format": "strict_date_hour_minute_second"
+          }
+        }
+      }
+    ],
+    "date_detection": false,
+    "dynamic": false,
+    "numeric_detection": false,
+    "properties": {
+      "timestamp": {
+        "type": "date",
+        "format": "strict_date_hour_minute_second"
+      },
+      "unique_id": {
+        "type": "keyword"
+      },
+      "pid_type": {
+        "type": "keyword"
+      },
+      "pid_value": {
+        "type": "keyword"
+      },
+      "country": {
+        "type": "keyword"
+      },
+      "visitor_id": {
+        "type": "keyword"
+      },
+      "is_robot": {
+        "type": "boolean"
+      },
+      "unique_session_id": {
+        "type": "keyword"
+      },
+      "size": {
+        "type": "double"
+      },
+      "number_files": {
+        "type": "long"
+      },
+      "updated_timestamp": {
+        "type": "date"
+      },
+      "referrer": {
+        "type": "keyword"
+      }
+    }
+  },
+  "aliases": {
+    "__SEARCH_INDEX_PREFIX__events-stats-file-download": {}
+  }
+}
