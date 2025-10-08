@@ -1,5 +1,13 @@
 Changes
 =======
+Version 0.8.0 (released 2025-10-08)
+----------------------------
+- fixtures: Add news describing the cold storage
+- kpi: Collect statistics on record staging requests
+- cold: improve display of transfer requests
+- cold: Ensure that requests without any transfers do not get stuck.
+- bug: Fix the aggregation of file downloads (#172)
+
 Version 0.7.0 (released 2025-10-01)
 ---------------------------
 - cold: improve the statistics of the transfer requests
