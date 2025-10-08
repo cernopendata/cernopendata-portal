@@ -25,7 +25,20 @@
  */
 
 import { createSearchAppInit } from "@js/invenio_search_ui";
-import { CODLayoutSwitcher, ResultsCount, CODFacets, CODFacetItem, CODSearchBarContainer, CODSearchBarElement } from "./components";
+import {
+  CODLayoutSwitcher,
+  ResultsCount,
+  CODFacets,
+  CODFacetItem,
+  CODSearchBarContainer,
+  CODSearchBarElement,
+} from "./components";
+
+if (window.invenio) {
+  window.invenio.onSearchResultsRendered = () => {
+    window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
+  };
+}
 
 const initSearchApp = createSearchAppInit({
   "LayoutSwitcher.element": CODLayoutSwitcher,
