@@ -45,3 +45,4 @@ SETTINGS_TEMPLATE = "invenio_theme/settings/content.html"
 # Theme
 THEME_SITENAME = _("CERN Open Data Portal")
 THEME_LOGO = "img/cernopendata.svg"
+THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML"
