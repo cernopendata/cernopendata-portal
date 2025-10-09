@@ -50,8 +50,18 @@
         </span>
     </p>
     {% endif %}
-    {% for a in record.a %}
-    {% endfor %}
+
+    {% if record.date_created and record.date_published %}
+    <small>
+        Record created in {{ record.date_created[0] }}
+        {%- if record.date_reprocessed -%}
+            , reprocessed in {{ record.date_reprocessed }} and
+        {% else %}
+            and
+        {% endif %}
+        published in {{ record.date_published }}
+    </small>
+    {% endif %}
 
     <p>
         {% if record.type %} <a class="ui tiny label blue" href="/search?f=type:{{ record.type.primary }}">{{ record.type.primary }}</a>

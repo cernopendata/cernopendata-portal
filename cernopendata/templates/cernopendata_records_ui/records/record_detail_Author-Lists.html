@@ -90,6 +90,11 @@
               {% endfor %}
               {% endif %}
             </div>
+            {% if record.date_created and record.date_published %}
+            <small>
+                Record created in {{ record.date_created[0] }} and published in {{ record.date_published }}
+            </small>
+            {% endif %}
             {% endblock heading %}
           </div>
           <div class="ui segment">
