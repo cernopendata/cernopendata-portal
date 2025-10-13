@@ -82,8 +82,32 @@ const DetailedTable = ({
             >
               Status
             </Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2">Request date</Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2">Started date</Table.HeaderCell>
+            <Table.HeaderCell
+              rowSpan="2"
+              sorted={
+                sortField === "created_at"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : null
+              }
+              onClick={() => handleSort("created_at")}
+            >
+              Request date
+            </Table.HeaderCell>
+            <Table.HeaderCell
+              rowSpan="2"
+              sorted={
+                sortField === "started_at"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : null
+              }
+              onClick={() => handleSort("started_at")}
+            >
+              Started date
+            </Table.HeaderCell>
             <Table.HeaderCell
               sorted={
                 sortField === "num_record_files"
@@ -142,7 +166,17 @@ const DetailedTable = ({
               <br />
               transfers
             </Table.HeaderCell>
-            <Table.HeaderCell rowSpan="2">
+            <Table.HeaderCell
+              rowSpan="2"
+              sorted={
+                sortField === "completed_at"
+                  ? sortDirection === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : null
+              }
+              onClick={() => handleSort("completed_at")}
+            >
               Completion
               <br />
               date
