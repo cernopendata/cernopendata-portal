@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.9.1 (released 2025-10-28)
+----------------------------
+- dependency: update xrootd version
+
 Version 0.9.0 (released 2025-10-28)
 ----------------------------
 - fix: ensure latex is displayed properly in search results
