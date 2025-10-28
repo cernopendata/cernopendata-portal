@@ -1,5 +1,13 @@
 Changes
 =======
+Version 0.9.0 (released 2025-10-28)
+----------------------------
+- fix: ensure latex is displayed properly in search results
+- ui: display dates on record detail page
+- docker: bind the port to the localhost
+- fix: ensure sorting works properly for transfer requests table
+- Search: Return empty set instead of dict when type keyword is unknown
+
 Version 0.8.0 (released 2025-10-08)
 ----------------------------
 - fixtures: Add news describing the cold storage
