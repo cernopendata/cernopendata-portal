@@ -26,8 +26,8 @@
 ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM registry.cern.ch/inveniosoftware/almalinux:1
 
-# Use XRootD 5.8.4
-ENV XROOTD_VERSION=5.8.4
+# Use XRootD 5.9.0
+ENV XROOTD_VERSION=5.9.0
 
 # Install the CERN CA
 COPY docker/carepo.repo /etc/yum.repos.d/
