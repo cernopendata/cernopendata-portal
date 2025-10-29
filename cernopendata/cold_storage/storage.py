@@ -80,7 +80,7 @@ class Storage:
         if not dest_file:
             logger.error(f"WE CAN'T GUESS THE destination path :( of {filename}")
             return []
-        id = transfer.archive(filename.replace("root://", "https://"), dest_file)
+        id = transfer.archive(filename, dest_file)
         if not id:
             return []
         return {
@@ -94,9 +94,7 @@ class Storage:
     def stage(self, file):
         """Create a hot copy for a file."""
         filename = file["tags"]["uri_cold"]
-        dest_file, transfer = Storage.find_url(
-            ColdStorageActions.STAGE, filename.replace("root://", "https://")
-        )
+        dest_file, transfer = Storage.find_url(ColdStorageActions.STAGE, filename)
         logger.debug(f" Staging it")
         id = transfer.stage(filename, dest_file)
         if not id:

@@ -53,7 +53,15 @@ class TransferManager:
 
     def _basic_job(self, source, dest):
         """Definition of a job in FTS."""
-        return {"files": [{"sources": [source], "destinations": [dest]}]}
+        # Using https protocol instead of root for all the fts transfers
+        return {
+            "files": [
+                {
+                    "sources": [source.replace("root://", "https://")],
+                    "destinations": [dest.replace("root://", "https://")],
+                }
+            ]
+        }
 
     def stage(self, source, dest):
         """Copy from cold to hot."""
