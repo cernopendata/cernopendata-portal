@@ -29,8 +29,8 @@ from marshmallow import Schema, fields, validate
 class TransferRequestQuerySchema(Schema):
     """Arguments for the transfer search."""
 
-    page = fields.Int(missing=1)
-    per_page = fields.Int(missing=10)
+    page = fields.Int(load_default=1)
+    per_page = fields.Int(load_default=10)
     status = fields.List(fields.Str())
     action = fields.List(fields.Str())
     record = fields.Str()
