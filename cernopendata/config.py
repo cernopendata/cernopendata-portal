@@ -144,7 +144,7 @@ COLLECT_STORAGE = (
 )
 
 # Cache
-CACHE_TYPE = "redis"
+CACHE_TYPE = "flask_caching.backends.rediscache.RedisCache"
 
 # Celery
 CELERY_ACCEPT_CONTENT = ["json", "msgpack", "yaml"]
@@ -597,6 +597,8 @@ RECORDS_REST_FACETS = {
 }
 
 """Facets per index for the default facets factory."""
+
+REST_CSRF_ENABLED = True
 
 # Files
 # ======
