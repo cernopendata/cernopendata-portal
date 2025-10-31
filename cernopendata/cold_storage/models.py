@@ -61,6 +61,8 @@ class RequestMetadata(db.Model):
     file = db.Column(db.String(255), nullable=True)
     num_hot_files = db.Column(db.Integer, nullable=True)
     num_cold_files = db.Column(db.Integer, nullable=True)
+    num_record_files = db.Column(db.Integer, nullable=True)
+    record_size = db.Column(db.BigInteger, nullable=True)
 
 
 class Location(db.Model):
