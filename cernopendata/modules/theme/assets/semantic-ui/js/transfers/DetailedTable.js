@@ -26,6 +26,7 @@ const DetailedTable = ({
   setActionFilter,
   recordFilter,
   setRecordFilter,
+  isLoading,
 }) => {
   const results = details || [];
 
@@ -46,25 +47,23 @@ const DetailedTable = ({
 
   // handle sorting
   const handleSort = (field) => {
+    if (isLoading) {
+      return;
+    }
     const direction =
       sortField === field && sortDirection === "asc" ? "desc" : "asc";
     onSort(field, direction);
-  };
-
-  const handleRecordFilterChange = (event) => {
-    const value = event.target.value;
-    setRecordFilter(value);
-    updateURLParam("record_id", value);
   };
 
   return (
     <>
       <Table
         celled
-        sortable
+        sortable={!isLoading}
         compact
         size="small"
         className="hoverable-row-table"
+        style={isLoading ? { pointerEvents: "none", opacity: 0.8 } : {}}
       >
         <Table.Header>
           <Table.Row>
@@ -190,11 +189,13 @@ const DetailedTable = ({
                 placeholder="Filter by record"
                 defaultValue={recordFilter}
                 onChange={(e) => {
+                  if (isLoading) return;
                   const value = e.target.value;
                   setRecordFilter(value);
                   updateURLParam("record_id", value);
                 }}
                 className="narrow-filter"
+                disabled={isLoading}
               ></Input>
             </Table.HeaderCell>
             <Table.HeaderCell>
@@ -210,10 +211,12 @@ const DetailedTable = ({
                 }))}
                 value={actionFilter}
                 onChange={(e, { value }) => {
+                  if (isLoading) return;
                   setActionFilter(value);
                   updateURLParam("action", value);
                 }}
                 className="narrow-filter"
+                disabled={isLoading}
               />
             </Table.HeaderCell>
             <Table.HeaderCell>
@@ -229,16 +232,25 @@ const DetailedTable = ({
                 }))}
                 value={statusFilters}
                 onChange={(e, { value }) => {
+                  if (isLoading) return;
                   setStatusFilters(value);
                   updateURLParam("status", value);
                 }}
                 className="narrow-filter"
+                disabled={isLoading}
               />
             </Table.HeaderCell>
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {results.length > 0 ? (
+          {isLoading ? (
+            <Table.Row>
+              <Table.Cell colSpan="11" textAlign="center">
+                <i className="spinner loading icon large" />
+                Loading transfer requests...
+              </Table.Cell>
+            </Table.Row>
+          ) : results.length > 0 ? (
             results.map((item) => {
               const hasHotFiles = item.num_hot_files != null;
               const hasColdFiles = item.num_cold_files != null;
@@ -278,6 +290,7 @@ const DetailedTable = ({
                         color="blue"
                         size="mini"
                         onClick={() => openSubscribeModal(item.recid, item.id)}
+                        disabled={isLoading}
                       >
                         Subscribe
                       </Button>
@@ -351,6 +364,7 @@ const DetailedTable = ({
           ellipsisItem={{ content: "...", icon: true }}
           firstItem={null}
           lastItem={null}
+          disabled={isLoading}
         />
       )}
     </>

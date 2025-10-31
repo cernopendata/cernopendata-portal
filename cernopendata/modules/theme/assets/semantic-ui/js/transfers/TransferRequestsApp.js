@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
-import { Dropdown, Pagination, Button } from "semantic-ui-react";
 import DetailedTable from "./DetailedTable";
 import SummaryTable from "./SummaryTable";
 import SubscribeModal from "./SubscribeModal";
 
 const TransferRequestsApp = ({ defaultRecid = null }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [selectedRecid, setSelectedRecid] = useState(null);
   const [selectedTransferid, setSelectedTransferid] = useState(null);
@@ -23,9 +23,9 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState(null);
 
-
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const params = new URLSearchParams({
           page: pagination.current_page,
@@ -43,6 +43,8 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
         setPagination(res.data.pagination || { ...pagination, total: res.data.details.length });
       } catch (err) {
         console.error("Failed to fetch transfer data", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
@@ -87,48 +89,56 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (isLoading) return;
+    setPagination((prev) => ({ ...prev, current_page: newPage }));
+  };
+
+  const handleSortChange = (field, direction) => {
+    if (isLoading) return;
+    setSortField(field);
+    setSortDirection(direction);
+    setPagination((prev) => ({ ...prev, current_page: 1 }));
+  };
+
   return (
     <div>
       <h2>Transfer Requests</h2>
-        <h3>Summary</h3>
-          <SummaryTable summary={summary}
-            formatBytes={formatBytes}
-            abbreviateNumber={abbreviateNumber}
-          />
+      <h3>Summary</h3>
+      <SummaryTable
+        summary={summary}
+        formatBytes={formatBytes}
+        abbreviateNumber={abbreviateNumber}
+      />
 
-        <h3>Details</h3>
-          <DetailedTable
-              summary={summary}
-              details={details}
-              pagination={pagination}
-              openSubscribeModal={openSubscribeModal}
-              formatBytes={formatBytes}
-              initialRecordFilter={recordFilter}
-              statusFilters={statusFilters}
-              setStatusFilters={setStatusFilters}
-              actionFilter={actionFilter}
-              setActionFilter={setActionFilter}
-              recordFilter={recordFilter}
-              setRecordFilter={setRecordFilter}
-              abbreviateNumber={abbreviateNumber}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={(field, direction) => {
-                setSortField(field);
-                setSortDirection(direction);
-                setPagination((prev) => ({ ...prev, current_page: 1 }));
-              }}
-              onPageChange={(newPage) => {
-                setPagination((prev) => ({ ...prev, current_page: newPage }));
-              }}
-          />
-        <SubscribeModal
-          isModalOpen={isModalOpen}
-          closeModal={() => setModalOpen(false)}
-          handleSubscribe={handleSubscribe}
-          email={email}
-          setEmail={setEmail}
-        />
+      <h3>Details</h3>
+      <DetailedTable
+        summary={summary}
+        details={details}
+        pagination={pagination}
+        openSubscribeModal={openSubscribeModal}
+        formatBytes={formatBytes}
+        initialRecordFilter={recordFilter}
+        statusFilters={statusFilters}
+        setStatusFilters={setStatusFilters}
+        actionFilter={actionFilter}
+        setActionFilter={setActionFilter}
+        recordFilter={recordFilter}
+        setRecordFilter={setRecordFilter}
+        abbreviateNumber={abbreviateNumber}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        isLoading={isLoading}
+        onSort={handleSortChange}
+        onPageChange={handlePageChange}
+      />
+      <SubscribeModal
+        isModalOpen={isModalOpen}
+        closeModal={() => setModalOpen(false)}
+        handleSubscribe={handleSubscribe}
+        email={email}
+        setEmail={setEmail}
+      />
     </div>
   );
 };
