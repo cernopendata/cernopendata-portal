@@ -21,14 +21,9 @@
 
 import itertools
 import json
-import re
 import sys
 from os.path import basename
-from re import sub
-from time import time
 
-import flask
-import six
 from flask import (
     Response,
     abort,
@@ -39,7 +34,6 @@ from flask import (
     request,
 )
 from invenio_db import db
-from invenio_files_rest.models import FileInstance
 from invenio_files_rest.signals import file_downloaded
 from invenio_files_rest.views import ObjectResource
 from invenio_indexer.api import RecordIndexer
@@ -67,6 +61,7 @@ def stage(pid, record, **kwargs):
         [data.get("email", None)],
         file=data.get("file", None),
         availability=record["_availability_details"],
+        distribution=record["distribution"],
     )
     db.session.commit()
     print(f"Transfer requested {id}", file=sys.stderr)

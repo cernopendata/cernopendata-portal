@@ -39,13 +39,11 @@ from flask import (
     url_for,
 )
 from invenio_i18n import lazy_gettext as _
-from invenio_pidstore.models import PersistentIdentifier
 from jinja2.exceptions import TemplateNotFound
 from markupsafe import escape
 from speaklater import make_lazy_string
 from webargs.flaskparser import use_args
 
-from cernopendata.api import RecordFilesWithIndex
 from cernopendata.cold_storage.schemas import (
     TransferRequestQuerySchema,
     TransferRequestSchema,
@@ -394,29 +392,6 @@ def transfer_requests(args):
         page=page,
         per_page=per_page,
     )
-
-    # Get records
-    records_data = {}
-    pid_mappings = {}
-    if pagination and pagination.items:
-        record_uuids = [item.record_id for item in pagination.items]
-
-        query_result = PersistentIdentifier.query.filter(
-            PersistentIdentifier.object_uuid.in_(record_uuids),
-            PersistentIdentifier.pid_type == "recid",
-        ).all()
-        pid_mappings = {pid.object_uuid: pid.pid_value for pid in query_result}
-
-        records_list = RecordFilesWithIndex.get_records(record_uuids)
-        records_by_recid = {record["recid"]: record for record in records_list}
-        for uuid, recid in pid_mappings.items():
-            if recid in records_by_recid:
-                records_data[str(uuid)] = records_by_recid[recid]
-
-    transfer_request_schema.context = {
-        "records_data": records_data,
-        "pid_mappings": pid_mappings,
-    }
 
     results = transfer_request_schema.dump(pagination.items)
 

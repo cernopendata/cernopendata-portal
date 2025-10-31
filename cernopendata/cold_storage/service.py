@@ -28,7 +28,6 @@ from datetime import datetime
 
 from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier
-from invenio_records.models import RecordMetadata
 from sqlalchemy import func
 
 from cernopendata.api import RecordFilesWithIndex
@@ -211,14 +210,6 @@ class RequestService:
         per_page=None,
     ):
         """Get the summary of the requests."""
-        sort_mapping = {
-            "num_record_files": func.cast(
-                RecordMetadata.json["distribution"]["number_files"], db.Numeric
-            ),
-            "record_size": func.cast(
-                RecordMetadata.json["distribution"]["size"], db.Numeric
-            ),
-        }
         if summary:
             query = db.session.query(
                 RequestMetadata.status,
@@ -229,12 +220,6 @@ class RequestService:
             )
         else:
             query = RequestMetadata.query
-            if sort in sort_mapping.keys():
-                query = query.join(
-                    RecordMetadata,
-                    RecordMetadata.id == RequestMetadata.record_id,
-                    isouter=True,
-                )
 
         if status:
             query = query.filter(RequestMetadata.status.in_(status))
@@ -253,18 +238,14 @@ class RequestService:
                 RequestMetadata.status, RequestMetadata.action
             ).all()
 
-        column = None
         if sort:
-            column = sort_mapping.get(sort)
-            if column is None:
-                column = getattr(RequestMetadata, sort, None)
+            column = getattr(RequestMetadata, sort, None)
             if column is not None:
                 if direction == "desc":
                     query = query.order_by(column.desc())
                 else:
                     query = query.order_by(column.asc())
-
-        if column is None:
+        else:
             query = query.order_by(RequestMetadata.created_at.desc())
 
         if page:

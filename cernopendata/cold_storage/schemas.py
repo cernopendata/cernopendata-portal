@@ -23,6 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Schemas used for the transfers."""
+from invenio_pidstore.models import PersistentIdentifier
 from marshmallow import Schema, fields, validate
 
 
@@ -52,26 +53,11 @@ class TransferRequestSchema(Schema):
     completed_at = fields.DateTime(allow_none=True)
     num_hot_files = fields.Int(allow_none=True)
     num_cold_files = fields.Int(allow_none=True)
-    num_record_files = fields.Method("get_num_record_files")
-    record_size = fields.Method("get_record_size")
+    num_record_files = fields.Int(allow_none=True)
+    record_size = fields.Int(allow_none=True)
     file = fields.Str(allow_none=True)
 
     def get_recid(self, obj):
         """Convert the uuid into the recid."""
-        pid_mappings = self.context.get("pid_mappings", {})
-        recid = pid_mappings.get(obj.record_id)
-        return recid if recid else None
-
-    def get_num_record_files(self, obj):
-        """Get the number of files from the record data."""
-        record_data = self.context.get("records_data", {}).get(str(obj.record_id))
-        if record_data and record_data.get("distribution"):
-            return record_data["distribution"].get("number_files")
-        return None
-
-    def get_record_size(self, obj):
-        """Get the size of the files from the record data."""
-        record_data = self.context.get("records_data", {}).get(str(obj.record_id))
-        if record_data and record_data.get("distribution"):
-            return record_data["distribution"].get("size")
-        return None
+        pid = PersistentIdentifier.query.filter_by(object_uuid=obj.record_id).first()
+        return pid.pid_value if pid else None

@@ -32,14 +32,8 @@ from enum import Enum
 from flask import current_app
 from flask_mail import Message
 from invenio_db import db
-from invenio_files_rest.models import (
-    Bucket,
-    BucketTag,
-    FileInstance,
-    ObjectVersion,
-    ObjectVersionTag,
-)
-from invenio_records_files.api import FileObject, FilesIterator, Record
+from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
+from invenio_records_files.api import FileObject, Record
 from sqlalchemy import func
 
 from .models import RequestMetadata, TransferMetadata
@@ -188,7 +182,9 @@ class Request:
             logger.error(f"Failed to send email to {emails}: {e}")
 
     @staticmethod
-    def create(record_id, subscribers=None, file=None, availability=None):
+    def create(
+        record_id, subscribers=None, file=None, availability=None, distribution=None
+    ):
         """Create a new request."""
         rb = RequestMetadata(
             record_id=record_id, file=file, subscribers=subscribers or []
@@ -196,6 +192,9 @@ class Request:
         if availability:
             rb.num_hot_files = availability.get("online")
             rb.num_cold_files = availability.get("on demand")
+        if distribution:
+            rb.num_record_files = distribution.get("number_files")
+            rb.record_size = distribution.get("size")
         db.session.add(rb)
         return rb
 
