@@ -1,5 +1,10 @@
 Changes
 =======
+Version 0.8.1 (released 2025-11-06)
+----------------------------
+- fts: use https protocol instead of xrootd
+- xrootd: bump up version number
+
 Version 0.8.0 (released 2025-10-08)
 ----------------------------
 - fixtures: Add news describing the cold storage
