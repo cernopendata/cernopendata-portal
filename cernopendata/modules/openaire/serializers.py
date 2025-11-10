@@ -57,8 +57,7 @@ def dict_to_lxml(d):
         "rightsList": "http://datacite.org/schema/kernel-4",
         # And these come from dc
         "publisher": "http://purl.org/dc/elements/1.1/",
-        "description": "http://datacite.org/schema/kernel-4",
-        "descriptions": "http://datacite.org/schema/kernel-4",
+        "description": "http://purl.org/dc/elements/1.1/",
         "resourceType": "http://namespace.openaire.eu/schema/oaire/",
     }
 
@@ -66,6 +65,8 @@ def dict_to_lxml(d):
         """Recursively add elements to the parent element based on the dictionary."""
         if isinstance(d, dict):
             for key, value in d.items():
+                if value is None:
+                    continue
                 if key.startswith("@"):  # Attribute handling
                     parent.set(key[1:], str(value))
                 elif key == "#text":  # Text content handling
@@ -99,7 +100,7 @@ class OpenAireSerializer(Schema):
     publisher = fields.Str()
     dates = fields.Method("get_publication_year")
     rightsList = fields.Method("get_rights")
-    descriptions = fields.Method("get_description")
+    description = fields.Method("get_description")
 
     def get_publication_year(self, obj):
         """Get the publication date."""
@@ -122,19 +123,13 @@ class OpenAireSerializer(Schema):
 
     def get_description(self, obj):
         """Get the description of the record."""
-        descriptions = []
         if "abstract" in obj and "description" in obj["abstract"]:
-            descriptions.append(
-                {
-                    "description": {
-                        "@descriptionType": "abstract",
-                        "#text": html.fromstring(
-                            obj["abstract"]["description"]
-                        ).text_content(),
-                    }
-                }
-            )
-        return descriptions
+            return {
+                "@descriptionType": "abstract",
+                "#text": html.fromstring(obj["abstract"]["description"]).text_content(),
+            }
+
+        return None
 
     def get_rights(self, obj):
         """Get the access rights. Assume everything is open access."""
