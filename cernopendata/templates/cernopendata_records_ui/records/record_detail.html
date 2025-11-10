@@ -173,13 +173,31 @@
             <h2>Characteristics</h2>
             {% endif %}
             {% if record.distribution.number_entries %}
-            <span><strong>{{record.distribution.number_entries}}</strong> entries. </span>
+            <span><strong>{{record.distribution.number_entries}}</strong>
+                {% if record.distribution.number_entries == 1 %}
+                     entry.
+                {% else %}
+                     entries.
+                {% endif %}
+                </span>
             {% endif %}
             {% if record.distribution.number_events %}
-            <span><strong>{{record.distribution.number_events}}</strong> events. </span>
+            <span><strong>{{record.distribution.number_events}}</strong>
+                {% if record.distribution.number_events == 1 %}
+                     event.
+                {% else %}
+                     events.
+                {% endif %}
+                </span>
             {% endif %}
             {% if record.distribution.number_files %}
-            <span><strong>{{record.distribution.number_files}}</strong> files. </span>
+                <span><strong>{{record.distribution.number_files}}</strong>
+                {% if record.distribution.number_files == 1 %}
+                     file.
+                {% else %}
+                     files.
+                {% endif %}
+                </span>
             {% endif %}
             {% if record.distribution.size %}
             <span><strong>{{record.distribution.size | filesizeformat(true) }}</strong> in total.</span>
