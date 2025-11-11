@@ -55,6 +55,13 @@ const DetailedTable = ({
     onSort(field, direction);
   };
 
+  const getSuccessfulTransferCount = (item) => {
+    if (item.num_failed_transfers !== null) {
+      return item.num_transfers - item.num_failed_transfers;
+    }
+    return item.num_transfers;
+  };
+
   return (
     <>
       <Table
@@ -137,16 +144,16 @@ const DetailedTable = ({
             </Table.HeaderCell>
             <Table.HeaderCell
               sorted={
-                sortField === "num_files"
+                sortField === "num_transfers"
                   ? sortDirection === "asc"
                     ? "ascending"
                     : "descending"
                   : null
               }
-              onClick={() => handleSort("num_files")}
+              onClick={() => handleSort("num_transfers")}
               rowSpan="2"
             >
-              # issued
+              # successful
               <br />
               transfers
             </Table.HeaderCell>
@@ -277,7 +284,9 @@ const DetailedTable = ({
                   <Table.Cell singleLine>
                     {formatBytes(item.record_size)}
                   </Table.Cell>
-                  <Table.Cell>{abbreviateNumber(item.num_files)}</Table.Cell>
+                  <Table.Cell>
+                    {abbreviateNumber(getSuccessfulTransferCount(item))}
+                  </Table.Cell>
                   <Table.Cell singleLine>{formatBytes(item.size)}</Table.Cell>
                   <Table.Cell>
                     {item.completed_at
@@ -333,6 +342,21 @@ const DetailedTable = ({
                             ? "One file requested"
                             : "All files requested"}
                         </span>
+
+                        {item.num_failed_transfers > 0 && (
+                          <>
+                            <div
+                              style={{
+                                margin: "10px 0",
+                                borderTop: "1px solid #ccc",
+                              }}
+                            />
+                            <span>
+                              {abbreviateNumber(item.num_failed_transfers)}{" "}
+                              failed transfers
+                            </span>
+                          </>
+                        )}
                       </>
                     </div>
                   }
