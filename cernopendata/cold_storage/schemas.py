@@ -56,6 +56,7 @@ class TransferRequestSchema(Schema):
     num_record_files = fields.Int(allow_none=True)
     record_size = fields.Int(allow_none=True)
     file = fields.Str(allow_none=True)
+    num_failed_transfers = fields.Int(allow_none=True)
 
     def get_recid(self, obj):
         """Convert the uuid into the recid."""

@@ -162,6 +162,13 @@ class Transfer:
         if action == ColdStorageActions.ARCHIVE:
             return current_app.config["COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD"]
 
+    @staticmethod
+    def get_failed_transfers_count():
+        """Get number of failed transfers."""
+        return TransferMetadata.query.filter(
+            TransferMetadata.status == "FAILED"
+        ).count()
+
 
 class Request:
     """Class to check the cold storage requests."""
