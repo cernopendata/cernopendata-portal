@@ -54,7 +54,7 @@ class RequestMetadata(db.Model):
     status = db.Column(db.String(50), default="submitted", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
-    num_files = db.Column(db.Integer, default=0, nullable=True)
+    num_transfers = db.Column(db.Integer, default=0, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
     subscribers = db.Column(MutableList.as_mutable(JSONB), default=list)
     size = db.Column(db.BigInteger, default=0, nullable=True)
@@ -63,6 +63,7 @@ class RequestMetadata(db.Model):
     num_cold_files = db.Column(db.Integer, nullable=True)
     num_record_files = db.Column(db.Integer, nullable=True)
     record_size = db.Column(db.BigInteger, nullable=True)
+    num_failed_transfers = db.Column(db.Integer, default=0, nullable=True)
 
 
 class Location(db.Model):

@@ -162,6 +162,13 @@ class Transfer:
         if action == ColdStorageActions.ARCHIVE:
             return current_app.config["COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD"]
 
+    @staticmethod
+    def get_failed_transfers_count():
+        """Get number of failed transfers."""
+        return TransferMetadata.query.filter(
+            TransferMetadata.status == "FAILED"
+        ).count()
+
 
 class Request:
     """Class to check the cold storage requests."""
@@ -199,12 +206,12 @@ class Request:
         return rb
 
     @staticmethod
-    def mark_as_started(req, num_files, size):
+    def mark_as_started(req, num_transfers, size):
         """Mark a request as started."""
         logger.info(f"The transfer {req.id} has started")
         req.started_at = datetime.utcnow()
         req.status = "started"
-        req.num_files = num_files
+        req.num_transfers = num_transfers
         req.size = size
         db.session.add(req)
 

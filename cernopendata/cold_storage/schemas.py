@@ -45,7 +45,7 @@ class TransferRequestSchema(Schema):
     id = fields.Str()
     recid = fields.Method("get_recid")
     action = fields.Str()
-    num_files = fields.Int()
+    num_transfers = fields.Int()
     size = fields.Int()
     status = fields.Str()
     created_at = fields.DateTime()
@@ -56,6 +56,7 @@ class TransferRequestSchema(Schema):
     num_record_files = fields.Int(allow_none=True)
     record_size = fields.Int(allow_none=True)
     file = fields.Str(allow_none=True)
+    num_failed_transfers = fields.Int(allow_none=True)
 
     def get_recid(self, obj):
         """Convert the uuid into the recid."""

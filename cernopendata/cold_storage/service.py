@@ -140,7 +140,7 @@ class RequestService:
                     logger.debug(f"Got {info}")
                     if info:
                         submitted += len(info)
-                        transfer.num_files += len(info)
+                        transfer.num_transfers += len(info)
                         transfer.size += sum(item.size for item in info)
                     transfer.started_at = datetime.utcnow()
                     logger.info(
@@ -165,7 +165,6 @@ class RequestService:
     def check_running():
         """Check the records that are being archived."""
         for action in ColdStorageActions:
-
             requests = RequestMetadata.query.filter_by(
                 status="started", action=action.value
             ).all()
@@ -173,7 +172,8 @@ class RequestService:
             completed = 0
             for request in requests:
                 record = RecordFilesWithIndex.get_record(request.record_id)
-
+                request.num_failed_transfers = Transfer.get_failed_transfers_count()
+                db.session.add(request)
                 if action == ColdStorageActions.STAGE:
                     if record["availability"] != RecordAvailability.ONLINE.value:
                         logger.info("Let's check the availability just in case...")
@@ -196,6 +196,7 @@ class RequestService:
                         continue
                 completed += 1
                 Request.mark_as_completed(request)
+            db.session.commit()
             logger.info(f"{completed}/{len(requests)} requests have finished")
 
     @staticmethod
@@ -215,7 +216,7 @@ class RequestService:
                 RequestMetadata.status,
                 RequestMetadata.action,
                 func.count().label("count"),
-                func.sum(RequestMetadata.num_files).label("files"),
+                func.sum(RequestMetadata.num_transfers).label("files"),
                 func.sum(RequestMetadata.size).label("size"),
             )
         else:
