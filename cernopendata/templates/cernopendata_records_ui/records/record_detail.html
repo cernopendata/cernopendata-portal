@@ -53,13 +53,7 @@
 
     {% if record.date_created and record.date_published %}
     <small>
-        Record created in {{ record.date_created[0] }}
-        {%- if record.date_reprocessed -%}
-            , reprocessed in {{ record.date_reprocessed }} and
-        {% else %}
-            and
-        {% endif %}
-        published in {{ record.date_published }}
+        Data recorded in {{ record.date_created[0] }} and published in {{ record.date_published }}
     </small>
     {% endif %}
 
