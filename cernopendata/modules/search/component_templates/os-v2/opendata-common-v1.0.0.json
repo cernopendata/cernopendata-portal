@@ -52,10 +52,20 @@
         "type": {
           "properties": {
             "primary": {
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "primary_text": {
+                  "type":"text"
+                }
+              }
             },
             "secondary": {
-              "type": "keyword"
+              "type": "keyword",
+              "fields": {
+                "secondary_text": {
+                  "type":"text"
+                }
+              }
             }
           }
         }
