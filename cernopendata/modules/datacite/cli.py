@@ -27,7 +27,7 @@ import os
 
 import click
 from click import ClickException
-from datacite import schema40
+from datacite import schema43
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
@@ -84,6 +84,15 @@ def gen_doi(exp):
     click.echo(doi)
 
 
+def _validate_record(record):
+    """Function to validate a record according to the schema of datacite."""
+    # serialize record to schema43
+
+    doc = DataCiteSerializer().dump(record)
+    schema43.validate(doc)
+    return schema43.tostring(doc)
+
+
 @datacite.command()
 @click.option("--recid", help="Test serialisation of record with given recid")
 @with_appcontext
@@ -93,10 +102,7 @@ def test_serialisation(recid):
     record = Record.get_record(uuid)
     experiment = record.get("experiment", None)
     doi = record["doi"]
-    # serialize record to schema40
-    doc = DataCiteSerializer().dump(record)
-    schema40.validate(doc)
-    doc = schema40.tostring(doc)
+    doc = _validate_record(record)
     click.echo(doc)
 
 
@@ -115,10 +121,8 @@ def register(recid):
     except PIDDoesNotExistError:
         provider = DataCiteProviderWrapper.create(pid_value=doi, experiment=experiment)
 
-    # serialize record to schema40
-    doc = DataCiteSerializer().dump(record)
-    schema40.validate(doc)
-    doc = schema40.tostring(doc)
+    doc = _validate_record(record)
+
     landing_page = os.path.join(
         current_app.config.get("PIDSTORE_LANDING_BASE_URL"), recid
     )
@@ -145,10 +149,8 @@ def update(recid):
             "Record with DOI {} not registered in DataCite.".format(doi)
         )
 
-    # serialize record to schema40
-    doc = DataCiteSerializer().dump(record)
-    schema40.validate(doc)
-    doc = schema40.tostring(doc)
+    doc = _validate_record(record)
+
     landing_page = os.path.join(
         current_app.config.get("PIDSTORE_LANDING_BASE_URL"), recid
     )

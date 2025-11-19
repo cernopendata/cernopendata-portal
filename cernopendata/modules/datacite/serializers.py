@@ -49,7 +49,7 @@ def datacite_etree(pid, record):
 class DataCiteSerializer(Schema):
     """DataCite complient schema."""
 
-    doi = fields.Method("get_identifier")
+    identifiers = fields.Method("get_identifiers")
     creators = fields.Method("get_creator")
     titles = fields.Method("get_titles")
     publisher = fields.Str()
@@ -64,7 +64,7 @@ class DataCiteSerializer(Schema):
         if "abstract" in obj and "description" in obj["abstract"]:
             descriptions.append(
                 {
-                    "descriptionType": "abstract",
+                    "descriptionType": "Abstract",
                     "description": obj["abstract"]["description"],
                 }
             )
@@ -74,9 +74,12 @@ class DataCiteSerializer(Schema):
         """Get the rights. Assume everything is open access."""
         return [{"rights": "open access"}]
 
-    def get_identifier(self, obj):
+    def get_identifiers(self, obj):
         """Get identifier based on doi field."""
-        return obj.get("doi", "")
+        identifiers = []
+        if obj.get("doi", ""):
+            identifiers.append({"identifier": obj.get("doi"), "identifierType": "DOI"})
+        return identifiers
 
     def get_creator(self, obj):
         """Get creators based on authors or collaboration field."""
