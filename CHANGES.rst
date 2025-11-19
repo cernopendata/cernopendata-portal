@@ -1,5 +1,18 @@
 Changes
 =======
+Version 0.10.0 (released 2025-11-20)
+----------------------------
+- fix: use always http protocol instead of xrootd for transfers
+- fix: remove warnings from the startup
+- fix: Add missing file to the record stage templates
+- fix(oai-pmh): openaire uses dc description instead of datacite description
+- fix: change message of datasets with a single file or event
+- fix: improve querying transfer requests to prevent running out of memory
+- fix: Change the templates to allow case insensitive searches
+- ui: improvements to displaying dates
+- cold: add information about failed transfers to the transfer requests table
+- fix: update datacite to schema43
+
 Version 0.9.1 (released 2025-10-28)
 ----------------------------
 - dependency: update xrootd version
