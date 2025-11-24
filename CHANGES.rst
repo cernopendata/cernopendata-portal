@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.10.1 (released 2025-11-24)
+----------------------------
+- bug: fix counting failed transfers
+
 Version 0.10.0 (released 2025-11-20)
 ----------------------------
 - fix: use always http protocol instead of xrootd for transfers
