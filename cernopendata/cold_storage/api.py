@@ -163,10 +163,11 @@ class Transfer:
             return current_app.config["COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD"]
 
     @staticmethod
-    def get_failed_transfers_count():
+    def get_failed_transfers_count(record_id):
         """Get number of failed transfers."""
         return TransferMetadata.query.filter(
-            TransferMetadata.status == "FAILED"
+            TransferMetadata.record_uuid == record_id,
+            TransferMetadata.status == "FAILED",
         ).count()
 
 
