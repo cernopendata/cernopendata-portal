@@ -172,7 +172,9 @@ class RequestService:
             completed = 0
             for request in requests:
                 record = RecordFilesWithIndex.get_record(request.record_id)
-                request.num_failed_transfers = Transfer.get_failed_transfers_count()
+                request.num_failed_transfers = Transfer.get_failed_transfers_count(
+                    request.record_id
+                )
                 db.session.add(request)
                 if action == ColdStorageActions.STAGE:
                     if record["availability"] != RecordAvailability.ONLINE.value:
