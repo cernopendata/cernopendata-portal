@@ -166,7 +166,7 @@ class Transfer:
     def get_failed_transfers_count(record_id):
         """Get number of failed transfers."""
         return TransferMetadata.query.filter(
-            TransferMetadata.record_uuid == record_id,
+            TransferMetadata.record_uuid == str(record_id),
             TransferMetadata.status == "FAILED",
         ).count()
 
