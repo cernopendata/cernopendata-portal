@@ -1,5 +1,9 @@
 Changes
 =======
+Version 0.10.2 (released 2025-11-26)
+----------------------------
+- bug: add casting to string to fix mismatching types in a query
+
 Version 0.10.1 (released 2025-11-24)
 ----------------------------
 - bug: fix counting failed transfers
