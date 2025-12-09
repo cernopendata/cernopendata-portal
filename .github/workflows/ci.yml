@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Runs shell script static analysis
         run: |
@@ -39,12 +39,12 @@ jobs:
   lint-black:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Check Python code formatting
         run: |
@@ -55,12 +55,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Check compliance with Python coding style conventions
         run: |
@@ -72,12 +72,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Check compliance with Python docstring conventions
         run: |
@@ -89,12 +89,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Check Python manifest completeness
         run: |
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Check fixtures
         run: ./run-tests.sh --check-fixtures
@@ -115,12 +115,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Check isort
         run: |
@@ -132,12 +132,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
 
       - name: Lint Dockerfile
         run: docker run -i --rm hadolint/hadolint:v2.12.0 < Dockerfile
@@ -149,10 +149,13 @@ jobs:
         run: ./run-tests.sh --check-docker-build
 
       - name: Run pytest
-        run: docker compose run --rm web ./run-tests.sh --check-pytest
+        run: |
+          docker compose run --name web web ./run-tests.sh --check-pytest
+          docker cp web:/code/coverage.xml ./coverage.xml
+          docker compose down -v
 
       - name: Codecov Coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml

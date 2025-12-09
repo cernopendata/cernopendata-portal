@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # https://github.com/docker/metadata-action
       # Tags:
@@ -32,7 +32,7 @@ jobs:
       #    `latest` will tag the image with `latest`
       - name: Set tags for Docker images
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: registry.cern.ch/cernopendata/cernopendata-portal
           tags: |
