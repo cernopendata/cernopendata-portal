@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
 # This file is part of CERN Open Data Portal.
-# Copyright (C) 2015, 2016, 2017, 2018, 2021, 2022, 2023 CERN.
+# Copyright (C) 2015, 2016, 2017, 2018, 2021, 2022, 2023, 2025 CERN.
 #
 # CERN Open Data Portal is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -58,7 +56,7 @@ services:
       - db
       - search
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:8000:5000"
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:5000 || exit -1"]
       interval: 600s
@@ -82,7 +80,7 @@ services:
       - search
       - mq
     ports:
-      - "127.0.0.1:5001:5000"
+      - "127.0.0.1:8001:5000"
     healthcheck:
       test: ["CMD-SHELL", "curl http://localhost:5000 || exit -1"]
       interval: 30s
@@ -102,7 +100,8 @@ services:
     volumes:
       - postgresql_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d cernopendata -U cernopendata || exit -1"]
+      test:
+        ["CMD-SHELL", "pg_isready -d cernopendata -U cernopendata || exit -1"]
       interval: 30s
       timeout: 60s
       retries: 5
@@ -114,7 +113,7 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
 
   search:
     restart: "always"
@@ -138,7 +137,11 @@ services:
     ports:
       - "127.0.0.1:9200:9200"
     healthcheck:
-      test: ["CMD-SHELL", "curl -k -u admin:4DFc4Gaa4LZ3 --silent --fail https://localhost:9200/_cluster/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -k -u admin:4DFc4Gaa4LZ3 --silent --fail https://localhost:9200/_cluster/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -159,7 +162,7 @@ services:
     restart: "always"
     image: docker.io/library/rabbitmq:3.12
     depends_on:
-     - cache
+      - cache
     ports:
       - "127.0.0.1:4369:4369"
       - "127.0.0.1:5672:5672"

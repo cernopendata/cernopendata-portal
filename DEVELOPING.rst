@@ -26,7 +26,7 @@ development or for pull request integration purposes. A usage example:
    $ docker compose -f docker-compose-dev.yml build
    $ docker compose -f docker-compose-dev.yml up -d
    $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh
-   $ firefox http://0.0.0.0:5000/
+   $ firefox http://0.0.0.0:8000/
    $ docker compose -f docker-compose-dev.yml down -v
 
 If you want to simulate production-like deployment conditions locally, please
@@ -67,7 +67,7 @@ An example of a Podman development session:
        ./scripts/populate-instance.sh --skip-docs --skip-glossary --skip-records
    $ podman exec -i -t opendatacernch_web_1 \
        cernopendata fixtures records --mode insert -f cernopendata/modules/fixtures/data/records/cms-primary-datasets.json
-   $ firefox http://0.0.0.0:5000/
+   $ firefox http://0.0.0.0:8000/
    $ podman-compose -f docker-compose-dev.yml down -v
 
 Note that if you would like to test production-like conditions with Podman, you
