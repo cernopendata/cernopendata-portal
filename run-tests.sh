@@ -108,7 +108,7 @@ check_docker_build () {
 }
 
 check_pytest () {
-    pip install ".[tests]"
+    pip install -e ".[tests]"
     pytest
 }
 
