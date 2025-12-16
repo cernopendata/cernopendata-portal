@@ -1,5 +1,13 @@
 Changes
 =======
+Version 0.11.0 (released 2025-12-17)
+----------------------------
+- build(docker): upgrade XRootD to 5.9.1
+- ci(codecov): fix Codecov and update GitHub Actions to latest versions
+- build(docker): change local development server to port 8000
+- ci(pytest): fix code coverage reporting
+- ci(codecov): configure a threshold for code coverage reporting
+
 Version 0.10.2 (released 2025-11-26)
 ----------------------------
 - bug: add casting to string to fix mismatching types in a query
