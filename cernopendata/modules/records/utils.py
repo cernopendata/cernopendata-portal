@@ -21,6 +21,7 @@
 
 import itertools
 import json
+import re
 import sys
 from os.path import basename
 
@@ -47,6 +48,8 @@ from werkzeug.utils import import_string
 from cernopendata.cold_storage.api import RecordAvailability, Request
 from cernopendata.cold_storage.stats.signals import record_stage
 
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+
 
 def stage(pid, record, **kwargs):
     """Stages all the files from a record."""
@@ -55,11 +58,13 @@ def stage(pid, record, **kwargs):
     db.session.commit()
     RecordIndexer().index(record)
     data = request.get_json()  # Parse JSON data from request
-
+    email = data.get("email", "").strip()
+    if email and not EMAIL_REGEX.match(email):
+        return Response(f"Invalid email address: {email}", status=400)
     id = Request.create(
         record.id,
-        [data.get("email", None)],
-        file=data.get("file", None),
+        subscribers=[email] if email else None,
+        file=data.get("file"),
         availability=record["_availability_details"],
         distribution=record["distribution"],
     )
@@ -81,7 +86,9 @@ def subscribe(pid, record, **kwargs):
     """Add an email to the list of emails that should be notified after a request finishes."""
     data = request.get_json()  # Parse JSON data from request
     transfer_id = data.get("transfer_id", "")
-    email = data.get("email", "")
+    email = data.get("email", "").strip()
+    if not email or not EMAIL_REGEX.match(email):
+        return f"'{email}' is not a valid email address", 400
     if Request.subscribe(transfer_id, email):
         db.session.commit()
         return f"{email} subscribed successfully", 200
