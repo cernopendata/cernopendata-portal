@@ -126,9 +126,7 @@ transfers = WebpackThemeBundle(
             entry={
                 "cernopendata_transfers": "./js/transfers/TransferRequestsApp.js",
             },
-            dependencies={
-                "react": "^16.13.0",
-            },
+            dependencies={"react": "^16.13.0", "validator": "^13.0.0"},
         ),
     },
 )

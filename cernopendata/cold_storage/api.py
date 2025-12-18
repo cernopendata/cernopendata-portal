@@ -29,6 +29,7 @@ import logging
 from datetime import datetime
 from enum import Enum
 
+from email_validator import EmailNotValidError, validate_email
 from flask import current_app
 from flask_mail import Message
 from invenio_db import db
@@ -194,8 +195,13 @@ class Request:
         record_id, subscribers=None, file=None, availability=None, distribution=None
     ):
         """Create a new request."""
+        valid_subscribers = []
+        if subscribers:
+            valid_subscribers = [
+                Request.validate_email_address(subscriber) for subscriber in subscribers
+            ]
         rb = RequestMetadata(
-            record_id=record_id, file=file, subscribers=subscribers or []
+            record_id=record_id, file=file, subscribers=valid_subscribers
         )
         if availability:
             rb.num_hot_files = availability.get("online")
@@ -233,13 +239,24 @@ class Request:
     def subscribe(transfer_id, email):
         """Add an email to the subscribers of a transfer."""
         transfer = RequestMetadata.query.filter_by(id=transfer_id).first()
+        validated_email = Request.validate_email_address(email)
 
-        if email not in transfer.subscribers:
-            transfer.subscribers.append(email)
+        if validated_email and validated_email not in transfer.subscribers:
+            transfer.subscribers.append(validated_email)
             db.session.add(transfer)
             db.session.commit()
             return True
         return False
+
+    @staticmethod
+    def validate_email_address(email):
+        """Validate an email address."""
+        if not email:
+            raise ValueError("Missing email")
+        try:
+            return validate_email(email, check_deliverability=False).normalized
+        except EmailNotValidError as e:
+            raise ValueError(f"Invalid email: {str(e)}")
 
 
 class ColdRecord(Record):
