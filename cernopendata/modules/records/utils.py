@@ -50,20 +50,23 @@ from cernopendata.cold_storage.stats.signals import record_stage
 
 def stage(pid, record, **kwargs):
     """Stages all the files from a record."""
+    data = request.get_json()  # Parse JSON data from request
+    email = data.get("email", "").strip()
+    try:
+        id = Request.create(
+            record.id,
+            subscribers=[email] if email else None,
+            file=data.get("file"),
+            availability=record["_availability_details"],
+            distribution=record["distribution"],
+        )
+    except ValueError as e:
+        return Response(f"Invalid email address: {str(e)}", status=400)
+
     record["availability"] = RecordAvailability.REQUESTED.value
     record.commit()
     db.session.commit()
     RecordIndexer().index(record)
-    data = request.get_json()  # Parse JSON data from request
-
-    id = Request.create(
-        record.id,
-        [data.get("email", None)],
-        file=data.get("file", None),
-        availability=record["_availability_details"],
-        distribution=record["distribution"],
-    )
-    db.session.commit()
     print(f"Transfer requested {id}", file=sys.stderr)
     record_stage.send(current_app._get_current_object(), obj=record)
 
@@ -81,11 +84,14 @@ def subscribe(pid, record, **kwargs):
     """Add an email to the list of emails that should be notified after a request finishes."""
     data = request.get_json()  # Parse JSON data from request
     transfer_id = data.get("transfer_id", "")
-    email = data.get("email", "")
-    if Request.subscribe(transfer_id, email):
-        db.session.commit()
-        return f"{email} subscribed successfully", 200
-    return f"{email} is already subscribed", 403
+    email = data.get("email", "").strip()
+    try:
+        if Request.subscribe(transfer_id, email):
+            db.session.commit()
+            return Response(f"{email} subscribed successfully", status=200)
+        return Response(f"{email} is already subscribed", status=403)
+    except ValueError as e:
+        return Response(f"{email} is not a valid email address: {str(e)}", status=400)
 
 
 def get_file_index(pid, record, file_index, **kwargs):

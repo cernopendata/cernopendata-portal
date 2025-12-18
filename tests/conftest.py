@@ -25,6 +25,7 @@
 import os
 import shutil
 import tempfile
+from unittest.mock import MagicMock
 
 import pytest
 from aiosmtpd.controller import Controller
@@ -100,6 +101,12 @@ def default_config(instance_path):
         MAIL_SERVER="localhost",
         MAIL_PORT=1026,
         MAIL_SUPPRESS_SEND=False,
+        ACCOUNTS_SESSION_STORE_FACTORY=lambda app: MagicMock(),
+        REDIS_URL=None,
+        INVENIO_REDIS_URL=None,
+        ACCOUNTS_SESSION_REDIS_URL=None,
+        SESSION_REDIS_URL=None,
+        CACHE_TYPE="simple",
     )
 
 
@@ -111,6 +118,11 @@ def app(env_config, default_config):
 
     with app.app_context():
         yield app
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
 
 
 @pytest.fixture(scope="module")

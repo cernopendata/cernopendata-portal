@@ -4,6 +4,7 @@ import pytest
 from invenio_files_rest.models import Location
 
 from cernopendata.cold_storage.cli import location
+from cernopendata.modules.fixtures.cli import create_record
 
 
 @pytest.fixture(scope="module")
@@ -45,3 +46,38 @@ def setup_location(cli_runner, app, database, storage_paths):
     assert result.exit_code == 0
     assert "Location added with ID" in result.output
     return str(hot_path), str(cold_path), manager_class
+
+
+@pytest.fixture(scope="module")
+def staged_record(app, database):
+    if not Location.query.filter_by(name="local").first():
+        database.session.add(Location(name="local", uri="var/data", default=True))
+
+    data = {
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/record-v1.0.0.json"
+        ),
+        "recid": "1114",
+        "date_published": "2024",
+        "experiment": ["ALICE"],
+        "publisher": "CERN Open Data Portal",
+        "title": "Dummy file",
+        "type": {
+            "primary": "Dataset",
+            "secondary": ["Derived"],
+        },
+        "files": [
+            {"checksum": "adler32:9719fd6a", "size": 1053, "uri": "root://foo/bar"}
+        ],
+        "_availability_details": {"on demand": 1},
+        "distribution": {
+            "size": 1053,
+            "formats": ["root"],
+            "number_files": 1,
+            "number_events": 37,
+        },
+    }
+    record = create_record(data, False)
+    database.session.commit()
+    data.update({"record_id": record.id})
+    return data

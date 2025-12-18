@@ -60,6 +60,7 @@ tests_require = [
     "pytest==7.4.4",
     "beautifulsoup4==4.12.3",
     "aiosmtpd>=1.4.6",
+    "email-validator>=2.3.0,<3.0.0",
 ]
 
 extras_require = {

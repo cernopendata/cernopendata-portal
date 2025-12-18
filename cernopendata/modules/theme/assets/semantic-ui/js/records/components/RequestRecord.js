@@ -2,23 +2,37 @@ import React, { useState } from "react";
 import { Button, Modal, Form, Checkbox, Message } from "semantic-ui-react";
 import axios from "axios";
 import { toHumanReadableSize } from "../utils";
+import isEmail from "validator/lib/isEmail";
 
 const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const handleClose = () => {
+    setOpen(false);
+    setEmailError(false);
+    setEmail("");
+    setConfirmed(false);
+  };
+
   const handleSubmit = async () => {
     if (!confirmed) return;
+    if (email && !isEmail(email)) {
+      setEmailError(true);
+      return;
+    }
     setLoading(true);
     try {
-        await axios.post(`/record/${recordId}/stage`, {
-          email: email.trim(),
-          ...(file ? { file: file } : {}),
-        });
-        window.location.reload();
+      await axios.post(`/record/${recordId}/stage`, {
+        email: email.trim(),
+        ...(file ? { file: file } : {}),
+      });
+      window.location.reload();
     } catch (error) {
+      alert(`Error: ${error.response.data}`);
       console.error("Request failed", error);
     } finally {
       setLoading(false);
@@ -61,7 +75,7 @@ const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => 
           Request { (file)? 'file':'all files' }
         </Button>
 
-        <Modal open={open} onClose={() => setOpen(false)} size="small">
+        <Modal open={open} onClose={handleClose} size="small">
           <Modal.Header>Request to make data available</Modal.Header>
           <Modal.Content>
             <p>Please confirm you want to request {(file)?'this file':'all files of the record'}.</p>
@@ -76,22 +90,32 @@ const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => 
               />
             </Message>
             <Form>
-              <Form.Field>
-                <label htmlFor="email-input">
-                  If you want to be notified, enter your email
-                </label>
-                <input
-                  id="email-input"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </Form.Field>
+              <Form.Input
+                id="email-input"
+                label="If you want to be notified, enter your email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                error={
+                  emailError
+                    ? {
+                        content: "Please enter a valid email address",
+                        pointing: "below",
+                      }
+                    : null
+                }
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && confirmed) handleSubmit();
+                }}
+              />
             </Form>
           </Modal.Content>
           <Modal.Actions>
-            <Button onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleClose}>Cancel</Button>
             <Button
               primary
               disabled={!confirmed || loading}

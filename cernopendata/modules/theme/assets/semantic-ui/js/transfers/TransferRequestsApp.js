@@ -5,6 +5,7 @@ import axios from "axios";
 import DetailedTable from "./DetailedTable";
 import SummaryTable from "./SummaryTable";
 import SubscribeModal from "./SubscribeModal";
+import isEmail from "validator/lib/isEmail";
 
 const TransferRequestsApp = ({ defaultRecid = null }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,6 +13,8 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
   const [selectedRecid, setSelectedRecid] = useState(null);
   const [selectedTransferid, setSelectedTransferid] = useState(null);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [statusFilters, setStatusFilters] = useState([]);
   const [actionFilter, setActionFilter] = useState([]);
@@ -76,16 +79,22 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
   };
 
   const handleSubscribe = async () => {
-    if (!email) {
-      alert("Please enter a valid email.");
+    if (!email || !isEmail(email)) {
+      setEmailError(true);
       return;
     }
+    setIsSubmitting(true);
     try {
-      await axios.post(`/record/${selectedRecid}/subscribe`, { email, transfer_id: selectedTransferid });
-      setModalOpen(false);
+      await axios.post(`/record/${selectedRecid}/subscribe`, {
+        email,
+        transfer_id: selectedTransferid,
+      });
+      closeAndResetModal(false);
     } catch (error) {
-      alert(`Error subscribing:  ${error.response.data}`);
+      alert(`Error subscribing: ${error.response.data}`);
       console.error("Error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -99,6 +108,12 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
     setSortField(field);
     setSortDirection(direction);
     setPagination((prev) => ({ ...prev, current_page: 1 }));
+  };
+
+  const closeAndResetModal = () => {
+    setModalOpen(false);
+    setEmail("");
+    setEmailError(false);
   };
 
   return (
@@ -134,10 +149,15 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
       />
       <SubscribeModal
         isModalOpen={isModalOpen}
-        closeModal={() => setModalOpen(false)}
+        closeModal={closeAndResetModal}
         handleSubscribe={handleSubscribe}
         email={email}
-        setEmail={setEmail}
+        setEmail={(val) => {
+          setEmail(val);
+          if (emailError) setEmailError(false);
+        }}
+        emailError={emailError}
+        isLoading={isSubmitting}
       />
     </div>
   );
