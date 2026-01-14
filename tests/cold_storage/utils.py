@@ -1,7 +1,7 @@
 import json
 
 
-def build_record(app, storage_paths, record_data_param):
+def build_record_with_files(app, storage_paths, record_data_param):
     """
     Constructs a record dictionary and creates associated dummy files.
     """
@@ -69,6 +69,14 @@ def build_record(app, storage_paths, record_data_param):
             "secondary": ["Derived"],
         },
         "files": files_list_for_record,
+        "distribution": {
+            "size": sum([file_data["size"] for file_data in files_list_for_record]),
+            "formats": [
+                file_data["uri"].split(".")[-1] for file_data in files_list_for_record
+            ],
+            "number_files": len(files_list_for_record),
+            "number_events": 37,
+        },
     }
 
     return (
