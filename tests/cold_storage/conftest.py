@@ -6,6 +6,8 @@ from invenio_files_rest.models import Location
 from cernopendata.cold_storage.cli import location
 from cernopendata.modules.fixtures.cli import create_record
 
+from .utils import build_record_with_files
+
 
 @pytest.fixture(scope="module")
 def storage_paths(tmp_path_factory):
@@ -45,7 +47,27 @@ def setup_location(cli_runner, app, database, storage_paths):
     )
     assert result.exit_code == 0
     assert "Location added with ID" in result.output
-    return str(hot_path), str(cold_path), manager_class
+
+
+@pytest.fixture
+def record_factory(app, database, storage_paths, setup_location):
+    """Creates a record"""
+
+    def _create(record_data):
+        record_id, hot_paths, cold_paths, record_dict = build_record_with_files(
+            app, storage_paths, record_data
+        )
+        record = create_record(record_dict, False)
+        record.commit()
+        database.session.commit()
+        return {
+            "id": record_id,
+            "hot_paths": hot_paths,
+            "cold_paths": cold_paths,
+            "record_obj": record,
+        }
+
+    return _create
 
 
 @pytest.fixture(scope="module")
