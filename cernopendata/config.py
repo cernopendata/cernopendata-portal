@@ -44,6 +44,7 @@ from urllib3.exceptions import InsecureRequestWarning
 
 from cernopendata.cold_storage.tasks import CheckTransfersTask
 from cernopendata.modules.pages.config import *
+from cernopendata.modules.releases import models
 from cernopendata.modules.search_ui.helpers import CODSearchAppInvenioRestConfigHelper
 from cernopendata.modules.theme.config import *
 
@@ -67,7 +68,23 @@ MAIL_PORT = 25
 
 # Piwik tracking code: set None to disabled it
 THEME_PIWIK_ID = os.environ.get("PIWIK_ID", None)
-ACCOUNTS_SESSION_ACTIVITY_ENABLED = None
+# ACCOUNTS_SESSION_ACTIVITY_ENABLED = True
+# ACCOUNTS_REGISTER = True           # allow registration
+# ACCOUNTS_CONFIRM_EMAIL = None# require email confirmation (recommended)
+# ACCOUNTS_SESSION_RESTORATION = True
+# ACCOUNTS_REST_AUTH_VIEWS= True
+# SECURITY_REGISTERABLE = True
+# SECURITY_RECOVERABLE = True
+# SECURITY_CHANGEABLE = True
+
+# SECURITY_LOGIN_URL = "/login"
+# SECURITY_LOGOUT_URL = "/logout"
+# SECURITY_REGISTER_URL = "/signup"
+
+# Required for sessions
+SECRET_KEY = "change-me-pleaaaseeeee!!!"
+# SECURITY_PASSWORD_SALT = "change-me-too"
+
 SITE_URL = os.environ.get("CERNOPENDATA_SITE_URL", "opendata.cern.ch")
 
 # Logging - Set up Sentry for Invenio-Logging
@@ -271,11 +288,13 @@ CELERY_BEAT_SCHEDULE = {
 # JSONSchemas
 JSONSCHEMAS_ENDPOINT = "/schema"
 JSONSCHEMAS_HOST = "opendata.cern.ch"
-JSONSCHEMAS_URL_SCHEME = "http"
+# JSONSCHEMAS_URL_SCHEME = "http"
+JSONSCHEMAS_REPLACE_REFS = True
 
 # HOST_URI
-HOST_URI = "{}://{}".format(JSONSCHEMAS_URL_SCHEME, JSONSCHEMAS_HOST)
-
+# HOST_URI = "{}://{}".format(JSONSCHEMAS_URL_SCHEME, JSONSCHEMAS_HOST)
+RECORDS_REFRESOLVER_STORE = "invenio_jsonschemas.proxies.current_refresolver_store"
+RECORDS_REFRESOLVER_CLS = "invenio_records.resolver.InvenioRefResolver"
 # Records
 # Add tuple as array type on record validation
 # http://python-jsonschema.readthedocs.org/en/latest/validate/#validating-types
@@ -496,6 +515,15 @@ RECORDS_REST_SORT_OPTIONS = {
         ),
     }
 }
+COVER_TEMPLATE = "invenio_theme/page_cover.html"
+ACCOUNTS_COVER_TEMPLATE = "invenio_accounts/base_cover.html"
+ACCOUNTS_BASE_TEMPLATE = "invenio_accounts/base.html"
+# After 'Create app'
+# MAIL_SERVER='smtp.example.com'
+# MAIL_PORT = 465
+# MAIL_USE_SSL= True
+# MAIL_USERNAME = 'username'
+COMMUNITIES_IDENTITIES_CACHE_REDIS_URL = "redis://cache:6379/0"
 
 # TODO: based on invenio-records-rest default config
 RECORDS_REST_DEFAULT_SORT = dict(
@@ -713,3 +741,47 @@ ANNOUNCEMENT_BANNER_MESSAGE = os.getenv("ANNOUNCEMENT_BANNER_MESSAGE", "")
 
 # THIS ONE IS ONLY FOR THE DEVELOPMENT
 RATELIMIT_PER_ENDPOINT = {"static": "600 per minute"}
+
+## Checking communities
+THEME_FRONTPAGE = False
+# Enable communities
+COMMUNITIES_ENABLED = True
+
+from invenio_oauthclient.views.client import auto_redirect_login
+
+ACCOUNTS_LOCAL_LOGIN_ENABLED = False
+ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login
+
+from invenio_cern_sync.users.profile import CERNUserProfileSchema
+
+ACCOUNTS_USER_PROFILE_SCHEMA = CERNUserProfileSchema()
+
+from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name
+
+CERN_APP_CREDENTIALS = {
+    "consumer_key": "opendata-dev",
+    "consumer_secret": "1wou64tXEyY9ZEAENaqP3szVglvtUOJV",
+}
+
+from invenio_cern_sync.sso.api import confirm_registration_form
+
+OAUTHCLIENT_SIGNUP_FORM = confirm_registration_form
+
+OAUTHCLIENT_CERN_REALM_URL = "https://auth.cern.ch/auth/realms/cern"
+OAUTHCLIENT_CERN_USER_INFO_URL = (
+    "https://auth.cern.ch/auth/realms/cern/protocol/openid-connect/userinfo"
+)
+OAUTHCLIENT_SETTINGS_TEMPLATE = "invenio_oauthclient/settings/base.html"
+OAUTHCLIENT_CERN_VERIFY_EXP = True
+OAUTHCLIENT_CERN_VERIFY_AUD = False
+OAUTHCLIENT_CERN_USER_INFO_FROM_ENDPOINT = True
+
+OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True
+CERN_SYNC_KEYCLOAK_BASE_URL = "https://auth.cern.ch/"
+CERN_SYNC_AUTHZ_BASE_URL = "https://authorization-service-api.web.cern.ch/"
+
+OAUTHCLIENT_REMOTE_APPS = {
+    cern_remote_app_name: cern_keycloak.remote_app,
+}
+
+# OAUTHCLIENT_SETTINGS_TEMPLATE = 'invenio_theme/page_settings.html'

@@ -6,6 +6,21 @@
   </a>
 
   <ul class="link-menu">
+    {%- if not current_user.is_authenticated %}
+      <li class="item"><a href="/login">Login</a></li>
+    {%- else %}
+      <li class="ui dropdown" >
+        <span class="navbar-item">
+          <span>{{ current_user.email|truncate(31,true) }}<i class="dropdown icon"></i></span>
+        </span>
+        <div class="menu dropdown-items">
+          <div class="item"><a href="/releases/atlas">Curate ATLAS data</a></div>
+          <div class="item"><a href="/logout">Logout</a></div>
+        </div>
+      </li>
+
+      </span>
+    {%- endif %}
     <li class="ui dropdown">
       <span class="navbar-item">
         <span>Help<i class="dropdown icon"></i></span>

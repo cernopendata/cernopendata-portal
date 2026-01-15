@@ -1,0 +1,323 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui container">
+    <div class="ui center aligned segment">
+
+        <h2 class="ui header">
+            Welcome to the curation pages
+            <div class="sub header">Experiment: {{ experiment|upper }}</div>
+        </h2>
+
+        <a href="/releases/{{experiment}}"
+           class="ui small basic button">
+            <i class="arrow left icon"></i>
+            Back to releases
+        </a>
+        <div class="ui hidden divider"></div>
+
+        <h2 class="ui header">
+            Release #{{ release.id }}
+        </h2>
+
+        <div class="ui segment">
+            <div class="ui grid middle aligned">
+                <div class="six wide column middle aligned">
+                    <strong>Status</strong>
+                    <div class="ui large label
+    {% if release.status == 'DRAFT' %}grey
+    {% elif release.status == 'READY' %}blue
+    {% elif release.status == 'DEPLOYED' %}teal
+    {% elif release.status == 'PUBLISHED' %}green
+    {% endif %}
+  ">
+                        {{ release.status }}
+                    </div>
+                </div>
+                <div class="ten wide column">
+                {% set actions = [
+                    {
+                    "name": "deploy",
+                    "icon": "eye",
+                    "color": "teal",
+                    "enabled_when": "READY",
+                    },
+                    {
+                    "name": "rollback",
+                    "icon": "undo",
+                    "color": "red",
+                    "enabled_when": "DEPLOYED",
+                    },
+                    {
+                    "name": "publish",
+                    "icon": "upload",
+                    "color": "green",
+                    "enabled_when": "DEPLOYED",
+                    },
+                    {
+                    "name": "export",
+                    "icon": "download",
+                    "color": "grey",
+                    "enabled_when": "PUBLISHED",
+                    },
+                    {
+                    "name": "delete",
+                    "icon": "trash",
+                    "color": "red",
+                    "enabled_when": None,
+                    }
+                ] %}
+                    <div class="ui secondary menu right aligned">
+                        {% for action in actions %}
+                        {% set disabled = action.enabled_when and release.status != action.enabled_when %}
+                        <div class="item">
+                            <form method="post"
+                                  action="/releases/{{ experiment }}/{{ release.id }}/{{ action.name }}"
+                                  style="display:inline">
+                                <div
+                                        {% if disabled %}
+                                        data-tooltip="Release must be {{ action.enabled_when }} to {{ action.name }}"
+                                        data-position="top center"
+                                        {% endif %}
+                                >
+                                    <button class="ui {{ action.color }} button {% if disabled %}disabled{% endif %}">
+                                        <i class="{{ action.icon }} icon"></i>
+                                        {{ action.name | capitalize }}
+                                    </button>
+                                </div>
+
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <h3 >Details</h3>
+
+        {% set stats = [
+        {"label": "Records", "value": release.num_records},
+        {"label": "File indices", "value": release.num_file_indices},
+        {"label": "Files", "value": release.num_files},
+        {"label": "Documents", "value": release.num_docs},
+        {"label": "Glossaries", "value": release.num_glossaries}
+        ] %}
+
+        <div class="ui segment five statistics">
+            {% for stat in stats %}
+            <div class="statistic">
+                <div class="value">{{ stat.value }}</div>
+                <div class="label">{{ stat.label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="ui grid stackable">
+            <!-- Left column -->
+            <div class="eight wide column">
+                <table class="ui definition compact table">
+                    <tbody>
+                    <tr>
+                        <td>Created at</td>
+                        <td>{{ release.created_at }}</td>
+                    </tr>
+                    <tr>
+                        <td>Updated at</td>
+                        <td>{{ release.updated_at or "-" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Released at</td>
+                        <td>{{ release.released_at or "-" }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right column -->
+            <div class="eight wide column">
+                <table class="ui definition compact table">
+                    <tbody>
+                    <tr>
+                        <td>Created by</td>
+                        <td>{{ release.created_by.email if release.created_by else "-" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Updated by</td>
+                        <td>{{ release.updated_by.email if release.updated_by else "-" }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="ui hidden divider"></div>
+        {% set checks = [
+        {
+        "label": "RECID",
+        "tooltip": "The recids can only be generated if they are not there already",
+        "actions": [
+        {"label": "Generate RECID", "valid": release.valid_recid }
+        ]
+        },
+        {
+        "label": "DOI",
+        "tooltip": "The DOI can only be generated if they are not there already",
+        "actions": [
+        {"label": "Generate DOI", "valid": release.valid_doi }
+        ]
+        },
+        {
+        "label": "File information",
+        "tooltip": "The file information is already there.",
+        "actions": [
+        {"label": "Expand files", "valid": False },
+        {"label": "Generate file metadata", "valid": release.valid_files }
+        ]
+        }
+        ] %}
+
+        {% macro action_name(label) -%}
+        {{ label|lower|replace(' ', '_') }}
+        {%- endmacro %}
+
+        <div class="ui segment grid">
+            {% for check in checks %}
+            <div class="row">
+                <div class="four wide column">Valid {{ check.label }}</div>
+                <div class="one wide column">
+                    {# Show green if all actions valid, red otherwise #}
+                    {% set all_valid = check.actions | selectattr('valid') | list | length == check.actions | length %}
+                    <i class="{{ 'check green' if all_valid else 'close red' }} icon"></i>
+                </div>
+                {% set disabled = check.valid %}
+                <div class="eleven wide column">
+                    <div class="ui small buttons">
+
+                    {% for action in check.actions %}
+                        {% set disabled = action.valid %}
+                        {% set action_name = action.label | lower | replace(' ', '_') %}
+
+                        <div
+                                {% if disabled %}
+                                data-tooltip="{{ check.tooltip }}"
+                                data-position="top center"
+                                {% endif %}
+                        >
+
+
+                            <form method="post"
+                                  action="/releases/{{ experiment }}/{{ release.id }}/{{ action_name }}">
+                                <button class="ui small primary button {% if disabled %}disabled{% endif %}"
+                                        {% if disabled %}disabled{% endif %}>
+                                    <i class="magic icon"></i>
+                                    {{ action.label }}
+                                </button>
+                            </form>
+
+                        </div>
+                     {% endfor %}
+                   </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="row">
+                <div class="four wide column">Errors</div>
+                <div class="one wide column"><i class="{{ 'check green' if release.num_errors == 0 else 'close red' }} icon"></i></div>
+                    {% if release.errors %}
+                    <div class="ui eleven wide column negative message">
+                        <div class="header">Showing {{ release.errors|length }} of {{ release.num_errors }} errors:</div>
+                        {% for item in release.errors %}
+                            <li>
+                                <strong>{{ item }}</strong>:
+                            </li>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+            </div>
+        </div>
+
+
+        <div class="ui styled fluid accordion">
+            <div class="title">
+                <i class="dropdown icon"></i>
+                Records
+
+            </div>
+            <div class="content">
+                <pre>{{ release.records | tojson(indent=2) }}</pre>
+            </div>
+            {% set edit_disabled = release.status == 'PUBLISHED' or release.status == 'DEPLOYED' %}
+            <button class="ui blue button {% if edit_disabled %}disabled{% endif %}" id="edit-records-btn" {% if edit_disabled %}disabled{% endif %}>
+                <i class="edit icon"></i>
+                Edit Records
+            </button>
+            <div class="ui modal" id="edit-records-modal">
+                <i class="close icon"></i>
+                <div class="header">Edit Records JSON</div>
+                <div class="content">
+                    <form id="edit-records-form" method="post"
+                          action="/releases/{{experiment}}/{{release.id}}/update_records">
+            <textarea name="records_json" id="records-json-textarea" rows="15" style="width:100%">
+{{ release.records | tojson(indent=2) }}
+            </textarea>
+                        <div class="actions">
+                            <button type="submit" class="ui primary button">Save</button>
+                            <button type="button" class="ui button cancel">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% set max_records_to_show = 10 %}
+            <div class="ui action input">
+                <select id="record-select" class="ui dropdown {% if not edit_disabled %}disabled{% endif %}" {% if not edit_disabled %}disabled{% endif %}>
+                    {% for record in release.records[:max_records_to_show] %}
+                    <option value="{{ record.recid }}">{{ record.title or record.recid }}</option>
+                    {% endfor %}
+                </select>
+                <button class="ui primary button {% if not edit_disabled %}disabled{% endif %}" {% if not edit_disabled %}disabled{% endif %} id="see-record-btn">
+                    <i class="eye icon"></i> See Record
+                </button>
+            </div>
+
+            <div class="title">
+                <i class="dropdown icon"></i>
+                Documents
+            </div>
+            <div class="content">
+                <pre>{{ release.documents | tojson(indent=2) }}</pre>
+            </div>
+
+            <div class="title">
+                <i class="dropdown icon"></i>
+                Glossary
+            </div>
+            <div class="content">
+                <pre>{{ release.glossary | tojson(indent=2) }}</pre>
+            </div>
+        </div>
+            </div>
+
+</div>
+{%- endblock %}
+
+{% block javascript %}
+    {{ super() }}
+    <script>
+        $('.ui.accordion').accordion();
+        document.getElementById('see-record-btn').addEventListener('click', function() {
+    const recid = document.getElementById('record-select').value;
+    window.location.href = '/record/' + recid;
+});
+
+        document.getElementById("edit-records-btn").addEventListener("click", () => {
+      $("#edit-records-modal").modal('show');
+    });
+
+    </script>
+{%- endblock %}

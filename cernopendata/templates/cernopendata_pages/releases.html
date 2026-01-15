@@ -1,0 +1,110 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui container">
+    <div class="ui center aligned segment">
+
+        <h2 class="ui header">
+            Welcome to the curation page
+            <div class="sub header">Experiment: {{ experiment|upper }}</div>
+        </h2>
+
+        <div class="ui divider"></div>
+            <p>
+                This page allows you to register new records in the repository.
+                <br>
+                You will only be able to register records for
+                <strong>{{ experiment }}</strong>.
+            </p>
+
+        <div class="ui container">
+            <h2 class="ui header">Releases</h2>
+
+            <div id="releases-react-root" data-experiment="{{ experiment }}"></div>
+        </div>
+        <div class="ui divider"></div>
+        <div class="ui container">
+            <!-- Clickable header -->
+            <h5
+                    id="toggle-create-release"
+                    class="ui header clickable"
+                    style="cursor: pointer"
+            >
+                <i class="plus circle icon"></i>
+                Create a new release
+            </h5>
+
+            <!-- Hidden form -->
+            <form
+                    id="create-release-form"
+                    class="ui form"
+                    method="post"
+                    enctype="multipart/form-data"
+                    style="display: none"
+            >
+                <!-- Source selector -->
+                <div class="grouped fields">
+                    <table><tr><td>
+                    <div class="field">
+                        <div class="ui radio checkbox">
+                            <input type="radio" name="source" value="file" checked>
+                            <label>Upload JSON file</label>
+                        </div>
+                    </div>
+                    </td>
+                        <td>                <div class="field" id="file-source">
+                            <input
+                                    type="file"
+                                    id="fileInput"
+                                    name="file"
+                                    accept=".json"
+                            >
+                        </div>
+                        </td>
+                    </tr>
+                        <tr><td>
+                    <div class="field">
+                        <div class="ui radio checkbox">
+                            <input type="radio" name="source" value="url">
+                            <label>Load from URL</label>
+                        </div>
+                    </div></td><td>
+                            <input
+                                type="url"
+                                name="url"
+                                placeholder="https://raw.githubusercontent.com/..."
+                        >
+                        </td></tr>
+                </table>
+                </div>
+                <!-- File input -->
+
+                <!-- URL input -->
+                <div class="field" id="url-source" style="display: none">
+                    <label>Release JSON URL</label>
+                </div>
+
+                <button
+                        id="uploadButton"
+                        class="ui primary button disabled"
+                        type="submit"
+                >
+                    Create release
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+{%- endblock %}
+
+{% block javascript %}
+    {{ super() }}
+    {{ webpack['cernopendata_curate.js'] }}
+{%- endblock %}

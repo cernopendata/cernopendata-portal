@@ -147,19 +147,6 @@ def _handle_record_files(record, data, logger=None):
     record.check_availability()
 
 
-def delete_record(pid, logger=None):
-    """Deletes a record."""
-    logger.info("Ready to delete the object {pid}")
-    record = RecordFilesWithIndex.get_record(pid.object_uuid)
-
-    for o in ObjectVersion.get_by_bucket(record.bucket).all():
-        o.remove()
-        FileInstance.query.filter_by(id=o.file_id).delete()
-    FileIndexMetadata.delete_by_record(record=record)
-    record.delete()
-    return None
-
-
 def create_record(data, skip_files, logger=None):
     """Creates a new record."""
     id = uuid.uuid4()

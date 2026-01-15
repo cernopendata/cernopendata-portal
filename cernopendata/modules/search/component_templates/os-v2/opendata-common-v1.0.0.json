@@ -38,8 +38,7 @@
           "type": "percolator"
         },
         "recid": {
-          "null_value": 0,
-          "type": "integer"
+          "type": "keyword"
         },
         "title": {
           "fields": {
