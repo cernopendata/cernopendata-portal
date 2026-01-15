@@ -1,0 +1,108 @@
+{% if release.status == 'DEPLOYED' %}
+<div class="ui warning message">
+    <i class="lock icon"></i>
+    This release is deployed and read-only. To modify it, go back to READY
+    <form method="post"
+          action="/releases/{{ experiment }}/{{ release._metadata.id }}/rollback"
+          style="display:inline">
+        <button class="ui tiny button">Return to READY</button>
+    </form>
+</div>
+{% elif release.status == 'EDITING' %}
+<div class="ui warning message">
+    <i class="check icon"></i>The release is blocked because there are some changes being applied. If this message stays here for a long time, there might have been some issues deploying the entries :(
+</div>
+
+{% elif release.status == 'DEPLOYING' %}
+<div class="ui warning message">
+    <i class="check icon"></i>The release is being deployed. If this message stays here for a long time, there might have been some issues deploying the entries :(
+</div>
+{% elif release.status == 'PUBLISHED' %}
+<div class="ui positive message">
+    <i class="check icon"></i>
+    This release is published and locked.
+</div>
+{% endif %}
+
+{% if release.status == 'DRAFT'  %}
+
+
+{% set ns = namespace(automatic_fix=False) %}
+
+<div class="ui segment grid">
+    {% for validation in release.validations %}
+    <div class="row">
+        <div class="four wide column">
+            {{ validation.name }}
+        </div>
+
+        <div class="one wide column">
+            <i class="{{ 'check green' if validation.status else 'close red' }} icon"></i>
+        </div>
+        <div class="four wide column">
+            {% if not validation.status %}
+
+            <div class="ui small grey text">
+                {{ validation.error_message }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="three wide column">
+            {% if validation.fixable and not validation.status%}
+            {% set ns.automatic_fix = True %}
+            <i class="magic icon"></i>Can be fixed automatically
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% if ns.automatic_fix %}
+    <div class="ui segment">
+        <div class="ui warning message">
+            <p>
+                We can automatically fix some of issues.
+            </p>
+
+            <form method="post"
+                  action="/releases/{{ experiment }}/{{ release._metadata.id }}/fix_checks">
+                <button class="ui primary button">
+                    <i class="magic icon"></i>
+                    Fix missing requirements
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="ui warning message">
+        <i class="check icon"></i>
+        All automatic checks are satisfied. There are still some errors.
+    </div>
+    {% endif %}
+    <div class="row">
+        {% if release._metadata.errors %}
+        <div class="ui eleven wide column negative message">
+            <div class="header">Showing {{ release._metadata.errors|length }} of {{ release._metadata.num_errors }}
+                errors:
+            </div>
+            {% for item in release._metadata.errors %}
+            <li>
+                <strong>{{ item }}</strong>:
+            </li>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+
+{% set edit_disabled = release.status not in ['DRAFT', 'READY'] %}
+{% set view_disabled = release.status not in ['DEPLOYED', 'PUBLISHED'] %}
+
+<div
+        id="records-table-root"
+        data-experiment="{{ experiment }}"
+        data-release-id="{{ release._metadata.id }}"
+        data-records='{{ release.records | tojson }}'
+        data-edit-disabled="{{ edit_disabled | lower }}"
+        data-view-disabled="{{ view_disabled | lower }}"
+></div>
