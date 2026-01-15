@@ -1,6 +1,9 @@
 {%- extends "cernopendata_records_ui/records/detail.html" %}
 
 {% block heading %}
+    {% if record.prerelease %}
+    <div class="ui warning message release-warning">WARNING: This record is part of a <a href="/releases/{{record.prerelease}}">release</a> that has not been published yet. Only authorized people can see the record.</div>
+    {% endif %}
     <h1> {{ record.title_additional or record.title }} </h1>
 
     <p>

@@ -1,0 +1,55 @@
+<h2 class="ui header">
+    Release #{{ release._metadata.id }} </h2>
+<h2> {{ release._metadata.name }}
+</h2>
+{% set stats = [
+{"label": "Records", "value": release._metadata.num_records},
+{"label": "File indices", "value": release._metadata.num_file_indices},
+{"label": "Files", "value": release._metadata.num_files},
+{"label": "Documents", "value": release._metadata.num_docs},
+] %}
+
+<div class="ui segment four statistics">
+    {% for stat in stats %}
+    <div class="statistic">
+        <div class="value">{{ stat.value }}</div>
+        <div class="label">{{ stat.label }}</div>
+    </div>
+    {% endfor %}
+</div>
+<div class="ui segment">
+    <i class="calendar plus icon"></i>
+    <strong>Timeline</strong>:
+    <div class="ui horizontal list">
+
+        {% set events = release._metadata.history_events %}
+
+        {% if events|length > 8 %}
+        {% set display_events = events[:3] + events[-5:] %}
+        {% else %}
+        {% set display_events = events %}
+        {% endif %}
+
+        {% for event in display_events %}
+
+        {% if events|length > 8 and loop.index == 4 %}
+        <div class="item">
+            <div class="ui tiny label">...</div>
+        </div>
+        {% endif %}
+
+        <div class="item">
+            <div class="ui tiny {% if loop.last and events|length <= 8 or loop.index == display_events|length %}green{% else %}grey{% endif %} label"
+                 data-position="top center"
+                 data-tooltip="{{ event.timestamp.strftime('%Y-%m-%d %H:%M') }}{% if event.user %} by {{ event.user.email }}{% endif %}">
+                {{ event.status|capitalize }}
+            </div>
+
+            {% if not loop.last %}
+            <i class="right chevron icon"></i>
+            {% endif %}
+        </div>
+
+        {% endfor %}
+    </div>
+</div>
