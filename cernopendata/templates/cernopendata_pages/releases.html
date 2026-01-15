@@ -1,0 +1,105 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui container">
+    <div class="ui center aligned segment">
+
+        <h2 class="ui header">
+            Welcome to the {{ experiment|upper }} releases
+        </h2>
+
+        <div class="ui divider"></div>
+            <p>
+                This page allows you to register new records in the repository.
+                <br>
+                You will only be able to register records for
+                <strong>{{ experiment }}</strong>.
+            </p>
+
+        <div class="ui container">
+            <div class="ui container">
+                <div class="ui grid">
+                    <div class="twelve wide column">
+                    </div>
+                    <div class="four wide column right aligned">
+                        <button id="open-create-release"
+                                class="ui primary button">
+                            <i class="plus icon"></i>
+                            Create new release
+                        </button>
+                    </div>
+                </div>
+
+                <div id="releases-react-root" data-experiment="{{ experiment }}"></div>
+            </div>
+        </div>
+        <div id="create-release-modal" class="ui modal">
+            <i class="close icon"></i>
+
+            <div class="header">
+                Create a new release
+            </div>
+
+            <div class="content">
+                <form
+                        id="create-release-form"
+                        class="ui form no-glossary"
+                        method="post"
+                        enctype="multipart/form-data"
+                >
+
+                    <div class="grouped fields">
+                        <label>Release source</label>
+
+                        <div class="field">
+                            <div class="ui radio checkbox">
+                                <input type="radio" name="source" value="file" checked>
+                                <label>Upload JSON file</label>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <div class="ui radio checkbox">
+                                <input type="radio" name="source" value="url">
+                                <label>Load from URL</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field" id="file-source">
+                        <label>Release JSON file</label>
+                        <input type="file"
+                               name="file"
+                               accept=".json">
+                    </div>
+
+                    <div class="field" id="url-source" style="display:none">
+                        <label>Release JSON URL</label>
+                        <input type="url"
+                               name="url"
+                               placeholder="https://raw.githubusercontent.com/...">
+                    </div>
+
+                    <button
+                            id="uploadButton"
+                            class="ui primary button disabled"
+                            type="submit">
+                        Create release
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{%- endblock %}
+
+{% block javascript %}
+    {{ super() }}
+    {{ webpack['cernopendata_curate.js'] }}
+{%- endblock %}
