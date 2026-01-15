@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of CERN Open Data Portal.
-# Copyright (C) 2015, 2016, 2017, 2018, 2021, 2022, 2023 CERN.
+# Copyright (C) 2024 CERN.
 #
 # CERN Open Data Portal is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,41 +22,4 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-services:
-  web:
-    restart: "unless-stopped"
-    command: bash -c "/code/scripts/start-server-debug.sh"
-    environment:
-      - DEBUG=True
-      - FLASK_DEBUG=1
-      - WDB_SOCKET_SERVER=wdb
-      - WDB_NO_BROWSER_AUTO_OPEN=True
-    volumes:
-      - ./:/code/
-      - ../opendata.cern.ch:/content/
-
-#  web-files:
-#    profiles:
-#      - donotstart
-
-  proxy:
-    volumes:
-      - ./:/code/
-      - ../opendata.cern.ch:/content/
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin4_container
-    restart: always
-    ports:
-      - "127.0.0.1:8888:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
-      PGADMIN_DEFAULT_PASSWORD: strong-password
-    profiles:
-      - donotstart
-
-  worker:
-    command: bash -c "/code/scripts/start-server-debug.sh worker"
-    volumes:
-      - ./:/code/
+"""CERN Open Data Releases."""

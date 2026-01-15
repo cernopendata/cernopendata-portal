@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of CERN Open Data Portal.
-# Copyright (C) 2015, 2016, 2017, 2018, 2021, 2022, 2023 CERN.
+# Copyright (C) 2024 CERN.
 #
 # CERN Open Data Portal is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -21,42 +21,32 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
+"""Top Class to validate releases."""
 
-services:
-  web:
-    restart: "unless-stopped"
-    command: bash -c "/code/scripts/start-server-debug.sh"
-    environment:
-      - DEBUG=True
-      - FLASK_DEBUG=1
-      - WDB_SOCKET_SERVER=wdb
-      - WDB_NO_BROWSER_AUTO_OPEN=True
-    volumes:
-      - ./:/code/
-      - ../opendata.cern.ch:/content/
 
-#  web-files:
-#    profiles:
-#      - donotstart
+class Validation:
+    """Base validation class."""
 
-  proxy:
-    volumes:
-      - ./:/code/
-      - ../opendata.cern.ch:/content/
+    registry = []
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin4_container
-    restart: always
-    ports:
-      - "127.0.0.1:8888:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
-      PGADMIN_DEFAULT_PASSWORD: strong-password
-    profiles:
-      - donotstart
+    name = None
+    error_message = None
 
-  worker:
-    command: bash -c "/code/scripts/start-server-debug.sh worker"
-    volumes:
-      - ./:/code/
+    def __init_subclass__(cls, **kwargs):
+        """Keep a registry of all the validations."""
+        super().__init_subclass__(**kwargs)
+        if cls.__name__ != "Validation":
+            Validation.registry.append(cls)
+
+    def validate(self, release):
+        """Validate a release. The method should be implemented in the child classes."""
+        raise NotImplementedError
+
+    def fix(self, release):
+        """Optional fix method."""
+        raise NotImplementedError
+
+    @property
+    def fixable(self):
+        """Check if a validation has a fix method."""
+        return self.fix.__func__ is not Validation.fix
