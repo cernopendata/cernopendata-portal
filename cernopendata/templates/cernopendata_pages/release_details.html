@@ -1,0 +1,317 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui container">
+    <div class="ui center aligned segment">
+
+        <h2 class="ui header">
+            Welcome to the releases
+            <div class="sub header">Experiment: {{ experiment|upper }}</div>
+        </h2>
+
+        <a href="/releases/{{experiment}}"
+           class="ui small basic button">
+            <i class="arrow left icon"></i>
+            Back to releases
+        </a>
+        <div class="ui hidden divider"></div>
+        {% include 'cernopendata_pages/release_details/_summary.html' %}
+        {% include 'cernopendata_pages/release_details/_navigation.html' %}
+        {% include 'cernopendata_pages/release_details/_body.html' %}
+    </div>
+</div>
+{%- endblock %}
+
+{% block javascript %}
+    {{ super() }}
+{{ webpack['cernopendata_curate.js'] }}
+
+    <script>
+        $('[data-tooltip]').popup();
+        window.releaseRecords = {{ release.records | tojson }};
+
+        function renderDiffs(diffs) {
+            const container = $('#bulk-diff-container');
+            container.empty();
+
+            if (!diffs || !diffs.length) {
+                container.append('<div class="ui message">No changes detected</div>');
+                return;
+            }
+
+            diffs.forEach(item => {
+                const card = $('<div class="ui fluid card"></div>');
+                const content = $('<div class="content"></div>');
+
+                content.append(`<div class="header">Record ${item.index + 1} (${item.recid || 'no recid'})</div>`);
+                content.append(renderDiffObject(item.diff));
+
+                card.append(content);
+                container.append(card);
+            });
+        }
+
+        function renderDiffObject(diff) {
+            const list = $('<div class="ui list"></div>');
+
+            if (diff.values_changed) {
+                Object.entries(diff.values_changed).forEach(([path, change]) => {
+                    list.append(`
+                      <div class="item">
+                        🟡 <strong>${path}</strong><br>
+                        <span class="removed">- ${JSON.stringify(change.old_value)}</span><br>
+                        <span class="added">+ ${JSON.stringify(change.new_value)}</span>
+                      </div>
+                    `);
+                });
+            }
+
+            if (diff.type_changes) {
+                Object.entries(diff.type_changes).forEach(([path, change]) => {
+                    list.append(`
+                        <div class="item">
+                            🟠 <strong>${path}</strong><br>
+                            <span class="removed">- ${JSON.stringify(change.old_value)} (${change.old_type})</span><br>
+                            <span class="added">+ ${JSON.stringify(change.new_value)} (${change.new_type})</span>
+                        </div>
+                    `);
+                });
+            }
+
+            if (diff.dictionary_item_added) {
+                diff.dictionary_item_added.forEach(path => {
+                    list.append(`<div class="item">🟢 <strong>${path}</strong> added</div>`);
+                });
+            }
+
+            if (diff.dictionary_item_removed) {
+                diff.dictionary_item_removed.forEach(path => {
+                    list.append(`<div class="item">🔴 <strong>${path}</strong> removed</div>`);
+                });
+            }
+
+            return list;
+        }
+
+        let bulkHasChanges = false;
+        let bulkPreviewDone = false;
+
+        (function () {
+
+            const modal = $('#bulk-edit-modal');
+            const tableBody = $('#bulk-edit-table tbody');
+            const previewBox = $('#bulk-preview');
+
+            /* ------------------------
+             * Helpers
+             * ------------------------ */
+
+            function updateButtons() {
+                $('#bulk-preview-btn').toggleClass(
+                    'disabled',
+                    !bulkHasChanges || bulkPreviewDone
+                );
+
+                $('#bulk-apply-btn').toggleClass(
+                    'disabled',
+                    !bulkPreviewDone
+                );
+            }
+
+            function invalidatePreview() {
+                bulkHasChanges = true;
+                bulkPreviewDone = false;
+                previewBox.hide();
+                updateButtons();
+            }
+
+            function collectBulkOperations() {
+                const setOps = {};
+                const deleteOps = [];
+
+                $('#bulk-edit-table tbody tr').each(function () {
+                    const mode = $(this).find('.bulk-mode').val();
+                    const key = $(this).find('.bulk-key').val().trim();
+                    const rawValue = $(this).find('.bulk-value').val().trim();
+
+                    if (!key) return;
+
+                    if (mode === 'delete') {
+                        deleteOps.push(key);
+                        return;
+                    }
+
+                    // mode === 'set'
+                    if (!rawValue) {
+                        throw new Error(`Missing value for key "${key}"`);
+                    }
+
+                    try {
+                        setOps[key] = JSON.parse(rawValue);
+                    } catch (e) {
+                        throw new Error(`Invalid JSON for key "${key}"`);
+                    }
+                });
+
+                return { set: setOps, delete: deleteOps };
+            }
+
+            /* ------------------------
+             * Modal lifecycle
+             * ------------------------ */
+
+            $('#bulk-edit-btn').on('click', () => modal.modal('show'));
+
+            modal.modal({
+                onShow: () => {
+                    bulkHasChanges = false;
+                    bulkPreviewDone = false;
+                    previewBox.hide();
+                    updateButtons();
+                }
+            });
+
+            /* ------------------------
+             * Row management
+             * ------------------------ */
+
+            $('#add-bulk-row').on('click', () => {
+                tableBody.append(`
+                    <tr>
+                        <td><select class="ui compact dropdown bulk-mode">
+                            <option value="set">Set / update</option>
+                            <option value="delete">Delete field</option>
+                        </select></td>
+                        <td><input type="text" class="bulk-key" placeholder="field name"></td>
+                        <td><textarea class="bulk-value" rows="1" placeholder='JSON value'></textarea></td>
+                        <td><i class="trash icon link remove-row"></i></td>
+                    </tr>
+                `);
+                invalidatePreview();
+            });
+
+            tableBody.on('click', '.remove-row', function () {
+                $(this).closest('tr').remove();
+                invalidatePreview();
+            });
+
+            tableBody.on('input', '.bulk-key, .bulk-value', invalidatePreview);
+
+            /* ------------------------
+             * Preview
+             * ------------------------ */
+
+            $('#bulk-preview-btn').on('click', async function () {
+                if ($(this).hasClass('disabled')) return;
+
+                let updates;
+                try {
+                    updates = collectBulkOperations();
+                } catch (e) {
+                    alert(e.message);
+                    return;
+                }
+
+                const res = await fetch(
+                    `/releases/{{ experiment }}/{{ release._metadata.id }}/bulk_records/preview`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ updates })
+                    }
+                );
+
+                if (!res.ok) {
+                    alert('Preview failed');
+                    return;
+                }
+
+                const data = await res.json();
+                renderDiffs(data.diffs);
+
+                previewBox.show();
+                bulkPreviewDone = true;
+                updateButtons();
+            });
+
+            /* ------------------------
+             * Apply
+             * ------------------------ */
+
+            $('#bulk-apply-btn').on('click', async function () {
+                if ($(this).hasClass('disabled')) return;
+
+                let updates;
+                try {
+                    updates = collectBulkOperations();
+                } catch (e) {
+                    alert(e.message);
+                    return;
+                }
+
+                const res = await fetch(
+                    `/releases/{{ experiment }}/{{ release._metadata.id }}/bulk_records/apply`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ updates })
+                    }
+                );
+
+                if (!res.ok) {
+                    alert('Apply failed');
+                    return;
+                }
+
+                location.reload();
+            });
+        $('#bulk-edit-table').on('change', '.bulk-mode', function () {
+          const row = $(this).closest('tr');
+          const value = row.find('.bulk-value');
+
+          if (this.value === 'delete') {
+            value.prop('disabled', true)
+                 .addClass('disabled')
+                 .val('');
+          } else {
+            value.prop('disabled', false)
+                 .removeClass('disabled');
+          }
+
+          invalidatePreview();
+        });
+
+        })();
+      $('.ui.checkbox').checkbox();
+
+      const form = document.getElementById('primary-action-form');
+      const checkbox = document.getElementById('generate-doi-checkbox');
+
+      if (form && checkbox) {
+        form.addEventListener('submit', function (e) {
+          if (!checkbox.checked) {
+            e.preventDefault();
+
+            $('#primary-action-btn')
+              .popup({
+                content: 'You can generate DOIs for all entries before publishing.',
+                position: 'top center',
+                on: 'manual'
+              })
+              .popup('show');
+
+            // Hide popup automatically after a moment
+            setTimeout(() => {
+              $('#primary-action-btn').popup('hide');
+            }, 3000);
+          }
+        });
+      }
+    </script>
+{%- endblock %}

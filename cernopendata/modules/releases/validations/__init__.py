@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of CERN Open Data Portal.
-# Copyright (C) 2016, 2017 CERN.
+# Copyright (C) 2024 CERN.
 #
 # CERN Open Data Portal is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -22,10 +22,16 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-"""Version information for cernopendata.
+"""CERN Open Data Validations."""
+from importlib import import_module
+from pathlib import Path
 
-This file is imported by ``cernopendata.__init__``,
-and parsed by ``setup.py``.
-"""
+from .base import Validation
 
-__version__ = "1.0.0_rc5"
+package_dir = Path(__file__).parent
+
+for file in package_dir.glob("*.py"):
+    if file.name not in ["__init__.py", "base.py"]:
+        import_module(f"{__name__}.{file.stem}")
+
+VALIDATIONS = [cls() for cls in Validation.registry]

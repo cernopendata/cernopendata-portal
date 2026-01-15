@@ -676,6 +676,9 @@
       },
       "type": "object"
     },
+    "prerelease": {
+      "type": "string"
+    },
     "publisher": {
       "description": "The name of the publisher (internal)",
       "type": "string"

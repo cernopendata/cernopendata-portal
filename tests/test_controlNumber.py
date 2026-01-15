@@ -9,6 +9,7 @@ from cernopendata.modules.fixtures.cli import (
 
 def test_update_doc(app, database):
     print("Checking if t_number is there after an update")
+
     data = {
         "anchor": "dummy_anchor",
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
