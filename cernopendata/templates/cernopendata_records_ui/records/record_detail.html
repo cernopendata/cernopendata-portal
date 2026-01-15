@@ -455,7 +455,7 @@
             <h3>Files and indexes</h3>
             <div id="request-record-react-app" data-record-id="{{ record.recid }}"
                  data-availability="{{ record.availability }}" class="pb-20"
-                 data-size="{{record.distribution.size}}" data-files="{{record.distribution.number_files}}"
+                 data-size="{{record.distribution.size if record.distribution else 0 }}" data-files="{{record.distribution.number_files if record.distribution else 0 }}"
             >
 
             </div>
