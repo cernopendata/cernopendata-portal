@@ -35,13 +35,14 @@ services:
       - ./:/code/
       - ../opendata.cern.ch:/content/
 
-  web-files:
-    profiles:
-      - donotstart
+#  web-files:
+#    profiles:
+#      - donotstart
 
   proxy:
-      profiles:
-        - donotstart
+    volumes:
+      - ./:/code/
+      - ../opendata.cern.ch:/content/
 
   pgadmin:
     image: dpage/pgadmin4

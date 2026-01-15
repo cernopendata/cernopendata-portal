@@ -39,4 +39,10 @@ cernopendata collect -v
 # be overwritten with the ones from opendata.
 for d in $(find /code/cernopendata/modules/theme/static/ -type 'f' | sed 's/\/code\/cernopendata\/modules\/theme\/static//' ) ; do cp --remove-destination /code/cernopendata/modules/theme/static${d}  ${INVENIO_INSTANCE_PATH}/static${d}; done;
 
-cernopendata webpack clean buildall
+cernopendata webpack clean
+# TODO THIS IS A HACK. If we don't create the directory by hand, we get:
+# ERROR in ./js/invenio_communities/community/new.js 207:19-76
+# 31 110.8 Module not found: Error: Can't resolve '@templates/custom_fields' in '/opt/invenio/var/instance/assets/js/invenio_communities/community'
+mkdir -p /opt/invenio/var/instance/assets/opt/invenio/var/instance/assets/templates/custom_fields
+
+cernopendata webpack buildall

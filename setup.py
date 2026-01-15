@@ -48,6 +48,7 @@ def xrootd_version():
 
 
 tests_require = [
+    "pytest-mock>=3.15.1,<4.0.0",
     "check-manifest>=0.25",
     "coverage>=4.0",
     "isort>=4.2.2",
@@ -83,6 +84,7 @@ install_requires = [
     # Custom Invenio `base` bundle
     "importlib-metadata>=6.11.0",
     "invenio-accounts>=6.0.0,<6.1.0",
+    "Flask-Security-Invenio>=3.3.0,<4.0.0",
     "invenio-access>=4.0.0,<5.0.0",
     "invenio-files-rest @git+https://github.com/psaiz/invenio-files-rest@tag_value#egg=invenio-files-rest",
     "invenio-theme>=4.0.0,<5.0.0",
@@ -128,6 +130,15 @@ install_requires = [
     "dcxml",
     # And these ones are for the cold storage
     "fts3",
+    # For the curation process
+    "invenio-communities>=22.0.0,<23.0.0",
+    "passlib==1.7.4",
+    "invenio-cern-sync @git+https://github.com/CERNDocumentServer/invenio-cern-sync.git@bc37f25612e89eb63e1bde421f9f6f8c1c382904",
+    "invenio-oauth2server>=3.3.2,<4.0.0",  # this one should go to the cern-sync...
+    "deepdiff>=8.6.1,<9.0.0",
+    "pyparsing>=3.0.0,<4.0.0",
+    "Faker>=37.0.0,<38.0.0",
+    "pywebpack>=2.2.1,<3.0.0",
 ]
 
 packages = find_packages()
@@ -158,6 +169,7 @@ setup(
             "cernopendata_records_file_box = "
             "cernopendata.modules.theme.webpack:records_file_box",
             "cernopendata_transfers = cernopendata.modules.theme.webpack:transfers",
+            "cernopendata_curate = cernopendata.modules.theme.webpack:curate",
         ],
         "invenio_base.apps": [
             "invenio_records_rest = invenio_records_rest:InvenioRecordsREST",
@@ -170,10 +182,14 @@ setup(
             "cod_md = " "cernopendata.modules.markdown.ext:CernopendataMarkdown",
             # 'cod_mistune = '
             # 'cernopendata.modules.mistune.ext:CernopendataMistune',
+            "invenio_communities = invenio_communities:InvenioCommunities",
+            # "invenio_accounts = invenio_accounts.ext:InvenioAccounts",
+            "invenio_oauthclient = invenio_oauthclient.ext:InvenioOAuthClient",
         ],
         "invenio_base.api_apps": [
             "cernopendata_xrootd = cernopendata.modules.xrootd:CODPXRootD",
             "cernopendata_rq_wraps = cernopendata.modules.globals.ext:FlaskHeaders",
+            # "invenio_accounts = invenio_accounts.ext:InvenioAccounts",
         ],
         "invenio_base.api_blueprints": [
             "cernopendata_news_api = cernopendata.modules.api.news:blueprint",
@@ -183,6 +199,7 @@ setup(
             "cernopendata_pages = " "cernopendata.modules.pages.views:blueprint",
             "cernopendata_theme = " "cernopendata.modules.theme.views:blueprint",
             "cernopendata_sitemap = " "cernopendata.modules.sitemap.views:blueprint",
+            "cernopendata_releases = cernopendata.modules.releases.views:blueprint",
         ],
         "invenio_config.module": [
             "cernopendata = cernopendata.config",
@@ -223,7 +240,6 @@ setup(
             "cernopendata_schemas = cernopendata.jsonschemas",
         ],
         "flask.commands": [
-            ## ALL OF THESE ONES ARE FOR THE COLD STORAGE. TAKE THEM TO A DEDICATED MODULE?
             "cold = cernopendata.cold_storage.cli:cold",
         ],
     },

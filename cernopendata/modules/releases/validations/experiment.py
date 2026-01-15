@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # This file is part of CERN Open Data Portal.
-# Copyright (C) 2016, 2017 CERN.
+# Copyright (C) 2024 CERN.
 #
 # CERN Open Data Portal is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public License as
@@ -21,11 +21,17 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
+"""Validation process."""
+from .expected_fields import ExpectedFieldsValidation
 
-"""Version information for cernopendata.
 
-This file is imported by ``cernopendata.__init__``,
-and parsed by ``setup.py``.
-"""
+class ValidExperiment(ExpectedFieldsValidation):
+    """Check that the experiment is properly defined."""
 
-__version__ = "1.0.0_rc4"
+    abstract = False
+
+    name = "Valid experiment"
+    error_message = "The records should be of the correct experiment."
+    expected_fields = {
+        "experiment": lambda release, record=None: [release.experiment.upper()]
+    }
