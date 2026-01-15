@@ -3,10 +3,10 @@
 import json
 import logging
 import os
-
 from counter_robots import is_robot_or_machine
 from flask import Flask, request
 
+from cernopendata.modules.releases.utils import curator_experiments
 from cernopendata.version import __version__
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ class GlobalVariables:
         if not isinstance(app, Flask):
             return
 
+        app.context_processor(curator_experiments)
         self.set_experiments(app)
 
     @staticmethod
