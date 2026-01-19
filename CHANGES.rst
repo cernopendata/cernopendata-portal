@@ -1,5 +1,11 @@
 Changes
 =======
+Version 0.12.0 (released 2026-01-19)
+----------------------------
+- fix: ensure invalid emails or empty strings are not added as subscribers
+- test: improve tests for cold storage
+- fix: checking if the field distribution exists before using it
+
 Version 0.11.0 (released 2025-12-17)
 ----------------------------
 - build(docker): upgrade XRootD to 5.9.1
