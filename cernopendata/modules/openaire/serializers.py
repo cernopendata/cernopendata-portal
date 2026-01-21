@@ -145,6 +145,8 @@ class OpenAireSerializer(Schema):
         authors = obj.get("authors", [obj.get("collaboration", None)])
         creators = []
         for author in authors:
+            if "name" not in author:
+                continue
             my_author = {"creator": {"creatorName": author["name"]}}
             if "orcid" in author:
                 my_author["creator"]["nameIdentifiers"]: [
