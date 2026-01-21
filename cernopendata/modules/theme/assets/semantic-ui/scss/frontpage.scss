@@ -105,7 +105,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f5f5f5', end
 
     input:focus {
       outline: none;
-      box-shadow: 0 0 0 0.2em lighten($light-blue, 30%);
+      box-shadow: 0 0 0 0.2em lighten($navy, 30%);
     }
   }
 
@@ -129,7 +129,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f5f5f5', end
   input {
     flex: 1 0 8em;
     border-radius: 2px 0 0 2px;
-    border: 1px solid $light_blue;
+    border: 1px solid $navy;
     padding: 1em;
   }
 
@@ -139,7 +139,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f5f5f5', end
     height: 60px;
     width: 110px;
     border-radius: 0 2px 2px 0;
-    background-color: $light_blue;
+    background-color: $navy;
     color: #fff;
     border: 0;
     cursor: pointer;
@@ -473,6 +473,14 @@ $break-md: 768px;
 
       a {
         color: white;
+      }
+
+      .blue-tag {
+        background-color: #1e7eB0;
+      }
+
+      .orange-tag {
+        background-color: #d14905;
       }
     }
   }

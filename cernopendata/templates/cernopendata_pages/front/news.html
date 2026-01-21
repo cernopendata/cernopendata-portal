@@ -19,7 +19,7 @@
                     </div>
                     <div class="tags-box">
                         <a href="/search?type={{article.type.primary}}"
-                            class="ui label blue">
+                            class="ui label blue-tag">
                             {{article.type.primary }}
                         </a>
                         {% if article.type.secondary %}
@@ -32,7 +32,7 @@
                         {% endfor %}
                         {% for exp in article.experiment %}
                         <a href="/search?experiment={{exp}}"
-                            class="ui label orange">
+                            class="ui label orange-tag">
                             {{ exp }}
                         </a>
                         {% endfor %}
@@ -42,8 +42,9 @@
             {% endfor %}
         </div>
         <div class="more-container">
-            <div class="more"><a
-                    href="{{url_for('invenio_search_ui.search', f = 'type:News') }}">more</a></div>
+            <div class="more">
+                <a href="{{url_for('invenio_search_ui.search', f = 'type:News') }}">All news</a>
+            </div>
         </div>
     </div>
 </div>
