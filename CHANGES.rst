@@ -1,5 +1,10 @@
 Changes
 =======
+Version 0.13.0 (released 2026-01-22)
+----------------------------
+- ui: improve accessibility
+- fix: oai2d interface ensure that the author field has name before using it
+
 Version 0.12.0 (released 2026-01-19)
 ----------------------------
 - fix: ensure invalid emails or empty strings are not added as subscribers
