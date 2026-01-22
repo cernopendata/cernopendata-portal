@@ -67,6 +67,7 @@ body {
 
         code {
             background-color: transparent;
+            color: #e0148f !important;
         }
 
         a[name] {
@@ -322,7 +323,7 @@ body {
 
 
 a {
-    color: #2E588A;
+    color: #2e6dc6;
 }
 
 .record-elem li .card {
@@ -359,7 +360,7 @@ a {
     }
 
     a {
-        color: $light-blue;
+        color: #2e6dc6;
     }
 }
 
@@ -448,9 +449,35 @@ a {
             color: white;
         }
     }
+
+    &.blue {
+        background-color: $blue !important;
+        color: white;
+
+        &:hover {
+            background-color: darken($blue, $darken-on-hover) !important;
+            color: white;
+        }
+    }
+
+    &.teal {
+        background-color: $teal !important;
+        color: white;
+
+        &:hover {
+            background-color: darken($teal, $darken-on-hover) !important;
+            color: white;
+        }
+    }
 }
 
 // End Labels
+
+.ui.button {
+    &.blue {
+        background-color: $blue !important;
+    }
+}
 
 .clickable {
     cursor: pointer;
