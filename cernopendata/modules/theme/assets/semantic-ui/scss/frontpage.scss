@@ -476,11 +476,15 @@ $break-md: 768px;
       }
 
       .blue-tag {
-        background-color: #1e7eB0;
+        background-color: $blue;
       }
 
       .orange-tag {
-        background-color: #d14905;
+        background-color: $orange;
+      }
+
+      .teal-tag {
+        background-color: $teal;
       }
     }
   }

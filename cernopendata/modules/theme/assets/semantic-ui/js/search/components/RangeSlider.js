@@ -71,6 +71,7 @@ const RangeSlider = ({ min, max, value, onChange }) => {
         value={currentMinInputVal}
         onChange={handleMinChange}
         className="thumb thumb-left"
+        aria-labelledby="min-label"
       />
       <input
         type="range"
@@ -80,9 +81,11 @@ const RangeSlider = ({ min, max, value, onChange }) => {
         value={currentMaxInputVal}
         onChange={handleMaxChange}
         className="thumb thumb-right"
+        aria-labelledby="max-label"
       />
       <div
-        className={`slider-label ${areLabelsClose ? 'diagonal' : ''}`}
+        id="min-label"
+        className={`slider-label ${areLabelsClose ? "diagonal" : ""}`}
         style={{
           left: `${minLabelPlacement()}%`,
         }}
@@ -90,10 +93,11 @@ const RangeSlider = ({ min, max, value, onChange }) => {
         {minVal}
       </div>
       <div
-        className={`slider-label ${areLabelsClose ? 'diagonal' : ''}`}
+        id="max-label"
+        className={`slider-label ${areLabelsClose ? "diagonal" : ""}`}
         style={{
           left: `${maxLabelPlacement()}%`,
-          visibility: minVal === maxVal ? 'hidden' : ''
+          visibility: minVal === maxVal ? "hidden" : "",
         }}
       >
         {maxVal}
