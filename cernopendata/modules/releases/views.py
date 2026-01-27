@@ -58,7 +58,6 @@ def list_releases(experiment=None):
                 "created_by": serialize_user(r.created_by),
                 "updated_at": r.updated_at.isoformat() if r.updated_at else None,
                 "updated_by": serialize_user(r.updated_by),
-                "released_at": r.released_at.isoformat() if r.released_at else None,
                 "num_records": r.num_records,
                 "num_docs": r.num_docs,
                 "num_glossaries": r.num_glossaries,
@@ -153,7 +152,6 @@ def generate_recid(experiment, release_id):
     )
 
     release.generate_recids()
-    release.validate()
     db.session.add(release)
     db.session.commit()
 
@@ -176,7 +174,6 @@ def generate_doi(experiment, release_id):
 
     release.generate_doi()
     db.session.add(release)
-    release.validate()
     db.session.commit()
 
     flash(f"Recid created for records in release {release.id}.", "success")
@@ -206,7 +203,6 @@ def delete_release(experiment, release_id):
 )
 @login_required
 def update_records(experiment, release_id):
-    release = _get_release(experiment, release_id, lock=True)
 
     # Get JSON string from form
     records_json = request.form.get("records_json")
@@ -214,13 +210,14 @@ def update_records(experiment, release_id):
         abort(400, "No records provided")
 
     try:
-        release.records = json.loads(records_json)
-        if not isinstance(release.records, list):
+        records = json.loads(records_json)
+        if not isinstance(records, list):
             raise ValueError("Records must be a list")
     except ValueError as e:
         abort(400, f"Invalid JSON: {e}")
 
-    release.validate(current_user)
+    release = _get_release(experiment, release_id, lock=True)
+    release.update_records(records)
     db.session.add(release)
     db.session.commit()
 
@@ -259,10 +256,10 @@ def _get_release(experiment, release_id, lock=False, status=None):
         id=release_id, experiment=experiment
     ).first_or_404()
 
-    if lock and not release.lock_for_editing():
+    if status and release.status != status:
         abort(409)
 
-    if status and release.status != status:
+    if lock and not release.lock_for_editing():
         abort(409)
 
     return release
@@ -283,7 +280,6 @@ def generate_filemetadata(experiment, release_id):
         flash("Release updated.", "success")
     else:
         flash("No file was updated. Could it be that there are no files?", "warning")
-    release.validate()
     db.session.commit()
     return redirect(f"/releases/{experiment}/{release_id}")
 
@@ -322,7 +318,6 @@ def expand_files(experiment, release_id):
     )
 
     release.expand_files()
-    release.validate()
     db.session.commit()
     flash("Release updated.", "success")
     return redirect(f"/releases/{experiment}/{release_id}")

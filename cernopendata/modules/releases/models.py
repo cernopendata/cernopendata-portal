@@ -397,8 +397,11 @@ class Release(db.Model):
         def walk(base_uri):
             """Recursively yield all file paths under base_uri"""
             try:
+                print(f"LISTING {base_uri}", file=sys.stderr)
                 entries = ctx.listdir(base_uri.replace("root://", "https://"))
             except gfal2.GError:
+                self.errors.append(f"Error accessing the path {base_uri} while expanding the file names")
+                print("GOT AN ERROR")
                 return  # skip if inaccessible
 
             for entry in entries:
@@ -414,11 +417,12 @@ class Release(db.Model):
                 else:
                     # It's a file — yield uri, checksum, size
                     try:
-                        checksum = ctx.checksum(full_uri.replace("root://", "https://"))
+                        checksum = ctx.checksum( full_uri.replace("root://", "https://"), "ADLER32")
                     except gfal2.GError:
                         checksum = "UNKNOWN"
                     yield {"uri": full_uri, "size": st.st_size, "checksum": checksum}
 
+        import sys
         for record in self.records:
             if "files" not in record:
                 continue
@@ -427,12 +431,15 @@ class Release(db.Model):
             for file in record["files"]:
                 if "uri" in file and file["uri"].endswith("*"):
                     basedir = file["uri"][:-1]
+                    print("FOUND AN ENTRY WITH A WILDCARD", file=sys.stderr)
                     for f in walk(basedir):
                         new_files.append(f)
                     modified = True
 
             # Append new files and remove the wildcard entry
             if new_files:
+                print("AND THE NEW FILES", file=sys.stderr)
+
                 # Remove the wildcard entry itself
                 record["files"] = [
                     f
@@ -440,7 +447,11 @@ class Release(db.Model):
                     if not (f.get("uri") and f["uri"].endswith("*"))
                 ]
                 record["files"].extend(new_files)
+                print(record['files'], file=sys.stderr)
 
+        import sys
+        print("WE HAD")
+        print(self.errors, file=sys.stderr)
         if modified:
             flag_modified(self, "records")
             self.validate()
@@ -465,3 +476,7 @@ class Release(db.Model):
         self.status = self.STATUS_EDITING
         db.session.commit()
         return True
+
+    def update_records(self, records):
+        self.records = records
+        self.validate()
