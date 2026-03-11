@@ -39,4 +39,9 @@ cernopendata collect -v
 # be overwritten with the ones from opendata.
 for d in $(find /code/cernopendata/modules/theme/static/ -type 'f' | sed 's/\/code\/cernopendata\/modules\/theme\/static//' ) ; do cp --remove-destination /code/cernopendata/modules/theme/static${d}  ${INVENIO_INSTANCE_PATH}/static${d}; done;
 
-cernopendata webpack clean buildall
+cernopendata webpack clean
+cernopendata webpack create
+cd "${INVENIO_INSTANCE_PATH}/assets"
+# force a less version that allows building without errors
+npm install --save-exact less@4.5.1 less-loader@10.2.0
+cernopendata webpack buildall
