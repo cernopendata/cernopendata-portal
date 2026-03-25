@@ -420,6 +420,9 @@
         },
         "stripping": {
           "properties": {
+            "line": {
+              "type": "keyword"
+            },
             "stream": {
               "type": "keyword"
             },
