@@ -1,0 +1,18 @@
+{
+  "template": {
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "uri": { "type": "keyword" },
+        "recid": { "type": "keyword" },
+        "title": { "type": "keyword" },
+        "year_published": { "type": "date" },
+        "timestamp": { "type": "date" },
+        "last_accessed": { "type": "date" }
+      }
+    },
+    "settings": {
+      "number_of_replicas": 1
+    }
+  }
+}

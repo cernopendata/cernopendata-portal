@@ -30,6 +30,7 @@ from unittest.mock import MagicMock
 import pytest
 from aiosmtpd.controller import Controller
 from click.testing import CliRunner
+from invenio_files_rest.models import Location
 
 from cernopendata.factory import create_app
 
@@ -201,3 +202,13 @@ def search(app):
 def cli_runner():
     """Provides a Click CliRunner instance."""
     return CliRunner()
+
+
+@pytest.fixture()
+def location(database):
+    location = Location.query.filter_by(name="local").first()
+    if not location:
+        location = Location(name="local", uri="var/data", default=True)
+        database.session.add(location)
+        database.session.commit()
+    return location
