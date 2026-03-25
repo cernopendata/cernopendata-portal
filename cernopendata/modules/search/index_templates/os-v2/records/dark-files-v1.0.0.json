@@ -1,0 +1,8 @@
+{
+  "composed_of": [
+    "__SEARCH_INDEX_PREFIX__opendata-dark-files-v1.0.0"
+  ],
+  "index_patterns": [
+    "__SEARCH_INDEX_PREFIX__dark-files*"
+  ]
+}
