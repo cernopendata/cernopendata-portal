@@ -83,6 +83,9 @@ install_requires = [
     # Custom Invenio `base` bundle
     "importlib-metadata>=6.11.0",
     "invenio-accounts>=6.0.0,<6.1.0",
+    # The next two are due to the old version of invenio-accounts, which do not put an upper bound
+    "Flask-Security-Invenio>=3.3.0,<4.0.0",
+    "passlib==1.7.4",
     "invenio-access>=4.0.0,<5.0.0",
     "invenio-files-rest @git+https://github.com/psaiz/invenio-files-rest@tag_value#egg=invenio-files-rest",
     "invenio-theme>=4.0.0,<5.0.0",
