@@ -1,0 +1,75 @@
+{% set steps = ['DRAFT',  'STAGED', 'PUBLISHED'] %}
+
+{% set status_to_step = {
+'DRAFT': 'DRAFT',
+'EDITING': 'DRAFT',
+'READY': 'DRAFT',
+'STAGING': 'DRAFT',
+'STAGED': 'STAGED',
+'PUBLISHED': 'PUBLISHED'
+} %}
+
+{% set current_step = status_to_step[release.status] %}
+{% set current_index = steps.index(current_step) %}
+
+<div class="ui ordered steps fluid">
+    {% for step in steps %}
+    {% set i = loop.index0 %}
+    <div class="step
+         {% if i < current_index %}completed{% endif %}
+         {% if i == current_index %}active{% endif %}
+         {% if i > current_index %}disabled{% endif %}
+    ">
+        <div class="content">
+            <div class="title">{{ step }} {%if step == "DRAFT" and release.status!="DRAFT" %} ({{release.status}}) {%endif%}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% set transitions = {
+'DRAFT': 'stage',
+'STAGED': 'publish',
+'PUBLISHED': None
+} %}
+
+{% set next_action = transitions[release.status] %}
+
+{% set next_tooltip = {
+'DRAFT': 'This release has unresolved issues.',
+'STAGED': 'You are about to publish this release publicly. Please review carefully before proceeding.',
+'EDITING': 'The release is being edited at the moment.',
+'STAGING':  'The release is being staged.'
+}[release.status] %}
+
+<form method="post"
+      action="{% if next_action %}/releases/{{ experiment }}/{{ release._metadata.id }}/{{ next_action }}{% endif %}">
+
+    {# Extra options only when publishing #}
+    {% if release.status == 'STAGED' %}
+    <div class="ui checkbox" style="margin-bottom: 1em">
+        <input type="checkbox"
+               name="generate_doi"
+               id="generate-doi-checkbox"
+               value="1">
+        <label><strong>Generate DOI for all entries</strong></label>
+    </div>
+    {% endif %}
+
+
+    {# Next button #}
+    <div
+            {% if release.status in ['DRAFT', 'STAGED'] %}
+    data-tooltip="{{ next_tooltip }}"
+    data-position="top center"
+    {% endif %}
+    >
+    <button
+            class="ui huge primary button {% if not next_action %}disabled{% endif %}"
+            {% if not release.status in ['READY', 'STAGED'] %}disabled{% endif %}
+    >
+        <i class="arrow right icon"></i>
+        Next
+    </button>
+    </div>
+</form>
+
