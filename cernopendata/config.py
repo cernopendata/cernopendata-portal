@@ -27,7 +27,7 @@
 import os
 import warnings
 
-from celery.schedules import timedelta
+from celery.schedules import crontab, timedelta
 from flask import request
 from invenio_records_files.api import _Record
 from invenio_records_rest.config import RECORDS_REST_ENDPOINTS
@@ -46,6 +46,7 @@ from cernopendata.cold_storage.tasks import CheckTransfersTask
 from cernopendata.modules.pages.config import *
 from cernopendata.modules.search_ui.helpers import CODSearchAppInvenioRestConfigHelper
 from cernopendata.modules.theme.config import *
+from cernopendata.tasks import ProcessEosDumpTask
 
 from .views import search_legacy
 
@@ -266,6 +267,10 @@ CELERY_BEAT_SCHEDULE = {
     "cold-storage-events": {
         **CheckTransfersTask,
         "schedule": timedelta(minutes=5),  # Every thirty minutes
+    },
+    "process-eos-dump": {
+        **ProcessEosDumpTask,
+        "schedule": crontab(minute=0, hour=3),
     },
 }
 # JSONSchemas

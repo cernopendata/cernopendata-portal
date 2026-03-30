@@ -1,0 +1,15 @@
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "uri": { "type": "keyword" },
+        "size": { "type": "long" },
+        "last_modified": { "type": "date" },
+        "last_accessed": { "type": "date" }
+      }
+    },
+    "settings": {
+      "number_of_replicas": 1
+    }
+  }
+}
