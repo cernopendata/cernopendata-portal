@@ -188,8 +188,13 @@ def _to_base64(text):
 
 
 def _get_records_by_paths(paths):
-    return (
-        db.session.query(FileInstance.uri, RecordMetadata.json)
+    rows = (
+        db.session.query(
+            FileInstance.uri,
+            RecordMetadata.json["title"].as_string().label("title"),
+            RecordMetadata.json["recid"].as_string().label("recid"),
+            RecordMetadata.json["date_published"].as_string().label("date_published"),
+        )
         .join(ObjectVersion, ObjectVersion.file_id == FileInstance.id)
         .outerjoin(RecordsBuckets, RecordsBuckets.bucket_id == ObjectVersion.bucket_id)
         .outerjoin(
@@ -207,6 +212,17 @@ def _get_records_by_paths(paths):
         .filter(FileInstance.uri.in_(paths))
         .all()
     )
+    return [
+        (
+            row.uri,
+            {
+                "title": row.title,
+                "recid": row.recid,
+                "date_published": row.date_published,
+            },
+        )
+        for row in rows
+    ]
 
 
 def _transform_from_db(dump_entry, record_data):
