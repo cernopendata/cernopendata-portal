@@ -1,10 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
   "description": "Record",
   "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_availability_details": {
+      "additionalProperties": false,
+      "properties": {
+        "on demand": {
+          "type": "integer"
+        },
+        "online": {
+          "type": "integer"
+        }
+      }
+    },
+    "_bucket": {
+      "type": "string"
+    },
     "_files": {
       "items": {
+        "additionalProperties": false,
         "properties": {
+          "availability": {
+            "type": "string"
+          },
           "bucket": {
             "type": "string"
           },
@@ -14,11 +36,16 @@
           "description": {
             "type": "string"
           },
+          "file_id": {
+            "type": "string"
+          },
           "key": {
             "type": "string"
           },
           "size": {
             "type": "integer"
+          },
+          "tags": {
           },
           "type": {
             "type": "string"
@@ -35,7 +62,14 @@
       "type": "array",
       "uniqueItems": true
     },
+    "_file_indices": {
+      "type": "array"
+    },
+    "availability": {
+      "type": "string"
+    },
     "abstract": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "A summary of the resource",
@@ -43,6 +77,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the abstract",
@@ -74,6 +109,7 @@
     },
     "authors": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "affiliation": {
             "description": "The affiliation of the author. Multiple affiliations are separated by a semicolon (;)",
@@ -105,6 +141,7 @@
       "type": "array"
     },
     "categories": {
+      "additionalProperties": false,
       "properties": {
         "primary": {
           "description": "Primary category of the simulated dataset or related asset",
@@ -129,6 +166,7 @@
       "type": "string"
     },
     "collaboration": {
+      "additionalProperties": false,
       "properties": {
         "group": {
           "description": "The name of the group the author is part of",
@@ -153,6 +191,7 @@
       "type": "array"
     },
     "collision_information": {
+      "additionalProperties": false,
       "properties": {
         "energy": {
           "description": "Collision energy e.g. 8TeV",
@@ -166,13 +205,20 @@
       "type": "object"
     },
     "cross_section": {
+      "additionalProperties": false,
       "properties": {
         "filter_efficiency": {
           "description": "Cross section filter efficiency as given by GenXSecAnalyser",
           "type": "string"
         },
+        "filter_efficiency_error":{
+          "type": "string"
+        },
         "matching_efficiency": {
           "description": "Cross section matching efficiency as given by GenXSecAnalyser",
+          "type": "string"
+        },
+        "matching_efficiency_error": {
           "type": "string"
         },
         "neg_weight_fraction": {
@@ -191,6 +237,7 @@
       "type": "object"
     },
     "dataset_semantics_files": {
+      "additionalProperties": false,
       "properties": {
         "url": {
           "description": "Url of the dataset content description html file",
@@ -207,6 +254,7 @@
       "additionalProperties" : {
           "type": "array",
           "items": {
+            "additionalProperties": false,
             "properties": {
               "key": {
                 "type": "string"
@@ -229,6 +277,7 @@
     },
     "dataset_semantics": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "description": {
             "description": "Description or explanation for a variable",
@@ -267,6 +316,7 @@
       "type": "string"
     },
     "distribution": {
+      "additionalProperties": false,
       "properties": {
         "availability": {
           "description": "Specifies if dataset is on-demand, online in future might be also tape, disk",
@@ -313,6 +363,40 @@
       },
       "type": "array"
     },
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "type": "string"
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "description":{
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "keywords": {
       "items": {
         "description": "Relevant keywords for the record",
@@ -325,6 +409,7 @@
       "type": "string"
     },
     "license": {
+      "additionalProperties": false,
       "properties": {
         "attribution": {
           "description": "The license this resource is published under. Most of the content in the portal is released under the Creative Commons CC0 waiver and, if the resource is software, under another open-source license (usually GNU General Public License or Apache)",
@@ -335,6 +420,7 @@
     },
     "links": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "description": {
             "description": "A brief description of the link",
@@ -362,6 +448,7 @@
       "type": "string"
     },
     "methodology": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "A description of the methodology used for the production of this data/software",
@@ -369,6 +456,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the methodology",
@@ -391,13 +479,23 @@
           },
           "type": "array"
         },
+        "note": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "type": "string"
+            }
+          }
+        },
         "steps": {
           "items": [
             {
+              "additionalProperties": false,
               "properties": {
                 "configuration_files": {
                   "items": [
                     {
+                      "additionalProperties": false,
                       "properties": {
                         "cms_confdb_id": {
                           "description": "the cms_confdb_id (applies to CMS records)",
@@ -442,6 +540,28 @@
                   "description": "The global tag for generator",
                   "type": "string"
                 },
+                "note": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    },
+                    "links":{
+                      "type": "array",
+                      "items": [{
+                        "additionalProperties": false,
+                        "properties": {
+                          "recid": {
+                            "type": "string"
+                          }
+                        }
+                      }
+
+                      ]
+                    }
+
+                  }
+                },
                 "output_dataset": {
                   "description": "Output for production",
                   "type": "string"
@@ -463,7 +583,44 @@
       },
       "type": "object"
     },
+    "note": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "links":{
+          "type": "array",
+          "items": [{
+            "additionalProperties": false,
+            "properties": {
+              "recid": {
+                "type": "string"
+              }
+            }
+          }
+
+          ]
+        }
+
+      }
+    },
+    "pids":{
+      "additionalProperties": false,
+      "properties": {
+        "oai": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          }
+        }
+
+      }
+    },
     "pileup": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "Note about pile-up events (applies to simulated records",
@@ -471,6 +628,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the pile-up information",
@@ -497,6 +655,7 @@
       "type": "object"
     },
     "prepublication": {
+      "additionalProperties": false,
       "properties": {
         "date": {
           "description": "The prepublication date, based on ISO 8601 (YYYY-MM-DD)",
@@ -527,6 +686,7 @@
     },
     "relations": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "description": {
             "description": "A description about the related dataset",
@@ -574,7 +734,8 @@
       },
       "type": "array"
     },
-    "source code repository": {
+    "source_code_repository": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "A description text for the source code repository",
@@ -588,7 +749,11 @@
       "type": "object"
     },
     "stripping": {
+      "additionalProperties": false,
       "properties": {
+        "line": {
+          "type": "string"
+        },
         "stream": {
           "description": "Stripping stream information, used notably by LHCb",
           "type": "string"
@@ -601,9 +766,11 @@
       "type": "object"
     },
     "system_details": {
+      "additionalProperties": false,
       "properties": {
         "container_images": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "Description of the container image that is recommended for analysing these data",
@@ -655,6 +822,7 @@
       "type": "string"
     },
     "type": {
+      "additionalProperties": false,
       "properties": {
         "primary": {
           "description": "The primary category this resource belongs to (what appears in the UI facets)",
@@ -671,6 +839,7 @@
       "type": "object"
     },
     "usage": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "Instructions on how this resource can be used/accessed",
@@ -678,6 +847,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the usage information",
@@ -704,6 +874,7 @@
       "type": "object"
     },
     "use_with": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "Information regarding other resources that can be used alongside this one",
@@ -711,6 +882,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the use-with information",
@@ -737,6 +909,7 @@
       "type": "object"
     },
     "validation": {
+      "additionalProperties": false,
       "properties": {
         "description": {
           "description": "Information regarding the validation process this resource has undergone",
@@ -744,6 +917,7 @@
         },
         "links": {
           "items": {
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "description": "A brief description of the link associated with the validation information",

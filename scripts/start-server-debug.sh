@@ -16,4 +16,4 @@ else
   cernopendata run -h 0.0.0.0 --reload;
 fi
 echo "THE WEB SERVICE DIED!!! Let's sleep for a bit to give some time to debug"
-sleep 60
+sleep 600
