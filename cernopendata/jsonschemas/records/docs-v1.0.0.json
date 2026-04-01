@@ -1,42 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
   "description": "Describe information needed for article entity.",
   "properties": {
-    "_files": {
-      "items": {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "description": "Describe information needed for files in records.",
-        "properties": {
-          "bucket": {
-            "type": "string"
-          },
-          "checksum": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "size": {
-            "type": "integer"
-          },
-          "uri": {
-            "type": "string"
-          },
-          "version_id": {
-            "type": "string"
-          }
-        },
-        "title": "File schema.",
-        "type": "object"
-      },
-      "type": "array"
+    "$schema": {
+      "type": "string"
     },
     "author": {
       "type": "string"
     },
     "body": {
+      "additionalProperties": false,
       "properties": {
         "content": {
+          "type": "string"
+        },
+        "format": {
           "type": "string"
         },
         "type": {
@@ -72,6 +51,7 @@
     },
     "related": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "id": {
             "type": "string"
@@ -87,7 +67,11 @@
     "screenshot": {
       "type": "string"
     },
+    "slug": {
+      "type": "string"
+    },
     "short_description": {
+      "additionalProperties": false,
       "properties": {
         "content": {
           "type": "string"
@@ -99,6 +83,7 @@
       "type": "object"
     },
     "stripping": {
+      "additionalProperties": false,
       "properties": {
         "stream": {
           "description": "Stripping stream information, used notably by LHCb",
@@ -122,6 +107,7 @@
       "type": "string"
     },
     "type": {
+      "additionalProperties": false,
       "properties": {
         "primary": {
           "type": "string"

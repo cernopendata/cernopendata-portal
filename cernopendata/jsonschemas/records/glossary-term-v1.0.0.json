@@ -1,7 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
   "description": "Describe information needed for glossary term entity.",
   "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "accelerator": {
+      "title": "Accelerator",
+      "type": "string"
+    },
     "anchor": {
       "title": "Anchor",
       "type": "string"
@@ -31,6 +39,7 @@
     },
     "links": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "text": {
             "title": "Text",
@@ -48,6 +57,7 @@
     },
     "see_also": {
       "items": {
+        "additionalProperties": false,
         "properties": {
           "term": {
             "title": "Term",
@@ -71,6 +81,7 @@
       "type": "array"
     },
     "type": {
+      "additionalProperties": false,
       "properties": {
         "primary": {
           "type": "string"

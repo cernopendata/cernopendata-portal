@@ -14,14 +14,14 @@ def test_update_doc(app, database):
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
             "records/glossary-term-v1.0.0.json"
         ),
-        "old_field": "value_to_delete",
+        "category": "value_to_delete",
     }
 
     record = create_glossary_term(data, False)
     print("Record created")
     print(record)
 
-    assert record["old_field"]
+    assert record["category"]
 
     pid_object = PersistentIdentifier.get("termid", "dummy_anchor")
     new_data = {
@@ -29,10 +29,10 @@ def test_update_doc(app, database):
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
             "records/glossary-term-v1.0.0.json"
         ),
-        "new_field": "value_to_keep",
+        "accelerator": "value_to_keep",
     }
     record = update_doc_or_glossary(pid_object, new_data, False)
     print("Record updated")
     print(record)
-    assert "old_field" not in record.keys()
-    assert record["new_field"]
+    assert "category" not in record.keys()
+    assert record["accelerator"]
