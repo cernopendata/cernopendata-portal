@@ -346,47 +346,57 @@ RECORDS_UI_EXPORT_FORMATS = dict(
     ),
 )
 
+_RECORD_PERMISSION_FACTORY = (
+    "cernopendata.modules.records.permissions:record_read_permission_factory"
+)
+
 RECORDS_UI_ENDPOINTS = dict(
     recid=dict(
         pid_type="recid",
         route="/record/<pid_value>",
-        permission_factory_imp=None,
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         record_class="cernopendata.api:RecordFilesWithIndex",
         view_imp="cernopendata.modules.records.utils:record_metadata_view",
     ),
     recid_files=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/<path:filename>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:file_download_ui",
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_file_index=dict(
         pid_type="recid",
         route="/record/<pid_value>/file_index/<path:file_index>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:get_file_index",
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_files_assets=dict(
         pid_type="recid",
         route="/record/<pid_value>/files/assets/<path:filepath>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:eos_file_download_ui",
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_files_page=dict(
         pid_type="recid",
         route="/record/<pid_value>/filepage/<int:page>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:record_file_page",
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_export=dict(
         pid_type="recid",
         route="/record/<pid_value>/export/<format>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:export_json_view",
         record_class="cernopendata.api:RecordFilesWithIndex",
     ),
     recid_stage=dict(
         pid_type="recid",
         route="/record/<pid_value>/stage",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:stage",
         methods=["POST"],
         record_class="cernopendata.api:RecordFilesWithIndex",
@@ -394,6 +404,7 @@ RECORDS_UI_ENDPOINTS = dict(
     recid_subscribe=dict(
         pid_type="recid",
         route="/record/<pid_value>/subscribe",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="cernopendata.modules.records.utils:subscribe",
         methods=["POST"],
         record_class="cernopendata.api:RecordFilesWithIndex",
@@ -407,13 +418,14 @@ RECORDS_UI_ENDPOINTS = dict(
     docid=dict(
         pid_type="docid",
         route="/docs/<pid_value>",
-        permission_factory_imp=None,
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         record_class="invenio_records_files.api:Record",
         view_imp="cernopendata.modules.records.utils:doc_metadata_view",
     ),
     docid_export=dict(
         pid_type="docid",
         route="/docs/<pid_value>/export/<format>",
+        permission_factory_imp=_RECORD_PERMISSION_FACTORY,
         view_imp="invenio_records_ui.views.export",
         template="cernopendata_records_ui/default_export.html",
     ),
@@ -465,6 +477,7 @@ RECORDS_REST_ENDPOINTS["recid"].update(
             ),
         },
         "search_factory_imp": "cernopendata.modules.records.queries:search_factory",
+        "read_permission_factory_imp": _RECORD_PERMISSION_FACTORY,
     }
 )
 
