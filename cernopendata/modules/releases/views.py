@@ -52,6 +52,21 @@ blueprint = Blueprint(
 )
 
 
+def _detect_payload_type(items):
+    """Return 'documents' if items look like docs, 'records' otherwise."""
+    if not items:
+        return "records"
+    sample = items[0]
+    if (
+        isinstance(sample, dict)
+        and ("slug" in sample or "body" in sample)
+        and "recid" not in sample
+        and "files" not in sample
+    ):
+        return "documents"
+    return "records"
+
+
 def _check_experiment(experiment):
     """Ensure that the experiment name is valid."""
     if not Release.validate_experiment(experiment):
@@ -146,11 +161,20 @@ def release_upload(experiment):
             payload = [payload["metadata"]]
         else:
             payload = [payload]
+
+    payload_type = _detect_payload_type(payload)
+    if payload_type == "records":
+        create_dict = {"records": payload}
+    else:
+        for doc in payload:
+            doc.setdefault("_source_filename", release_name)
+        create_dict = {"documents": payload}
+
     release = Release.create(
-        records=payload,
         experiment=experiment,
         current_user=current_user,
         name=release_name,
+        **create_dict,
     )
 
     flash(f"Release {release._metadata.id} created.", "success")
@@ -268,9 +292,8 @@ def stage_release(experiment, release_id):
     release = _get_release(
         experiment, release_id, status=ReleaseStatus.READY, lock=ReleaseStatus.STAGING
     )
-    schema = "local://records/record-v1.0.0.json"
     try:
-        release.stage(schema, current_user)
+        release.stage(current_user)
         flash("Release staged successfully.", "success")
 
     except Exception as e:
@@ -315,6 +338,89 @@ def publish(experiment, release_id):
     release.publish(current_user)
     flash("Release published!")
     return redirect(f"/releases/{experiment}/{release_id}")
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/add_documents",
+    methods=["POST"],
+)
+@login_required
+def add_documents(experiment, release_id):
+    """Add documents to a release."""
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, "Missing request body")
+
+    release = _get_release(experiment, release_id)
+    source = data.get("source", "json")
+
+    if source == "urls":
+        urls = data.get("urls", [])
+        if not urls:
+            abort(400, "Missing URLs")
+        json_docs = []
+        for url in urls:
+            clean_url = url.split("?")[0]
+            if not clean_url.endswith(".json"):
+                return jsonify({"error": f"URL must point to a .json file: {url}"}), 400
+            try:
+                resp = requests.get(url, timeout=10)
+                resp.raise_for_status()
+            except Exception as e:
+                return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
+            filename = clean_url.rsplit("/", 1)[-1]
+            payload = resp.json()
+            payload = payload if isinstance(payload, list) else [payload]
+            for doc in payload:
+                doc.setdefault("_source_filename", filename)
+            json_docs.extend(payload)
+        docs = json_docs
+    else:
+        docs = data.get("documents")
+        if not docs or not isinstance(docs, list):
+            abort(400, "Missing or invalid documents")
+
+    for doc in docs:
+        content = doc.get("body", {}).get("content", "")
+        if isinstance(content, str) and content.endswith(".md"):
+            return (
+                jsonify(
+                    {
+                        "error": f"Document '{doc.get('slug', '?')}' has a filename pointer "
+                        "in body.content. Inline the markdown text before uploading."
+                    }
+                ),
+                400,
+            )
+
+    release.add_documents(docs, current_user)
+
+    return jsonify(
+        {"status": "ok", "num_docs": release._metadata.num_docs, "documents": docs}
+    )
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/documents/<slug>",
+    methods=["PUT"],
+)
+@login_required
+def update_document(experiment, release_id, slug):
+    """Update a document in a release."""
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, "Missing request body")
+    updated_doc = data.get("document")
+    if not updated_doc:
+        abort(400, "Missing document data")
+
+    release = _get_release(experiment, release_id)
+    try:
+        release.update_document(slug, updated_doc, current_user)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify({"status": "ok"})
 
 
 @blueprint.route(

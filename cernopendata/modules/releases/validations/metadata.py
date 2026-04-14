@@ -1,9 +1,5 @@
 """Validation process."""
 
-from datetime import datetime
-
-from flask_login import current_user
-
 from .expected_fields import ExpectedFieldsValidation
 
 

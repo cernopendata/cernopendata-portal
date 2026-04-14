@@ -17,6 +17,7 @@ export default function RecordsTable({
   initialRecords,
   editDisabled = false,
   viewDisabled = false,
+  releaseStatus = null,
 }) {
   const [records, setRecords] = useState(initialRecords);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -205,68 +206,102 @@ export default function RecordsTable({
 
   return (
     <>
-      <Button
-        className="small blue"
-        disabled={editDisabled}
-        onClick={() => setEditAllMode(true)}
-      >
-        <i className="edit icon"></i>
-        Edit Records
-      </Button>
-      <Button
-        color="teal"
-        disabled={editDisabled}
-        onClick={() => setBulkModalOpen(true)}
-      >
-        <i className="tasks icon"></i> Bulk edit
-      </Button>
-      <div ref={tableRef}>
-        <Table celled compact>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>RecId</Table.HeaderCell>
-              <Table.HeaderCell>DOI</Table.HeaderCell>
-              <Table.HeaderCell>Title</Table.HeaderCell>
-              <Table.HeaderCell textAlign="right">Actions</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {visible.map((record) => (
-              <Table.Row key={record.recid}>
-                <Table.Cell className="no-glossary">{record.recid}</Table.Cell>
-                <Table.Cell className="no-glossary">{record.doi}</Table.Cell>
-                <Table.Cell>{record.title || "—"}</Table.Cell>
-                <Table.Cell textAlign="right">
-                  <Button
-                    className="small blue"
-                    disabled={editDisabled}
-                    onClick={() => setEditingRecord(record)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    className="small blue"
-                    disabled={viewDisabled}
-                    as="a"
-                    onClick={() => {
-                      if (!viewDisabled) {
-                        window.location.href = `/record/${record.recid}`;
-                      }
-                    }}
-                  >
-                    View
-                  </Button>
-                </Table.Cell>
+      <div>
+        <div className="records-table-toolbar">
+          {releaseStatus === "STAGED" && records.length > 0 && (
+            <div className="ui checkbox">
+              <input
+                type="checkbox"
+                name="generate_doi"
+                id="generate-doi-checkbox"
+                value="1"
+                form="primary-action-form"
+              />
+              <label htmlFor="generate-doi-checkbox">
+                Generate DOI for all entries
+              </label>
+            </div>
+          )}
+          <div className="records-table-toolbar-buttons">
+            <Button
+              className="blue"
+              disabled={editDisabled}
+              onClick={() => setEditAllMode(true)}
+            >
+              <i className="edit icon"></i> Edit Records
+            </Button>
+            <Button
+              color="teal"
+              disabled={editDisabled}
+              onClick={() => setBulkModalOpen(true)}
+            >
+              <i className="tasks icon"></i> Bulk Edit
+            </Button>
+          </div>
+        </div>
+        <div ref={tableRef}>
+          <Table celled compact>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>RecId</Table.HeaderCell>
+                <Table.HeaderCell>DOI</Table.HeaderCell>
+                <Table.HeaderCell>Title</Table.HeaderCell>
+                <Table.HeaderCell collapsing>Actions</Table.HeaderCell>
               </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+            </Table.Header>
+            <Table.Body>
+              {visible.length === 0 ? (
+                <Table.Row>
+                  <Table.Cell colSpan="4" textAlign="center">
+                    No records in this release.
+                  </Table.Cell>
+                </Table.Row>
+              ) : (
+                visible.map((record) => (
+                  <Table.Row key={record.recid}>
+                    <Table.Cell className="no-glossary">
+                      {record.recid}
+                    </Table.Cell>
+                    <Table.Cell className="no-glossary">
+                      {record.doi}
+                    </Table.Cell>
+                    <Table.Cell>{record.title || "—"}</Table.Cell>
+                    <Table.Cell collapsing>
+                      <Button
+                        className="blue"
+                        disabled={editDisabled}
+                        onClick={() => setEditingRecord(record)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        className="blue"
+                        disabled={viewDisabled}
+                        as="a"
+                        onClick={() => {
+                          if (!viewDisabled)
+                            window.location.href = `/record/${record.recid}`;
+                        }}
+                      >
+                        View
+                      </Button>
+                    </Table.Cell>
+                  </Table.Row>
+                ))
+              )}
+            </Table.Body>
+          </Table>
+        </div>
+        {records.length > pageSize && (
+          <div className="records-table-pagination">
+            <Pagination
+              totalPages={Math.ceil(records.length / pageSize)}
+              activePage={page + 1}
+              onPageChange={(_, d) => setPage(d.activePage - 1)}
+            />
+          </div>
+        )}
       </div>
-      <Pagination
-        totalPages={Math.ceil(records.length / pageSize)}
-        activePage={page + 1}
-        onPageChange={(_, d) => setPage(d.activePage - 1)}
-      />
 
       <Modal
         open={!!editingRecord || editAllMode}

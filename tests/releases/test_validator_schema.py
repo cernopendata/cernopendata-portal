@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 
 from cernopendata.modules.releases.api import Release
-from cernopendata.modules.releases.validations.schema import ValidRecordSchema
+from cernopendata.modules.releases.validations.rec_schema import ValidRecordSchema
 
 
 @pytest.fixture
@@ -68,3 +68,19 @@ def test_validate_records_not_list(app):
             validator = ValidRecordSchema()
         errors = validator.validate(release)
         assert errors == ["The field 'records' is not a list"]
+
+
+def test_validate_returns_error_when_validator_raises(app):
+    """Unexpected errors during validation are returned as a single error."""
+    with app.app_context():
+        with patch("builtins.open", mock_open(read_data=json.dumps(VALID_SCHEMA))):
+            release = MagicMock()
+            release.records = [{"title": "Record 1", "recid": "1"}]
+            with patch(
+                "cernopendata.modules.releases.validations.schema.Draft4Validator"
+            ) as validator_cls:
+                validator_cls.return_value.iter_errors.side_effect = RuntimeError(
+                    "boom"
+                )
+                errors = ValidRecordSchema().validate(release)
+    assert errors == ["Could not validate the schema: boom"]
