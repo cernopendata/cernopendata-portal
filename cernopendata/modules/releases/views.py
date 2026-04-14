@@ -318,6 +318,88 @@ def publish(experiment, release_id):
 
 
 @blueprint.route(
+    "/releases/<experiment>/<int:release_id>/add_documents",
+    methods=["POST"],
+)
+@login_required
+def add_documents(experiment, release_id):
+    """Add documents to a release."""
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, "Missing request body")
+
+    source = data.get("source", "json")
+
+    if source == "urls":
+        urls = data.get("urls", [])
+        if not urls:
+            abort(400, "Missing URLs")
+        json_docs = []
+        md_content = None
+        for url in urls:
+            try:
+                resp = requests.get(url, timeout=10)
+                resp.raise_for_status()
+            except Exception as e:
+                return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
+            clean_url = url.split("?")[0]
+            if clean_url.endswith(".json"):
+                filename = clean_url.rsplit("/", 1)[-1]
+                payload = resp.json()
+                payload = payload if isinstance(payload, list) else [payload]
+                for doc in payload:
+                    # Remember where this doc came from so ValidSlug can
+                    # auto-fix a missing slug from the filename stem.
+                    doc.setdefault("_source_filename", filename)
+                json_docs.extend(payload)
+            else:
+                md_content = resp.text
+        if not json_docs:
+            return jsonify({"error": "No .json URL provided"}), 400
+        if md_content:
+            for doc in json_docs:
+                doc["body"] = {"content": md_content, "format": "md"}
+        docs = json_docs
+    else:
+        docs = data.get("documents")
+        if not docs or not isinstance(docs, list):
+            abort(400, "Missing or invalid documents")
+
+    release = _get_release(experiment, release_id)
+    release.add_documents(docs, current_user)
+
+    return jsonify(
+        {"status": "ok", "num_docs": release._metadata.num_docs, "documents": docs}
+    )
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/update_document",
+    methods=["POST"],
+)
+@login_required
+def update_document(experiment, release_id):
+    """Update a document in a release."""
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, "Missing request body")
+    slug = data.get("slug")
+    if not slug:
+        abort(400, "Missing document slug")
+    updated_doc = data.get("document")
+    if not updated_doc:
+        abort(400, "Missing document data")
+
+    release = _get_release(experiment, release_id)
+    try:
+        release.update_document(slug, updated_doc, current_user)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+    return jsonify({"status": "ok"})
+
+
+@blueprint.route(
     "/releases/<experiment>/<int:release_id>/bulk_records/preview",
     methods=["POST"],
 )

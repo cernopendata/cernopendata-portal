@@ -29,6 +29,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from deepdiff import DeepDiff
+from flask import current_app
 from invenio_db import db
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.models import PersistentIdentifier
@@ -37,8 +38,11 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from cernopendata.modules.fixtures.cli import (
+    create_doc,
     create_record,
+    delete_doc_or_glossary,
     delete_record,
+    update_doc_or_glossary,
     update_record,
 )
 
@@ -76,6 +80,11 @@ class ReleaseValidation:
     def optional(self):
         """Boolean to check if the validation is optional."""
         return self.validator.optional
+
+    @property
+    def is_document_validation(self):
+        """True if this validation only applies to documents."""
+        return "documents" in self.validator.applies_to
 
     @property
     def name(self):
@@ -155,6 +164,11 @@ class Release:
         return self._metadata.records
 
     @property
+    def documents(self):
+        """Documents of the release."""
+        return self._metadata.documents or []
+
+    @property
     def validations(self):
         """Validation object."""
         return [ReleaseValidation(v) for v in self._metadata.validations]
@@ -174,8 +188,8 @@ class Release:
             status=ReleaseStatus.DRAFT.value,
         )
         obj = cls(release)
-        obj.validate(current_user)
         obj.create_validations()
+        obj.validate(current_user)
         db.session.add(release)
 
         db.session.commit()
@@ -273,6 +287,33 @@ class Release:
         db.session.add(self._metadata)
         db.session.commit()
 
+    def add_documents(self, new_docs, current_user):
+        """Append documents to the release."""
+        current = self._metadata.documents or []
+        current.extend(new_docs)
+        self._metadata.documents = current
+        self._metadata.num_docs = len(current)
+        flag_modified(self._metadata, "documents")
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
+    def update_document(self, slug, updated_doc, current_user):
+        """Replace a document in the release identified by its slug."""
+        current = self._metadata.documents or []
+        for i, doc in enumerate(current):
+            if doc.get("slug") == slug:
+                current[i] = updated_doc
+                break
+        else:
+            raise ValueError(f"Document with slug '{slug}' not found")
+        self._metadata.documents = current
+        self._metadata.num_docs = len(current)
+        flag_modified(self._metadata, "documents")
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
     def validate(self, current_user):
         """
             Check if a release is ready to be published.
@@ -321,6 +362,11 @@ class Release:
         if not self.is_status(ReleaseStatus.STAGING):
             raise RuntimeError("Release is not READY")
 
+        if self._metadata.num_errors:
+            self.change_status(ReleaseStatus.DRAFT, current_user)
+            db.session.commit()
+            raise RuntimeError("Release has validation errors and cannot be staged")
+
         for record_data in self._metadata.records:
             record_data["$schema"] = Release.record_schema
             if "abstract" not in record_data:
@@ -332,6 +378,18 @@ class Release:
             )
             record = create_record(record_data, False)
             record.commit()
+
+        doc_schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/docs-v1.0.0.json"
+        )
+        for doc_data in self._metadata.documents or []:
+            doc_copy = deepcopy(doc_data)
+            doc_copy.pop("_source_filename", None)
+            doc_copy["$schema"] = doc_schema
+            doc_copy["prerelease"] = f"{self._metadata.experiment}/{self._metadata.id}"
+            doc = create_doc(doc_copy, skip_files=True)
+            doc.commit()
+
         self.change_status(ReleaseStatus.STAGED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
@@ -348,6 +406,23 @@ class Release:
             record = update_record(pid_object, record_data, True)
             record.commit()
             indexer.index(record)
+
+        doc_schema = current_app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/docs-v1.0.0.json"
+        )
+        for i, doc_data in enumerate(self._metadata.documents or []):
+            slug = doc_data.get("slug")
+            if not slug:
+                raise RuntimeError(f"Document {i}: missing 'slug' at publish time")
+            doc_copy = deepcopy(doc_data)
+            doc_copy.pop("_source_filename", None)
+            doc_copy["$schema"] = doc_schema
+            doc_copy.pop("prerelease", None)
+            pid_object = PersistentIdentifier.get("docid", slug)
+            doc = update_doc_or_glossary(pid_object, doc_copy, skip_files=True)
+            doc.commit()
+            indexer.index(doc)
+
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
@@ -360,6 +435,12 @@ class Release:
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
             delete_record(pid_object, "recid")
+
+        for doc_data in self._metadata.documents or []:
+            slug = doc_data.get("slug")
+            if slug:
+                pid_object = PersistentIdentifier.get("docid", slug)
+                delete_doc_or_glossary(pid_object, "docid")
 
         self.change_status(ReleaseStatus.READY, current_user)
         db.session.add(self._metadata)
@@ -462,6 +543,7 @@ class Release:
         else:
             self.validate(current_user)
         flag_modified(self._metadata, "records")
+        flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
 

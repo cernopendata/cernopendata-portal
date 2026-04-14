@@ -30,6 +30,7 @@ class ExpectedFieldsValidation(Validation):
 
     expected_fields = {}
     expected_record_fields = {}
+    expected_doc_fields = {}
 
     abstract = True
 
@@ -53,36 +54,71 @@ class ExpectedFieldsValidation(Validation):
         """Valiation that all the fields have the expected values."""
         errors = []
 
-        for field, expected in self.expected_fields.items():
-            for i, record in enumerate(release.records):
-                expected_value = self.resolve_expected_value(expected, release, record)
-                if not expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: can't figure out what the value is supposed to be"
+        if "records" in self.applies_to:
+            for field, expected in self.expected_fields.items():
+                for i, record in enumerate(release.records):
+                    expected_value = self.resolve_expected_value(
+                        expected, release, record
                     )
-                    continue
-                actual_value = self.get_nested(record, field)
+                    if not expected_value:
+                        errors.append(
+                            f"Record {i}, field {field}: can't figure out what the value is supposed to be"
+                        )
+                        continue
+                    actual_value = self.get_nested(record, field)
 
-                if actual_value != expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
-                    )
+                    if actual_value != expected_value:
+                        errors.append(
+                            f"Record {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
+                        )
+
+        if "documents" in self.applies_to:
+            for field, expected in self.expected_doc_fields.items():
+                for i, doc in enumerate(release.documents or []):
+                    expected_value = self.resolve_expected_value(expected, release, doc)
+                    if not expected_value:
+                        errors.append(
+                            f"Document {i}, field {field}: can't figure out what the value is supposed to be"
+                        )
+                        continue
+                    actual_value = self.get_nested(doc, field)
+
+                    if actual_value != expected_value:
+                        errors.append(
+                            f"Document {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
+                        )
 
         return errors
 
     def fix(self, release):
         """Fix all the fields, setting the expected value for each of them."""
-        for field, expected in self.expected_fields.items():
-            for i, record in enumerate(release.records):
-                expected_value = self.resolve_expected_value(expected, release, record)
-                if not expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: can't figure out what the value is supposed to be"
-                    )
-                    continue
-                self.set_nested(record, field, expected_value)
+        errors = []
 
-        return []
+        if "records" in self.applies_to:
+            for field, expected in self.expected_fields.items():
+                for i, record in enumerate(release.records):
+                    expected_value = self.resolve_expected_value(
+                        expected, release, record
+                    )
+                    if not expected_value:
+                        errors.append(
+                            f"Record {i}, field {field}: can't figure out what the value is supposed to be"
+                        )
+                        continue
+                    self.set_nested(record, field, expected_value)
+
+        if "documents" in self.applies_to:
+            for field, expected in self.expected_doc_fields.items():
+                for i, doc in enumerate(release.documents or []):
+                    expected_value = self.resolve_expected_value(expected, release, doc)
+                    if not expected_value:
+                        errors.append(
+                            f"Document {i}, field {field}: can't figure out what the value is supposed to be"
+                        )
+                        continue
+                    self.set_nested(doc, field, expected_value)
+
+        return errors
 
     def set_nested(self, data, path, value):
         """Set a value for a field in a record."""

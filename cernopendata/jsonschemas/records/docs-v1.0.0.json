@@ -64,6 +64,9 @@
       },
       "type": "array"
     },
+    "prerelease": {
+      "type": "string"
+    },
     "screenshot": {
       "type": "string"
     },

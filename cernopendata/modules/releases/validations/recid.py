@@ -11,7 +11,7 @@ from .base import Validation
 class ValidRecid(Validation):
     """Check the record ids."""
 
-    name = "valid recid"
+    name = "Valid recid"
     error_message = "The records should have record id that do not exist."
 
     def validate(self, release):

@@ -7,24 +7,10 @@
 
 
 {%- block page_body %}
-<div class="ui container">
-    <div class="ui center aligned segment">
-
-        <h2 class="ui header">
-            Welcome to the releases
-            <div class="sub header">Experiment: {{ experiment|upper }}</div>
-        </h2>
-
-        <a href="/releases/{{experiment}}"
-           class="ui small basic button">
-            <i class="arrow left icon"></i>
-            Back to releases
-        </a>
-        <div class="ui hidden divider"></div>
-        {% include 'cernopendata_pages/release_details/_summary.html' %}
-        {% include 'cernopendata_pages/release_details/_navigation.html' %}
-        {% include 'cernopendata_pages/release_details/_body.html' %}
-    </div>
+<div class="ui container release-page-container">
+    {% include 'cernopendata_pages/release_details/_summary.html' %}
+    {% include 'cernopendata_pages/release_details/_navigation.html' %}
+    {% include 'cernopendata_pages/release_details/_body.html' %}
 </div>
 {%- endblock %}
 

@@ -18,7 +18,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 
 import ReleasesTable from "./ReleasesTable";
-import RecordsTable from "./RecordsTable";
+import ReleaseContent from "./ReleaseContent";
 import ValidationToggle from "./ValidationToggle";
 
 const container = document.getElementById("releases-react-root");
@@ -69,17 +69,19 @@ if (container) {
     updateSource();
  }
 
- const records_table = document.getElementById('records-table-root');
- if (records_table) {
+ const releaseContent = document.getElementById('release-content-root');
+ if (releaseContent) {
      ReactDOM.render(
-       <RecordsTable
-         experiment= {records_table.dataset.experiment}
-         releaseId = {records_table.dataset.releaseId}
-         initialRecords={JSON.parse(records_table.dataset.records)}
-         editDisabled={records_table.dataset.editDisabled === 'true'}
-         viewDisabled={records_table.dataset.viewDisabled === 'true'}
+       <ReleaseContent
+         experiment={releaseContent.dataset.experiment}
+         releaseId={releaseContent.dataset.releaseId}
+         initialRecords={JSON.parse(releaseContent.dataset.records)}
+         initialDocuments={JSON.parse(releaseContent.dataset.documents || '[]')}
+         editDisabled={releaseContent.dataset.editDisabled === 'true'}
+         viewDisabled={releaseContent.dataset.viewDisabled === 'true'}
+         releaseStatus={releaseContent.dataset.releaseStatus}
        />,
-       records_table
+       releaseContent
      );
  }
 

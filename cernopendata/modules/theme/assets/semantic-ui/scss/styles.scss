@@ -556,3 +556,197 @@ a {
   width: 150px !important;
   min-width: 150px !important;
 }
+
+// Release view
+
+.release-page-container {
+    padding-top: 1.5em;
+}
+
+.release-page-header {
+    margin-bottom: 1.5em;
+}
+
+.release-page-header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-bottom: 0.4em;
+
+    > .ui.button {
+        flex-shrink: 0;
+    }
+}
+
+.release-page-title {
+    flex: 1;
+    font-size: 1.5em;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.3;
+
+    a {
+        color: inherit;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+.release-page-actions-btn {
+    flex-shrink: 0;
+}
+
+.release-experiment-label {
+    vertical-align: middle;
+    margin-left: 0.4em;
+}
+
+.release-page-description {
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 0.95em;
+    line-height: 1.5;
+    margin-top: 0.15em;
+}
+
+.release-summary-segment {
+    padding: 1.5em 2em;
+
+    .ui.statistics {
+        margin: 0;
+    }
+
+    .ui.divider {
+        margin: 1.2em 0 1em;
+    }
+}
+
+
+.ui.steps.top.attached {
+    border-bottom: none;
+    margin-top: 1em;
+}
+
+.release-navigation-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    .ui.checkbox {
+        margin-right: auto;
+    }
+
+    #primary-action-btn > .icon {
+        margin: 0 0.5em 0 0;
+    }
+}
+
+.release-status-message {
+    text-align: center;
+    font-size: 0.9em;
+
+    form {
+        margin-top: 0.75em;
+    }
+}
+
+.records-table-toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75em;
+
+    .records-table-toolbar-buttons {
+        display: flex;
+        gap: 0.5em;
+        margin-left: auto;
+    }
+}
+
+.records-table-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75em;
+}
+
+.release-step-substatus {
+    font-weight: normal;
+    font-size: 0.85em;
+}
+
+.doc-hint {
+    margin-top: 0.4em;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 0.9em;
+}
+
+.doc-url-row {
+    display: flex;
+    gap: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.doc-textarea {
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
+.validation-segment {
+    padding: 0;
+    margin-top: 1em;
+}
+
+.validation-header {
+    padding: 1em 1.5em;
+    border-bottom: 1px solid rgba(34, 36, 38, .1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.validation-header-labels {
+    display: flex;
+    gap: 0.4em;
+    flex-wrap: wrap;
+}
+
+.validation-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.8em 1.5em;
+
+    &.validation-row-bordered {
+        border-bottom: 1px solid rgba(34, 36, 38, .06);
+    }
+}
+
+.validation-row-icon {
+    flex-shrink: 0;
+    width: 1.4em;
+    padding-top: 0.15em;
+}
+
+.validation-row-body {
+    flex: 1;
+    min-width: 0;
+    padding: 0 1em;
+}
+
+.validation-row-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.validation-autofix-message {
+    margin-top: 0.75em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75em;
+}

@@ -1,39 +1,39 @@
-<div class="ui grid vertical align middle">
-    <div class="row">
-        <div class="fifteen wide column" >
+<div class="release-page-header">
+    <div class="release-page-header-title-row">
+        <a href="/releases/{{experiment}}"
+           class="ui small basic button">
+            <i class="arrow left icon"></i>
+            Back to releases
+        </a>
+        <h1 class="release-page-title">
             {% if release._metadata.discussion_url %}
             <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url" rel="noopener noreferrer" target="_blank">
-                <h1 id="release-name">{{ release._metadata.name }}</h1>
+                <span id="release-name">{{ release._metadata.name }}</span>
             </a>
             {% else %}
-                <h1 id="release-name">{{ release._metadata.name }}</h1>
+            <span id="release-name">{{ release._metadata.name }}</span>
             {% endif %}
-        </div>
-        <div class="column">
-                <div class="ui dropdown icon button">
-                    <i class="ellipsis vertical icon"></i>
-                    <div class="menu">
-                        <div class="item" id="history-button">
-                            View History
-                        </div>
-                        <a class="item"
-                           href="/releases/api/{{ release._metadata.experiment }}/{{ release._metadata.id }}">
-                            Download release definition
-                        </a>
-                        <div class="item" id="edit-metadata-action">
-                            Edit metadata
-                        </div>
-                    </div>
+            <span class="ui small blue label release-experiment-label">{{ experiment|upper }}</span>
+        </h1>
+        <div class="ui dropdown icon button release-page-actions-btn">
+            <i class="ellipsis vertical icon"></i>
+            <div class="menu">
+                <div class="item" id="history-button">
+                    View History
                 </div>
+                <a class="item"
+                   href="/releases/api/{{ release._metadata.experiment }}/{{ release._metadata.id }}">
+                    Download release definition
+                </a>
+                <div class="item" id="edit-metadata-action">
+                    Edit metadata
+                </div>
+            </div>
         </div>
-
     </div>
-    <div class="row">
-        Description: <div id="release-description">
-         {{ release._metadata.description }}
-        </div>
-    </div>
+    <div class="release-page-description" id="release-description">{{ release._metadata.description or '' }}</div>
 </div>
+
 {% set stats = [
 {"label": "Records", "value": release._metadata.num_records},
 {"label": "File indices", "value": release._metadata.num_file_indices},
@@ -41,14 +41,18 @@
 {"label": "Documents", "value": release._metadata.num_docs},
 ] %}
 
-<div class="ui segment four statistics">
-    {% for stat in stats %}
-    <div class="statistic">
-        <div class="value">{{ stat.value }}</div>
-        <div class="label">{{ stat.label }}</div>
+<div class="ui segment release-summary-segment">
+    <div class="ui four statistics">
+        {% for stat in stats %}
+        <div class="statistic">
+            <div class="value">{{ stat.value }}</div>
+            <div class="label">{{ stat.label }}</div>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+
 </div>
+
 <div class="ui modal" id="history-modal">
     <i class="close icon"></i>
 
@@ -112,4 +116,3 @@
         <div class="ui primary button" id="save-metadata">Save</div>
     </div>
 </div>
-

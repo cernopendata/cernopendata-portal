@@ -219,6 +219,7 @@ def test_stage_success(mocker):
     metadata.records = [{"recid": 1}]
     metadata.experiment = "cms"
     metadata.id = 1
+    metadata.num_errors = 0
 
     r = Release(metadata)
 
@@ -279,3 +280,20 @@ def test_rollback(mocker):
     r.rollback(MagicMock())
 
     mock_session.commit.assert_called_once()
+
+
+def test_add_documents_triggers_validate(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    metadata.documents = []
+    metadata.num_docs = 0
+
+    r = Release(metadata)
+    mock_validate = mocker.patch.object(r, "validate")
+
+    user = MagicMock()
+    r.add_documents([{"slug": "alice-data-2015"}], user)
+
+    mock_validate.assert_called_once_with(user)
