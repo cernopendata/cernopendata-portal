@@ -1,46 +1,21 @@
 """Validation process."""
 
 from invenio_db import db
-from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.sql import func
 
-from ..models import ReleaseMetadata, ReleaseStatus
-from .base import Validation
+from ..models import ReleaseMetadata
+from .pid import PIDValidation
 
 
-class ValidRecid(Validation):
+class ValidRecid(PIDValidation):
     """Check the record ids."""
 
-    name = "valid recid"
+    abstract = False
+    name = "Valid recid"
     error_message = "The records should have record id that do not exist."
-
-    def validate(self, release):
-        """Check that all the entries have recid, and that they are not duplicated."""
-        errors = []
-        for i, entry in enumerate(release.records):
-            if "recid" not in entry or not entry["recid"]:
-                errors.append(f"Entry {i + 1}: Missing or empty required field 'recid'")
-
-        # If the release is not STAGED, check for duplicates
-        if release.status != ReleaseStatus["STAGED"].value:
-            used = self._duplicate_pids(release)
-            if used:
-                errors.append(f"RECIDs already registered: {', '.join(used)}")
-
-        return errors
-
-    def _duplicate_pids(self, release):
-        """Check the pids that are duplicated."""
-        recids = [r.get("recid") for r in release.records if r.get("recid")]
-        existing_pid = PersistentIdentifier.query.filter(
-            PersistentIdentifier.pid_type == "recid",
-            PersistentIdentifier.pid_value.in_(recids),
-            PersistentIdentifier.status == "R",
-        ).all()
-        if existing_pid:
-            used = [pid.pid_value for pid in existing_pid]
-            return used
-        return []
+    items_attr = "records"
+    id_field = "recid"
+    pid_type = "recid"
 
     def next_recid_start(self, release):
         """Find the next available recid."""

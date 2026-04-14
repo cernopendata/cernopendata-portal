@@ -8,37 +8,48 @@ from jsonschema import Draft4Validator
 from .base import Validation
 
 
-class ValidRecordSchema(Validation):
-    """Check that the record validates the json schema."""
+class SchemaValidation(Validation):
+    """Abstract base class for validating release items against a JSON schema."""
 
-    name = "Valid record schema"
-    error_message = "The records do not comply with the json schema."
+    abstract = True
+
+    schema_file = None
+    items_attr = None
+    label = None
+    excluded_keys = set()
 
     def validate(self, release):
-        """Validate all records against record-v1.0.0.json."""
+        """Validate all items against the configured JSON schema."""
         schema_path = (
             current_app.extensions["invenio-jsonschemas"].get_schema_dir(
-                "records/record-v1.0.0.json"
+                self.schema_file
             )
-            + "/records/record-v1.0.0.json"
+            + f"/{self.schema_file}"
         )
         with open(schema_path) as f:
             schema = json.load(f)
+
+        items = getattr(release, self.items_attr) or []
+        if not items:
+            return []
+        if not isinstance(items, list):
+            return [f"The field '{self.items_attr}' is not a list"]
+
         errors = []
         validator = Draft4Validator(schema)
-        if not isinstance(release.records, list):
-            return ["The field 'records' is not a list"]
-
         try:
-            for i, record in enumerate(release.records):
-                if not isinstance(record, dict):
-                    errors.append(f"Record {i} is not an object")
+            for i, item in enumerate(items):
+                if not isinstance(item, dict):
+                    errors.append(f"{self.label} {i} is not an object")
                     continue
-                for error in validator.iter_errors(record):
+                if self.excluded_keys:
+                    item = {
+                        k: v for k, v in item.items() if k not in self.excluded_keys
+                    }
+                for error in validator.iter_errors(item):
                     path = ".".join(str(p) for p in error.path)
-
-                    errors.append(f"Record {i} -> {path}: {error.message}")
+                    errors.append(f"{self.label} {i} -> {path}: {error.message}")
         except Exception as e:
-            return [f"Could not validate the schema {e}"]
+            return [f"Could not validate the schema: {e}"]
 
         return errors

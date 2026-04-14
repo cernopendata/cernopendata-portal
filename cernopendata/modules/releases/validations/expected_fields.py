@@ -29,7 +29,6 @@ class ExpectedFieldsValidation(Validation):
     """Abstract class that offers a dictionary of fields and expected values."""
 
     expected_fields = {}
-    expected_record_fields = {}
 
     abstract = True
 
@@ -42,47 +41,62 @@ class ExpectedFieldsValidation(Validation):
             data = data.get(key)
         return data
 
-    def resolve_expected_value(self, expected, release, record):
-        """Get the expected value of a field for a record."""
+    def resolve_expected_value(self, expected, release, item):
+        """Get the expected value of a field for an item."""
         # If callable → compute value dynamically
         if callable(expected):
-            return expected(release, record)
+            return expected(release, item)
         return expected
 
+    def _check_field(self, label, i, item, field, expected_value):
+        """Return an error message if the field doesn't match the expected value, else None."""
+        if not expected_value:
+            return f"{label} {i}, field {field}: can't figure out what the value is supposed to be"
+        actual_value = self.get_nested(item, field)
+        if actual_value != expected_value:
+            return f"{label} {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
+        return None
+
+    def _fix_field(self, label, i, item, field, expected_value):
+        """Set the field to its expected value. Returns an error if the value can't be determined."""
+        if not expected_value:
+            return f"{label} {i}, field {field}: can't figure out what the value is supposed to be"
+        self.set_nested(item, field, expected_value)
+        return None
+
     def validate(self, release):
-        """Valiation that all the fields have the expected values."""
+        """Validation that all the fields have the expected values."""
         errors = []
-
-        for field, expected in self.expected_fields.items():
-            for i, record in enumerate(release.records):
-                expected_value = self.resolve_expected_value(expected, release, record)
-                if not expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: can't figure out what the value is supposed to be"
+        for kind, label in (("records", "Record"), ("documents", "Document")):
+            if kind not in self.applies_to:
+                continue
+            items = getattr(release, kind) or []
+            for field, expected in self.expected_fields.items():
+                for i, item in enumerate(items):
+                    expected_value = self.resolve_expected_value(
+                        expected, release, item
                     )
-                    continue
-                actual_value = self.get_nested(record, field)
-
-                if actual_value != expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
-                    )
-
+                    error = self._check_field(label, i, item, field, expected_value)
+                    if error:
+                        errors.append(error)
         return errors
 
     def fix(self, release):
         """Fix all the fields, setting the expected value for each of them."""
-        for field, expected in self.expected_fields.items():
-            for i, record in enumerate(release.records):
-                expected_value = self.resolve_expected_value(expected, release, record)
-                if not expected_value:
-                    errors.append(
-                        f"Record {i}, field {field}: can't figure out what the value is supposed to be"
+        errors = []
+        for kind, label in (("records", "Record"), ("documents", "Document")):
+            if kind not in self.applies_to:
+                continue
+            items = getattr(release, kind) or []
+            for field, expected in self.expected_fields.items():
+                for i, item in enumerate(items):
+                    expected_value = self.resolve_expected_value(
+                        expected, release, item
                     )
-                    continue
-                self.set_nested(record, field, expected_value)
-
-        return []
+                    error = self._fix_field(label, i, item, field, expected_value)
+                    if error:
+                        errors.append(error)
+        return errors
 
     def set_nested(self, data, path, value):
         """Set a value for a field in a record."""

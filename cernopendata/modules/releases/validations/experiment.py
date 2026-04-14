@@ -30,8 +30,10 @@ class ValidExperiment(ExpectedFieldsValidation):
 
     abstract = False
 
+    applies_to = {"records", "documents"}
+
     name = "Valid experiment"
-    error_message = "The records should be of the correct experiment."
+    error_message = "The records and documents should be of the correct experiment."
     expected_fields = {
-        "experiment": lambda release, record=None: [release.experiment.upper()]
+        "experiment": lambda release, item=None: [release.experiment.upper()]
     }

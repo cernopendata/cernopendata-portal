@@ -34,6 +34,7 @@ class Validation:
     error_message = None
     experiment = None
     optional = False
+    applies_to = {"records"}
 
     def __init_subclass__(cls, **kwargs):
         """Keep a registry of all the validations."""

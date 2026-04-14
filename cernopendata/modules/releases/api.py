@@ -29,6 +29,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from deepdiff import DeepDiff
+from flask import current_app
 from invenio_db import db
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.models import PersistentIdentifier
@@ -37,8 +38,11 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from cernopendata.modules.fixtures.cli import (
+    create_doc,
     create_record,
+    delete_doc_or_glossary,
     delete_record,
+    update_doc_or_glossary,
     update_record,
 )
 
@@ -78,6 +82,16 @@ class ReleaseValidation:
         return self.validator.optional
 
     @property
+    def is_document_validation(self):
+        """True if this validation only applies to documents."""
+        return self.validator.applies_to == {"documents"}
+
+    @property
+    def is_record_validation(self):
+        """True if this validation only applies to records."""
+        return self.validator.applies_to == {"records"}
+
+    @property
     def name(self):
         """Name of the validation."""
         return self._metadata.name
@@ -107,6 +121,8 @@ class ReleaseValidation:
 
     def validate(self):
         """Run the validation."""
+        if not self.validator:
+            return []
         return self.validator.validate(self._metadata.release)
 
     def fix(self):
@@ -138,11 +154,23 @@ class ReleaseValidation:
 class Release:
     """Class for the release."""
 
-    record_schema = "local://records/record-v1.0.0.json"
-
     def __init__(self, metadata):
         """Initialize the object."""
         self._metadata = metadata
+
+    @staticmethod
+    def _record_schema_url():
+        """Return the JSON schema URL for records."""
+        return current_app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/record-v1.0.0.json"
+        )
+
+    @staticmethod
+    def _document_schema_url():
+        """Return the JSON schema URL for documents."""
+        return current_app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/docs-v1.0.0.json"
+        )
 
     @property
     def status(self):
@@ -155,27 +183,51 @@ class Release:
         return self._metadata.records
 
     @property
+    def documents(self):
+        """Documents of the release."""
+        return self._metadata.documents or []
+
+    @property
     def validations(self):
         """Validation object."""
         return [ReleaseValidation(v) for v in self._metadata.validations]
 
     @classmethod
     def create(
-        cls, *, experiment, records, current_user, name=None, discussion_url=None
+        cls,
+        *,
+        experiment,
+        current_user,
+        records=None,
+        documents=None,
+        name=None,
+        discussion_url=None,
     ):
         """Create a new draft release."""
-        if not isinstance(records, list):
-            raise ValueError("records must be a list")
+        records = records or []
+        documents = documents or []
+        if not isinstance(records, list) or not isinstance(documents, list):
+            raise ValueError("records and documents must be lists")
+        if records:
+            schema = cls._record_schema_url()
+            for record in records:
+                record["$schema"] = schema
+        if documents:
+            doc_schema = cls._document_schema_url()
+            for doc in documents:
+                doc["$schema"] = doc_schema
         release = ReleaseMetadata(
             name=name,
             discussion_url=discussion_url,
             experiment=experiment,
             records=records,
+            documents=documents,
+            num_docs=len(documents),
             status=ReleaseStatus.DRAFT.value,
         )
         obj = cls(release)
-        obj.validate(current_user)
         obj.create_validations()
+        obj.validate(current_user)
         db.session.add(release)
 
         db.session.commit()
@@ -268,7 +320,43 @@ class Release:
 
     def update_records(self, records, current_user):
         """Update the records of a release."""
+        if records:
+            schema = self._record_schema_url()
+            for record in records:
+                record["$schema"] = schema
         self._metadata.records = records
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
+    def add_documents(self, new_docs, current_user):
+        """Append documents to the release."""
+        current = self._metadata.documents or []
+        if new_docs:
+            doc_schema = self._document_schema_url()
+            for doc in new_docs:
+                doc["$schema"] = doc_schema
+        current.extend(new_docs)
+        self._metadata.documents = current
+        self._metadata.num_docs = len(current)
+        flag_modified(self._metadata, "documents")
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
+    def update_document(self, slug, updated_doc, current_user):
+        """Replace a document in the release identified by its slug."""
+        current = self._metadata.documents or []
+        for i, doc in enumerate(current):
+            if doc.get("slug") == slug:
+                updated_doc["$schema"] = self._document_schema_url()
+                current[i] = updated_doc
+                break
+        else:
+            raise ValueError(f"Document with slug '{slug}' not found")
+        self._metadata.documents = current
+        self._metadata.num_docs = len(current)
+        flag_modified(self._metadata, "documents")
         self.validate(current_user)
         db.session.add(self._metadata)
         db.session.commit()
@@ -316,13 +404,19 @@ class Release:
         else:
             self.change_status(ReleaseStatus.DRAFT, current_user)
 
-    def stage(self, schema, current_user):
+    def stage(self, current_user):
         """Stage the entries of a release."""
         if not self.is_status(ReleaseStatus.STAGING):
             raise RuntimeError("Release is not READY")
 
+        if self._metadata.num_errors:
+            self.change_status(ReleaseStatus.DRAFT, current_user)
+            db.session.commit()
+            raise RuntimeError("Release has validation errors and cannot be staged")
+
+        schema = self._record_schema_url()
         for record_data in self._metadata.records:
-            record_data["$schema"] = Release.record_schema
+            record_data.setdefault("$schema", schema)
             if "abstract" not in record_data:
                 record_data["abstract"] = {"description": ""}
             if "description" not in record_data["abstract"]:
@@ -332,6 +426,16 @@ class Release:
             )
             record = create_record(record_data, False)
             record.commit()
+
+        doc_schema = self._document_schema_url()
+        for doc_data in self._metadata.documents or []:
+            doc_data.setdefault("$schema", doc_schema)
+            doc_copy = deepcopy(doc_data)
+            doc_copy.pop("_source_filename", None)
+            doc_copy["prerelease"] = f"{self._metadata.experiment}/{self._metadata.id}"
+            doc = create_doc(doc_copy, skip_files=True)
+            doc.commit()
+
         self.change_status(ReleaseStatus.STAGED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
@@ -343,11 +447,23 @@ class Release:
 
         indexer = RecordIndexer()
         for record_data in self._metadata.records:
-            record_data["$schema"] = Release.record_schema
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
             record = update_record(pid_object, record_data, True)
             record.commit()
             indexer.index(record)
+
+        for i, doc_data in enumerate(self._metadata.documents or []):
+            slug = doc_data.get("slug")
+            if not slug:
+                raise RuntimeError(f"Document {i}: missing 'slug' at publish time")
+            doc_copy = deepcopy(doc_data)
+            doc_copy.pop("_source_filename", None)
+            doc_copy.pop("prerelease", None)
+            pid_object = PersistentIdentifier.get("docid", slug)
+            doc = update_doc_or_glossary(pid_object, doc_copy, skip_files=True)
+            doc.commit()
+            indexer.index(doc)
+
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
@@ -360,6 +476,12 @@ class Release:
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
             delete_record(pid_object, "recid")
+
+        for doc_data in self._metadata.documents or []:
+            slug = doc_data.get("slug")
+            if slug:
+                pid_object = PersistentIdentifier.get("docid", slug)
+                delete_doc_or_glossary(pid_object, "docid")
 
         self.change_status(ReleaseStatus.READY, current_user)
         db.session.add(self._metadata)
@@ -462,6 +584,7 @@ class Release:
         else:
             self.validate(current_user)
         flag_modified(self._metadata, "records")
+        flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
 
