@@ -43,7 +43,6 @@ class GlobalVariables:
         "totem": {
             "name": "TOTEM",
             "url": "totem-experiment.web.cern.ch",
-            "width": "auto",
         },
     }
 

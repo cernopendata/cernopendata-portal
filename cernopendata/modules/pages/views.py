@@ -90,7 +90,9 @@ def index():
     except Exception:
         pass
     return render_template(
-        "cernopendata_pages/front/index.html", featured_articles=results
+        "cernopendata_pages/front/index.html",
+        featured_articles=results,
+        description="Portal to the High Energy Physics data from CERN",
     )
 
 
