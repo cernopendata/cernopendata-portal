@@ -1,5 +1,15 @@
 Changes
 =======
+Version 0.14.0 (released 2026-04-14)
+----------------------------
+- ui: more improvements to accessibility
+- mappings: add new property to the stripping
+- dependencies: lock dependencies on passlib
+- files: create daily celery task to process latest eos dump
+- dependencies: upgrade xrootd
+- schema: ensuring that the records do not add any additional properties
+- fix: improve lighthouse scoring
+
 Version 0.13.0 (released 2026-01-22)
 ----------------------------
 - ui: improve accessibility

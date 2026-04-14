@@ -19,7 +19,7 @@ The list of contributors in alphabetical order:
 - `Daan Rosendal <https://github.com/DaanRosendal>`_
 - `Dana Alsharif <https://github.com/danaalsharif>`_
 - `David Horvát <https://github.com/biscgit>`_
-- `Diana Rand <https://github.com/dianarand>`-
+- `Diana Rand <https://github.com/dianarand>`_
 - `Diego Rodriguez <https://orcid.org/0000-0003-0649-2002>`_
 - `Edgar Carrera <https://github.com/caredg>`_
 - `Eric Engestrom <https://github.com/1ace>`_
