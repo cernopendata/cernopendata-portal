@@ -34,7 +34,7 @@
                             <span>
                                 <strong>Links: </strong>
                                 {% for r in record.links %}
-                                <a target="_blank" href="{{r.url}}">{{r.url}}</a>
+                                <a target="_blank" rel="noopener noreferrer" href="{{r.url}}">{{r.url}}</a>
                                 {% endfor %}
                             </span>
                         </div>
