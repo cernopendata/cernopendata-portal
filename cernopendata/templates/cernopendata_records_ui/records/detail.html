@@ -89,22 +89,22 @@
                     {% if attr == 'CC0-1.0' or attr.startswith("CC0") %}
                     <p>These open data are released under the <a href="https://creativecommons.org/publicdomain/zero/1.0/">
                         Creative Commons Zero v1.0 Universal</a> license.</p>
-                    <img src="{{url_for('static', filename='img/licenses/cc-zero.svg')}}" alt="Logo {{ attr }}" height=45 >
+                    <img src="{{url_for('static', filename='img/licenses/cc-zero.svg')}}" alt="Logo {{ attr }}" width="128" height="45">
 
                     {% elif attr == 'GPL-3.0-only' or attr.startswith("GNU") %}
                     <p>These open data are released under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">
                         GNU General Public License v3.0</a>.</p>
-                    <img src="{{url_for('static', filename='img/licenses/gpl_v3.svg')}}" alt="Logo {{ attr }}" height=45>
+                    <img src="{{url_for('static', filename='img/licenses/gpl_v3.svg')}}" alt="Logo {{ attr }}" width="91" height="45">
 
                     {% elif attr == 'MIT' or attr.startswith("MIT") %}
                     <p>These open data are released under the <a href="https://opensource.org/license/mit">
                         MIT License</a>.</p>
-                    <img src="{{url_for('static', filename='img/licenses/mit_logo.svg')}}" alt="Logo {{ attr }}" height=45>
+                    <img src="{{url_for('static', filename='img/licenses/mit_logo.svg')}}" alt="Logo {{ attr }}" width="87" height="45">
 
                     {% elif attr == 'Apache-2.0' or attr.startswith("Apache") %}
                     <p>These open data are released under the <a href="https://www.apache.org/licenses/LICENSE-2.0.txt">
                         Apache Licenses Version 2.0</a>.</p>
-                    <img src="{{url_for('static', filename='img/licenses/apache_logo.svg')}}" alt="Logo {{ attr }}" height=45>
+                    <img src="{{url_for('static', filename='img/licenses/apache_logo.svg')}}" alt="Logo {{ attr }}" width="111" height="45">
 
                     {% elif attr == 'BSD-3-Clause' or attr.startswith("BSD") %}
                     <p>These open data are released under the <a href="https://opensource.org/licenses/BSD-3-Clause">
