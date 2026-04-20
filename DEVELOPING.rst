@@ -23,9 +23,9 @@ development or for pull request integration purposes. A usage example:
 .. code-block:: console
 
    $ ./scripts/generate-localhost-certificate.sh
-   $ docker compose -f docker-compose-dev.yml build
-   $ docker compose -f docker-compose-dev.yml up -d
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh
+   $ docker compose -f docker-compose.yml -f docker-compose-dev.yml build
+   $ docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
    $ firefox http://0.0.0.0:8000/
    $ docker compose -f docker-compose-dev.yml down -v
 
