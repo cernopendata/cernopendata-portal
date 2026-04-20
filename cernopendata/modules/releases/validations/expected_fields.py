@@ -73,7 +73,7 @@ class ExpectedFieldsValidation(Validation):
     def fix(self, release):
         """Fix all the fields, setting the expected value for each of them."""
         for field, expected in self.expected_fields.items():
-            for record in release.records:
+            for i, record in enumerate(release.records):
                 expected_value = self.resolve_expected_value(expected, release, record)
                 if not expected_value:
                     errors.append(
