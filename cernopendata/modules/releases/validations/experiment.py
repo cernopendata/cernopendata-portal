@@ -33,7 +33,5 @@ class ValidExperiment(ExpectedFieldsValidation):
     name = "Valid experiment"
     error_message = "The records should be of the correct experiment."
     expected_fields = {
-        "experiment": lambda release, record=None: [
-            release.experiment.upper()
-        ]
+        "experiment": lambda release, record=None: [release.experiment.upper()]
     }
