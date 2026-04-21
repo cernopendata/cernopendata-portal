@@ -716,6 +716,12 @@
       },
       "type": "array"
     },
+    "release": {
+      "type": "string"
+    },
+    "rucio_dataset": {
+      "type": "string"
+    },
     "run_numbers" : {
       "items": {
         "description": "The data-taking run numbers for the given collision data",

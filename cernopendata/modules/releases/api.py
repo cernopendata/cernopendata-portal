@@ -301,14 +301,8 @@ class Release:
                 db.session.add(validation._metadata)
 
         for i, entry in enumerate(self._metadata.records):
-
             if "files" in entry:
                 for j, file in enumerate(entry["files"]):
-                    if "uri" not in file or "*" == file["uri"][-1:]:
-                        self._metadata.errors.append(
-                            f"Entry {i + 1}, file {j + 1}: The path is not expanded"
-                        )
-                        validations["expanded_files"] = False
                     if "type" in file and file["type"] == "index.json":
                         self._metadata.num_file_indices += 1
                     else:
@@ -481,3 +475,17 @@ class Release:
         self.validate(current_user)
         db.session.add(validation._metadata)
         db.session.commit()
+
+    def update_metadata(self, data):
+        """Update the metadata of a release: name or github link."""
+        allowed_fields = ["name", "discussion_url", "description"]
+        updated = {}
+
+        for field in allowed_fields:
+            if field in data:
+                setattr(self._metadata, field, data[field])
+                updated[field] = data[field]
+
+        db.session.add(self._metadata)
+        db.session.commit()
+        return updated

@@ -43,7 +43,8 @@ RUN yum install -y \
         libuuid-devel \
         rlwrap \
         jq \
-        vim && \
+        vim \
+        voms-clients && \
     yum groupinstall -y "Development Tools" && \
     yum clean -y all
 

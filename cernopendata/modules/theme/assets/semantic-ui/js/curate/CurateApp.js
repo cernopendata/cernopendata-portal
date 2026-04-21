@@ -99,3 +99,56 @@ document.querySelectorAll(".validation-toggle-root").forEach((el) => {
 $(document).on('click', '#history-button', function () {
     $('#history-modal').modal('show');
 });
+
+$('#edit-metadata-action').on('click', function () {
+  $('#meta-name').val($('#release-name').text() || '');
+  $('#meta-link').val($('#release-discussion-url').attr('href') || '');
+  $('#meta-description').val($('#release-description').text() || '');
+  $('#edit-metadata-modal').modal('show');
+});
+
+$('#save-metadata').on('click', function () {
+  const payload = {
+    name: $('#meta-name').val(),
+    discussion_url: $('#meta-link').val(),
+    description: $('#meta-description').val()
+  };
+  const releaseId= $('#meta-release-id').val();
+
+  fetch(`./${releaseId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+  console.log(res.ok);
+    if (!res.ok) throw new Error('Update failed');
+    console.log("We get here");
+    return res.json();
+  })
+  .then(updated => {
+    // 🟢 1. Update title
+    if (updated.name) {
+      $('#release-name').text(updated.name);
+    }
+
+    // 🟢 2. Update link
+    if (updated.discussion_url) {
+      $('#release-discussion-url')
+        .attr('href', updated.discussion_url);
+    }
+
+    // 🟢 3. Update description
+    if (updated.description) {
+      $('#release-description').text(updated.description);
+    }
+
+    // 🟢 4. Close modal
+    $('#edit-metadata-modal').modal('hide');
+
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Could not save changes');
+  });
+});

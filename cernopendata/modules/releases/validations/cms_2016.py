@@ -38,7 +38,7 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
     experiment = "cms"
     optional = True
 
-    def get_abstract(release, record):
+    def get_abstract(self, release, record):
         """Getting the title."""
         parts = [p for p in record["title"].split("/") if p]
 
@@ -65,9 +65,9 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
             return "nano"
         return None
 
-    def get_usage(release, record):
+    def get_usage(self, release, record):
         """Get the usage for a particular record."""
-        record_type = CMS_2016_Simulated.get_record_type(record)
+        record_type = self.get_record_type(record)
         usage = {
             "mini": {
                 "description": (
@@ -110,9 +110,9 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
         }
         return usage.get(record_type, None)
 
-    def get_system_details(release, record):
+    def get_system_details(self, release, record):
         """Get the system details for a record."""
-        record_type = CMS_2016_Simulated.get_record_type(record)
+        record_type = self.get_record_type(record)
         usage = {
             "mini": {
                 "container_images": [
@@ -151,7 +151,7 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
         }
         return usage.get(record_type, None)
 
-    def parse_title(title):
+    def parse_title(self, title):
         """Parse the title of a record, extracting the title and the type of record."""
         parts = [p for p in title.split("/") if p]
 
@@ -160,10 +160,10 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
 
         return dataset, tier
 
-    def get_relations(release, record):
+    def get_relations(self, release, record):
         """Get the relations of a record."""
         title = record.get("title", "")
-        dataset, tier = CMS_2016_Simulated.parse_title(title)
+        dataset, tier = self.parse_title(title)
 
         if tier == "MINIAODSIM":
             target_tier = "NANOAODSIM"
@@ -183,14 +183,13 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
             (
                 r
                 for r in release.records
-                if CMS_2016_Simulated.parse_title(r.get("title", ""))
-                == (dataset, target_tier)
+                if self.parse_title(r.get("title", "")) == (dataset, target_tier)
             ),
             None,
         )
 
         if relation_record is None:
-            return f"IS THE TITLE {target_title} ?"
+            return None
         return [
             {
                 "description": f"The corresponding {related}AODSIM dataset:",
@@ -199,14 +198,14 @@ class CMS_2016_Simulated(ExpectedFieldsValidation):
             }
         ]
 
-    def get_distribution_formats(release, record):
+    def get_distribution_formats(self, release, record):
         """Get the distribution formats for a record."""
-        record_type = CMS_2016_Simulated.get_record_type(record)
+        record_type = self.get_record_type(record)
         return [f"{record_type}aodsim", "root"]
 
-    def get_title_aditional(release, record):
+    def get_title_aditional(self, release, record):
         """Get the additional title for a record."""
-        dataset, tier = CMS_2016_Simulated.parse_title(record.get("title"))
+        dataset, tier = self.parse_title(record.get("title"))
         return f"Simulated dataset {dataset} in {tier} format for 2016 collision data"
 
     expected_fields = {
