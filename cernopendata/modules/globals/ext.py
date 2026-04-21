@@ -32,7 +32,11 @@ class GlobalVariables:
         "delphi": {"name": "DELPHI", "url": "delphi-www.web.cern.ch", "width": 51},
         "jade": {"name": "JADE", "url": "wwwjade.mpp.mpg.de", "width": 86},
         "lhcb": {"name": "LHCb", "url": "lhcb.web.cern.ch", "width": 80},
-        "opera": {"name": "OPERA", "url": "en.wikipedia.org/wiki/OPERA_experiment", "width": 73},
+        "opera": {
+            "name": "OPERA",
+            "url": "en.wikipedia.org/wiki/OPERA_experiment",
+            "width": 73,
+        },
         "phenix": {
             "name": "PHENIX",
             "url": "www.phenix.bnl.gov",
