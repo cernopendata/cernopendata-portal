@@ -3,15 +3,10 @@ import pytest
 from cernopendata.modules.releases.validations.experiment import ValidExperiment
 
 
-class DummyMetadata:
-    def __init__(self, experiment):
-        self.experiment = experiment
-
-
 class DummyRelease:
     def __init__(self, records, experiment="cms"):
         self.records = records
-        self._metadata = DummyMetadata(experiment)
+        self.experiment = experiment
 
 
 def test_missing_experiment():

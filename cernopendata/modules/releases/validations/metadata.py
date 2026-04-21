@@ -17,5 +17,4 @@ class ValidMetadata(ExpectedFieldsValidation):
     expected_fields = {
         "license.attribution": "CC0-1.0",
         "publisher": "CERN Open Data Portal",
-        "date_published": f"{datetime.now().year}",
     }

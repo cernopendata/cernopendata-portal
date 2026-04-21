@@ -1,7 +1,8 @@
 """Validation process."""
 
-import gfal2
 import stat
+
+import gfal2
 
 from .base import Validation
 

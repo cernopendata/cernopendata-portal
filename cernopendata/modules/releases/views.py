@@ -28,7 +28,16 @@ import json
 from datetime import datetime
 
 import requests
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+)
 from flask_login import current_user, login_required
 
 from .api import Release
@@ -160,6 +169,30 @@ def release_detail(experiment, release_id):
         release=release,
         experiment=experiment,
         current_year=datetime.utcnow().year,
+    )
+
+
+@blueprint.route("/releases/<experiment>/<int:release_id>", methods=["PUT"])
+def update_release(experiment, release_id):
+    """Updte the metadata of a release: name, link and description."""
+    data = request.get_json()
+    release = _get_release(experiment, release_id)
+
+    updated = release.update_metadata(data)
+
+    return jsonify(updated)
+
+
+@blueprint.route("/releases/api/<experiment>/<int:release_id>")
+def release_json(experiment, release_id):
+    """Get the release in json."""
+    release = _get_release(experiment, release_id)
+    return Response(
+        json.dumps({"records": release._metadata.records}, indent=2),
+        mimetype="application/json",
+        headers={
+            "Content-Disposition": f"attachment; filename=release-{release_id}.json"
+        },
     )
 
 

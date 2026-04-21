@@ -481,3 +481,17 @@ class Release:
         self.validate(current_user)
         db.session.add(validation._metadata)
         db.session.commit()
+
+    def update_metadata(self, data):
+        """Update the metadata of a release: name or github link."""
+        allowed_fields = ["name", "discussion_url", "description"]
+        updated = {}
+
+        for field in allowed_fields:
+            if field in data:
+                setattr(self._metadata, field, data[field])
+                updated[field] = data[field]
+
+        db.session.add(self._metadata)
+        db.session.commit()
+        return updated
