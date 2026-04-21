@@ -28,6 +28,28 @@ def dummy_metadata():
 # -----------------------------
 
 
+def test_release_validation():
+    """Check a release validation object."""
+
+    class ReleaseValidationMetadata:
+        id = 1
+        release_id = 2
+        name = "Duplicate files"
+        status = "OK"
+        enabled = True
+
+    release_validation = ReleaseValidation(ReleaseValidationMetadata())
+
+    assert release_validation.name == "Duplicate files"
+    assert release_validation.validator
+    assert not release_validation.fixable
+    assert release_validation.error_message
+    assert release_validation.status == "OK"
+    release_validation.set_status("FAILED")
+    assert release_validation.status == "FAILED"
+    assert release_validation.to_dict()
+
+
 def test_release_properties(dummy_metadata):
     """Test Release object properties."""
 
@@ -128,6 +150,16 @@ def test_delete(mocker):
 
     mock_session.delete.assert_called_once_with(metadata)
     mock_session.commit.assert_called_once()
+
+
+def test_validate(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    user = MagicMock()
+    r.validate(user)
+    r.fix_checks(user)
 
 
 def test_update_records(mocker):

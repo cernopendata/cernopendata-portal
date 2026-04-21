@@ -1,9 +1,39 @@
-<h2 class="ui header">
-    Release #{{ release._metadata.id }} </h2>
-<h2> {{ release._metadata.name }}</h2>
-<button class="ui small button primary" id="history-button">
-    View History
-</button>
+<div class="ui grid vertical align middle">
+    <div class="row">
+        <div class="fifteen wide column" >
+            {% if release._metadata.discussion_url %}
+            <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url" rel="noopener noreferrer" target="_blank">
+                <h1 id="release-name">{{ release._metadata.name }}</h1>
+            </a>
+            {% else %}
+                <h1 id="release-name">{{ release._metadata.name }}</h1>
+            {% endif %}
+        </div>
+        <div class="column">
+                <div class="ui dropdown icon button">
+                    <i class="ellipsis vertical icon"></i>
+                    <div class="menu">
+                        <div class="item" id="history-button">
+                            View History
+                        </div>
+                        <a class="item"
+                           href="/releases/api/{{ release._metadata.experiment }}/{{ release._metadata.id }}">
+                            Download release definition
+                        </a>
+                        <div class="item" id="edit-metadata-action">
+                            Edit metadata
+                        </div>
+                    </div>
+                </div>
+        </div>
+
+    </div>
+    <div class="row">
+        Description: <div id="release-description">
+         {{ release._metadata.description }}
+        </div>
+    </div>
+</div>
 {% set stats = [
 {"label": "Records", "value": release._metadata.num_records},
 {"label": "File indices", "value": release._metadata.num_file_indices},
@@ -53,39 +83,33 @@
         <div class="ui button approve">Close</div>
     </div>
 </div>
-<div class="ui segment">
-    <i class="calendar plus icon"></i>
-    <strong>Timeline</strong>:
-    <div class="ui horizontal list">
+<div class="ui modal" id="edit-metadata-modal">
+    <div class="header">Edit release metadata</div>
 
-        {% set events = release._metadata.history_events %}
+    <div class="content">
+        <div class="ui form">
 
-        {% if events|length > 8 %}
-        {% set display_events = events[:3] + events[-5:] %}
-        {% else %}
-        {% set display_events = events %}
-        {% endif %}
-
-        {% for event in display_events %}
-
-        {% if events|length > 8 and loop.index == 4 %}
-        <div class="item">
-            <div class="ui tiny label">...</div>
-        </div>
-        {% endif %}
-
-        <div class="item">
-            <div class="ui tiny {% if loop.last and events|length <= 8 or loop.index == display_events|length %}green{% else %}grey{% endif %} label"
-                 data-position="top center"
-                 data-tooltip="{{ event.timestamp.strftime('%Y-%m-%d %H:%M') }}{% if event.user %} by {{ event.user.email }}{% endif %}">
-                {{ event.status|capitalize }}
+            <div class="field">
+                <label>Name</label>
+                <input id="meta-name" type="text">
             </div>
 
-            {% if not loop.last %}
-            <i class="right chevron icon"></i>
-            {% endif %}
-        </div>
+            <div class="field">
+                <label>Discussion link</label>
+                <input id="meta-link" type="text">
+            </div>
 
-        {% endfor %}
+            <div class="field">
+                <label>Description</label>
+                <textarea id="meta-description"></textarea>
+            </div>
+            <input id="meta-release-id" type="hidden" value="{{release._metadata.id}}">
+        </div>
+    </div>
+
+    <div class="actions">
+        <div class="ui cancel button">Cancel</div>
+        <div class="ui primary button" id="save-metadata">Save</div>
     </div>
 </div>
+

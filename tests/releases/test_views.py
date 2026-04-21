@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
+from cernopendata.modules.releases import views
 from cernopendata.modules.releases.api import Release
 from cernopendata.modules.releases.models import ReleaseStatus
 
@@ -23,7 +24,29 @@ def test_list_releases(client):
         "cernopendata.modules.releases.views.Release.list_releases", return_value=[]
     ):
 
-        res = client.get("/releases/api/list/cms")  # no follow_redirects!
+        res = client.get("/releases/api/list/cms")
+
+    assert res.status_code == 302
 
 
-#       assert res.status_code == 200
+def test_invalid_experiment(client):
+    resp = client.get("/releases/list/batlas")
+    assert resp.status_code in (403, 404)
+
+
+def test_upload_url(client, monkeypatch):
+    class FakeResp:
+        def json(self):
+            return {"x": 1}
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(views.requests, "get", lambda *a, **k: FakeResp())
+
+    resp = client.post(
+        "/releases/cms",
+        data={"source": "url", "url": "http://example.com/file.json"},
+    )
+
+    assert resp.status_code == 302

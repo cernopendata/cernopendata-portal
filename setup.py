@@ -140,6 +140,8 @@ install_requires = [
     "pyparsing>=3.0.0,<4.0.0",
     "Faker>=37.0.0,<38.0.0",
     "pywebpack>=2.2.1,<3.0.0",
+    # For rucio.py
+    "rucio==39.2.0",
 ]
 
 packages = find_packages()

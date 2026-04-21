@@ -8,7 +8,7 @@
     <form method="post"
           action="/releases/{{ experiment }}/{{ release._metadata.id }}/rollback"
           style="display:inline">
-        <button class="ui tiny button">Return to READY</button>
+        <button class="ui tiny button">Return to Draft</button>
     </form>
 </div>
 {% elif release_status == 'EDITING' %}

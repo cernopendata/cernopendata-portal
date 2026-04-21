@@ -28,6 +28,7 @@ from enum import Enum
 
 from invenio_db import db
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import deferred
 
 
 class ReleaseStatus(str, Enum):
@@ -118,6 +119,8 @@ class ReleaseMetadata(db.Model):
         nullable=False,
     )
 
+    description = db.Column(db.Text, nullable=True)
+
     discussion_url = db.Column(
         db.String(2048),
         nullable=True,
@@ -133,10 +136,10 @@ class ReleaseMetadata(db.Model):
     experiment = db.Column(db.String(50), nullable=False)
 
     # --- Content ---
-    json_fields = ["records", "documents", "glossary", "errors"]
+    json_fields = ["records", "documents", "errors"]
     for f in json_fields:
         default = list if f == "errors" else dict
-        locals()[f] = db.Column(JSONB, nullable=False, default=default)
+        locals()[f] = deferred(db.Column(JSONB, nullable=False, default=default))
 
     # --- Counters ---
     int_fields = [
