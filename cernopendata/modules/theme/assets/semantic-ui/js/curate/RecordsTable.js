@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   Icon,
+  Tab,
   Table,
   Loader,
   Button,
@@ -10,6 +11,9 @@ import {
   TextArea,
 } from "semantic-ui-react";
 import $ from "jquery";
+import { AutoForm } from "uniforms-semantic";
+import SchemaNode from "./recordstable/SchemaNode";
+import createBridge from "./recordstable/schema";
 
 export default function RecordsTable({
   experiment,
@@ -30,8 +34,8 @@ export default function RecordsTable({
   const visible = records.slice(page * pageSize, (page + 1) * pageSize);
 
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [bulkActions, setBulkActions] = useState([]); // each action: { mode, key, value }
-  const [bulkPreview, setBulkPreview] = useState([]); // preview diffs
+  const [bulkActions, setBulkActions] = useState([]);
+  const [bulkPreview, setBulkPreview] = useState([]);
   const [bulkPreviewDone, setBulkPreviewDone] = useState(false);
 
   function typesetMath() {
@@ -49,7 +53,6 @@ export default function RecordsTable({
   }, [page, records]);
 
   const openEditModal = (record) => {
-    // reuse your existing global logic
     window.editingRecordId = record.recid;
 
     $("#records-json-textarea").val(JSON.stringify(record, null, 2));
@@ -204,6 +207,101 @@ export default function RecordsTable({
     );
   }
 
+  const [bridge, setBridge] = useState(null);
+  const [origSchema, setOrigSchema] = useState(null);
+
+  useEffect(() => {
+    fetch("/schema/records/record-v1.0.0.json")
+      .then((res) => res.json())
+      .then((data) => {
+        const [schema, bridge] = createBridge(data);
+        setOrigSchema(schema);
+        setBridge(bridge);
+      });
+  }, []);
+
+  const [visibilityMode, setVisibilityMode] = useState("nonEmpty");
+  const [selectedFields, setSelectedFields] = useState("");
+  const selectedSet = useMemo(() => {
+    return new Set(
+      selectedFields
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+  }, [selectedFields]);
+  const [jsonText, setJsonText] = useState("");
+  useEffect(() => {
+    const data = editAllMode ? records : editingRecord;
+    setJsonText(JSON.stringify(data, null, 2));
+  }, [editAllMode, records, editingRecord]);
+
+  const panes = [
+    {
+      menuItem: "Form",
+      render: () => (
+        <Tab.Pane>
+          {bridge && (
+            <AutoForm
+              schema={bridge}
+              model={editingRecord}
+              onChangeModel={(m) => setEditingRecord(m)}
+            >
+              <div style={{ marginBottom: 10 }}>
+                <select
+                  value={visibilityMode}
+                  onChange={(e) => setVisibilityMode(e.target.value)}
+                >
+                  <option value="all">Show all fields</option>
+                  <option value="nonEmpty">Show only fields with values</option>
+                  <option value="selected">Show only selected fields</option>
+                </select>
+
+                {visibilityMode === "selected" && (
+                  <input
+                    type="text"
+                    placeholder="e.g. doi, files.checksum"
+                    value={selectedFields}
+                    onChange={(e) => setSelectedFields(e.target.value)}
+                    style={{ marginLeft: 10, width: 300 }}
+                  />
+                )}
+              </div>
+              <SchemaNode
+                schema={origSchema}
+                model={editingRecord}
+                visibilityMode={visibilityMode}
+                selectedSet={selectedSet}
+              />
+            </AutoForm>
+          )}
+        </Tab.Pane>
+      ),
+    },
+    {
+      menuItem: "Raw editor",
+      render: () => (
+        <Tab.Pane>
+          <Form>
+            <TextArea
+              value={jsonText}
+              onChange={(e) => {
+                const text = e.target.value;
+                setJsonText(text);
+                try {
+                  const parsed = JSON.parse(text);
+                  editAllMode ? setRecords(parsed) : setEditingRecord(parsed);
+                } catch {}
+              }}
+              rows={20}
+              style={{ width: "100%" }}
+            />
+          </Form>
+        </Tab.Pane>
+      ),
+    },
+  ];
+
   return (
     <>
       <div>
@@ -319,29 +417,7 @@ export default function RecordsTable({
             : `Edit record ${editingRecord?.recid}`}
         </Modal.Header>
         <Modal.Content>
-          <Form>
-            <TextArea
-              value={
-                editAllMode
-                  ? JSON.stringify(records, null, 2)
-                  : JSON.stringify(editingRecord, null, 2)
-              }
-              onChange={(e) => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  if (editAllMode) {
-                    setRecords(parsed);
-                  } else {
-                    setEditingRecord(parsed);
-                  }
-                } catch {
-                  // invalid JSON, ignore or show an error
-                }
-              }}
-              rows={20}
-              style={{ width: "100%" }}
-            />
-          </Form>
+          <Tab panes={panes} />
         </Modal.Content>
         <Modal.Actions>
           <Button
@@ -369,7 +445,6 @@ export default function RecordsTable({
                     copy[idx] = editingRecord;
                     return copy;
                   })();
-              // send updatedRecords as JSON
               fetch(`/releases/${experiment}/${releaseId}/update_records`, {
                 method: "POST",
                 headers: {

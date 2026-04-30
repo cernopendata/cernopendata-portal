@@ -142,6 +142,9 @@ curate = WebpackThemeBundle(
             },
             dependencies={
                 "react": "^16.13.0",
+                "uniforms-semantic": "^4.0.0",
+                "uniforms-bridge-json-schema": "^4.0.0",
+                "ajv": "^6.12.6",
             },
         ),
     },

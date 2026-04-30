@@ -43,7 +43,7 @@ def get_experiments_from_about(page_soup):
             return [
                 exp
                 for div in element.div.find_all("div")
-                if (exp := div.text.lower()) not in not_experiment
+                if (exp := div.text.strip().lower()) not in not_experiment
             ]
 
 
@@ -58,14 +58,14 @@ def get_experiments_from_site(page_soup):
             return [
                 exp
                 for li in element.ul.find_all("li")
-                if (exp := li.text.lower()) not in not_experiment
+                if (exp := li.text.strip().lower()) not in not_experiment
             ]
 
 
 def get_experiments_from_footer(page_soup):
     elements = page_soup.find("div", class_="logos")
     return [
-        div.a.img.get("alt").rstrip(" experiment").lower()
+        div.a.img.get("alt").rstrip(" experiment").strip().lower()
         for div in elements.find_all("div")
     ]
 
