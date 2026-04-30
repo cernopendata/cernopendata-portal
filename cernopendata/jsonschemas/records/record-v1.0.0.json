@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "additionalProperties": false,
   "description": "Record",
   "properties": {
@@ -15,7 +15,8 @@
         "online": {
           "type": "integer"
         }
-      }
+      },
+      "type": "object"
     },
     "_bucket": {
       "type": "string"
@@ -45,7 +46,9 @@
           "size": {
             "type": "integer"
           },
-          "tags": {},
+          "tags": {
+            "type": "object"
+          },
           "type": {
             "type": "string"
           },
@@ -62,7 +65,10 @@
       "uniqueItems": true
     },
     "_file_indices": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
     },
     "availability": {
       "type": "string"
@@ -272,7 +278,8 @@
             }
           }
         }
-      }
+      },
+      "type": "object"
     },
     "dataset_semantics": {
       "items": {
@@ -360,8 +367,10 @@
       "type": "array"
     },
     "files": {
+      "type": "array",
       "items": {
         "additionalProperties": false,
+        "type": "object",
         "properties": {
           "availability": {
             "type": "string"
@@ -481,47 +490,75 @@
             "description": {
               "type": "string"
             }
-          }
+          },
+          "type": "object"
         },
         "steps": {
-          "items": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "configuration_files": {
-                  "items": [
-                    {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "configuration_files": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "cms_confdb_id": {
+                      "description": "the cms_confdb_id (applies to CMS records)",
+                      "type": "string"
+                    },
+                    "process": {
+                      "description": "Indicating the process level (e.x. HLT, RECO etc.)",
+                      "type": "string"
+                    },
+                    "recid": {
+                      "description": "The internal ID of the related record, if it is another Open Data record",
+                      "type": "string"
+                    },
+                    "script": {
+                      "description": "Production script",
+                      "type": "string"
+                    },
+                    "title": {
+                      "description": "Title of the script",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "External link to the configuration file",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "generators": {
+                "items": {
+                  "description": "Generator used in production of dataset",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "global_tag": {
+                "description": "The global tag for generator",
+                "type": "string"
+              },
+              "note": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "links": {
+                    "type": "array",
+                    "items": {
                       "additionalProperties": false,
                       "properties": {
-                        "cms_confdb_id": {
-                          "description": "the cms_confdb_id (applies to CMS records)",
-                          "type": "string"
-                        },
-                        "process": {
-                          "description": "Indicating the process level (e.x. HLT, RECO etc.)",
-                          "type": "string"
-                        },
                         "recid": {
-                          "description": "The internal ID of the related record, if it is another Open Data record",
-                          "type": "string"
-                        },
-                        "script": {
-                          "description": "Production script",
-                          "type": "string"
-                        },
-                        "title": {
-                          "description": "Title of the script",
-                          "type": "string"
-                        },
-                        "url": {
-                          "description": "External link to the configuration file",
                           "type": "string"
                         }
                       },
                       "type": "object"
                     }
-                  ],
-                  "type": "array"
+                  }
                 },
                 "generators": {
                   "items": [
@@ -557,22 +594,23 @@
                     }
                   }
                 },
-                "output_dataset": {
-                  "description": "Output for production",
-                  "type": "string"
-                },
-                "release": {
-                  "description": "CMS software version used in production",
-                  "type": "string"
-                },
-                "type": {
-                  "description": "Format of the dataset",
-                  "type": "string"
-                }
+                "type": "object"
               },
-              "type": "object"
-            }
-          ],
+              "output_dataset": {
+                "description": "Output for production",
+                "type": "string"
+              },
+              "release": {
+                "description": "CMS software version used in production",
+                "type": "string"
+              },
+              "type": {
+                "description": "Format of the dataset",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
           "type": "array"
         }
       },
@@ -593,11 +631,13 @@
                 "recid": {
                   "type": "string"
                 }
-              }
+              },
+              "type": "object"
             }
           ]
         }
-      }
+      },
+      "type": "object"
     },
     "pids": {
       "additionalProperties": false,
@@ -608,9 +648,11 @@
             "id": {
               "type": "string"
             }
-          }
+          },
+          "type": "object"
         }
-      }
+      },
+      "type": "object"
     },
     "pileup": {
       "additionalProperties": false,
