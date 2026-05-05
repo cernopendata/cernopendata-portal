@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Table,
   Button,
@@ -12,6 +12,9 @@ import {
   Input,
   Message,
 } from "semantic-ui-react";
+import UploadImagesModal from "./documents/UploadImagesModal";
+import EditImageModal from "./documents/EditImageModal";
+import PreviewImageModal from "./documents/PreviewImageModal";
 
 export default function DocumentsTable({
   experiment,
@@ -37,6 +40,24 @@ export default function DocumentsTable({
   const [addLoading, setAddLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [filesChosen, setFilesChosen] = useState(false);
+
+  const [images, setImages] = useState([]);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [editingImage, setEditingImage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/releases/${experiment}/${releaseId}/images`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setImages(data.images || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [experiment, releaseId]);
 
   const resetAddModal = () => {
     setAddSource("file");
@@ -194,12 +215,19 @@ export default function DocumentsTable({
             >
               <Icon name="plus" /> Add Document
             </Button>
+            <Button
+              className="blue"
+              disabled={editDisabled || documents.length === 0}
+              onClick={() => setImageModalOpen(true)}
+            >
+              <Icon name="image" /> Upload Images
+            </Button>
           </div>
         </div>
         <Table celled compact>
           <Table.Header>
             <Table.Row>
-              <Table.HeaderCell>Slug</Table.HeaderCell>
+              <Table.HeaderCell>Slug / Path</Table.HeaderCell>
               <Table.HeaderCell>Title</Table.HeaderCell>
               <Table.HeaderCell>Type</Table.HeaderCell>
               <Table.HeaderCell collapsing>Actions</Table.HeaderCell>
@@ -213,36 +241,81 @@ export default function DocumentsTable({
                 </Table.Cell>
               </Table.Row>
             ) : (
-              visible.map((doc, i) => (
-                <Table.Row key={doc.slug || i}>
-                  <Table.Cell className="no-glossary">
-                    {doc.slug || "—"}
-                  </Table.Cell>
-                  <Table.Cell>{doc.title || "—"}</Table.Cell>
-                  <Table.Cell>{doc.type?.primary || "—"}</Table.Cell>
-                  <Table.Cell collapsing>
-                    <Button
-                      className="blue"
-                      disabled={editDisabled}
-                      onClick={() => openEditModal(doc)}
+              visible.flatMap((doc, i) => {
+                const docImages = images.filter(
+                  (img) => img.parent_slug === doc.slug,
+                );
+                return [
+                  <Table.Row key={`doc-${doc.slug || i}`}>
+                    <Table.Cell className="no-glossary">
+                      {doc.slug || "—"}
+                    </Table.Cell>
+                    <Table.Cell>{doc.title || "—"}</Table.Cell>
+                    <Table.Cell>{doc.type?.primary || "—"}</Table.Cell>
+                    <Table.Cell collapsing>
+                      <Button
+                        className="blue"
+                        disabled={editDisabled}
+                        onClick={() => openEditModal(doc)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        className="blue"
+                        disabled={viewDisabled}
+                        as="a"
+                        onClick={() => {
+                          if (doc.slug) {
+                            window.location.href = `/docs/${doc.slug}`;
+                          }
+                        }}
+                      >
+                        View
+                      </Button>
+                    </Table.Cell>
+                  </Table.Row>,
+                  ...docImages.map((image) => (
+                    <Table.Row
+                      key={`img-${image.parent_slug}-${image.filename}`}
                     >
-                      Edit
-                    </Button>
-                    <Button
-                      className="blue"
-                      disabled={viewDisabled}
-                      as="a"
-                      onClick={() => {
-                        if (doc.slug) {
-                          window.location.href = `/docs/${doc.slug}`;
-                        }
-                      }}
-                    >
-                      View
-                    </Button>
-                  </Table.Cell>
-                </Table.Row>
-              ))
+                      <Table.Cell className="no-glossary">
+                        <span className="image-row-url">{image.url}</span>
+                        <Button
+                          icon
+                          basic
+                          size="mini"
+                          className="image-row-copy-btn"
+                          title="Copy path"
+                          onClick={() =>
+                            navigator.clipboard.writeText(image.url)
+                          }
+                        >
+                          <Icon name="copy outline" />
+                        </Button>
+                      </Table.Cell>
+                      <Table.Cell className="no-glossary">
+                        {image.filename}
+                      </Table.Cell>
+                      <Table.Cell>Image</Table.Cell>
+                      <Table.Cell collapsing>
+                        <Button
+                          className="blue"
+                          disabled={editDisabled}
+                          onClick={() => setEditingImage(image)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          className="blue"
+                          onClick={() => setPreviewImage(image)}
+                        >
+                          View
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
+                  )),
+                ];
+              })
             )}
           </Table.Body>
         </Table>
@@ -330,6 +403,48 @@ export default function DocumentsTable({
           </Button>
         </Modal.Actions>
       </Modal>
+
+      <UploadImagesModal
+        open={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        experiment={experiment}
+        releaseId={releaseId}
+        documents={documents}
+        onUploaded={(newImages) => setImages((prev) => [...prev, ...newImages])}
+      />
+
+      <PreviewImageModal
+        image={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
+
+      <EditImageModal
+        image={editingImage}
+        onClose={() => setEditingImage(null)}
+        experiment={experiment}
+        releaseId={releaseId}
+        onRenamed={(oldImage, newImage) =>
+          setImages((prev) =>
+            prev.map((img) =>
+              img.parent_slug === oldImage.parent_slug &&
+              img.filename === oldImage.filename
+                ? newImage
+                : img,
+            ),
+          )
+        }
+        onDeleted={(image) =>
+          setImages((prev) =>
+            prev.filter(
+              (img) =>
+                !(
+                  img.parent_slug === image.parent_slug &&
+                  img.filename === image.filename
+                ),
+            ),
+          )
+        }
+      />
 
       <Modal
         open={!!editingDoc}

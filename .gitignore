@@ -68,3 +68,6 @@ target/
 # Locally generated certificates for development
 nginx/localhost.crt
 nginx/localhost.key
+
+# Local dev upload storage
+data/uploads/
