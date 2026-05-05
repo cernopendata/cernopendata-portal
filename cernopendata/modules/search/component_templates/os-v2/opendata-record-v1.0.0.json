@@ -139,7 +139,7 @@
               "type": "keyword"
             },
             "unit": {
-              "type" : "keyword"
+              "type": "keyword"
             },
             "variable": {
               "type": "keyword"

@@ -42,7 +42,7 @@ const CODTermListItem = ({ result: { metadata }, index }) => {
               metadata.short_definition
                 ? metadata.short_definition
                 : metadata.definition,
-              { length: 200 }
+              { length: 200 },
             )}
           </p>
         </Item.Description>

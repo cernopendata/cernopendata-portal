@@ -11,9 +11,7 @@
     "title": "CERN Open Data Terms of Use",
     "type": {
       "primary": "Documentation",
-      "secondary": [
-        "About"
-      ]
+      "secondary": ["About"]
     }
   }
 ]

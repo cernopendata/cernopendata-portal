@@ -102,6 +102,24 @@ jobs:
           pip install check-manifest
           ./run-tests.sh --check-manifest
 
+  lint-prettier:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --save-dev prettier prettier-plugin-jinja-template
+
+      - name: Run Prettier check
+        run: npx prettier --check "**/*.{js,jsx,json}"
+
   check-fixtures:
     runs-on: ubuntu-24.04
     steps:

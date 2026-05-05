@@ -5,20 +5,23 @@ function ValidationToggle({ validation, onToggle }) {
   const [loading, setLoading] = useState(false);
 
   const handleChange = async (e, data) => {
-      const enabled = data.checked;
-      setLoading(true);
+    const enabled = data.checked;
+    setLoading(true);
 
-      await fetch(`./${validation.release_id}/validations/${validation.id}/enable`, {
+    await fetch(
+      `./${validation.release_id}/validations/${validation.id}/enable`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ enabled }),
-      });
+      },
+    );
 
-      setLoading(false);
+    setLoading(false);
 
-      onToggle(validation.id, enabled);
+    onToggle(validation.id, enabled);
   };
 
   return (
