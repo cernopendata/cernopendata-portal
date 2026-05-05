@@ -53,6 +53,7 @@ services:
     environment: *common-variables
     volumes:
       - web_data:/opt/invenio/var/instance/static
+      - images_data:/opt/invenio/var/instance/static/upload
     links:
       - db
       - search
@@ -75,6 +76,7 @@ services:
     environment: *common-variables
     volumes:
       - web_data:/opt/invenio/var/instance/static
+      - images_data:/opt/invenio/var/instance/static/upload
     links:
       - db
       - cache
@@ -182,6 +184,7 @@ services:
       - "127.0.0.1:443:443"
     volumes:
       - web_data:/opt/invenio/var/instance/static
+      - images_data:/opt/invenio/var/instance/static/upload:ro
     links:
       - web
       - web-files
@@ -199,6 +202,7 @@ services:
       - ./cernopendata:/code/cernopendata
       - ./scripts:/code/scripts
       - web_data:/opt/invenio/var/instance/static
+      - images_data:/opt/invenio/var/instance/static/upload
     links:
       - db
       - cache
@@ -209,3 +213,4 @@ volumes:
   web_data:
   postgresql_data:
   opensearch_data:
+  images_data:

@@ -25,13 +25,16 @@
 """CERN Open Data Release views."""
 
 import json
+import os
 from datetime import datetime
+from pathlib import Path
 
 import requests
 from flask import (
     Blueprint,
     Response,
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -39,10 +42,14 @@ from flask import (
     request,
 )
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from .api import Release
 from .models import ReleaseStatus
 from .utils import curator_experiments
+
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 blueprint = Blueprint(
     "cernopendata_curate",
@@ -397,6 +404,263 @@ def add_documents(experiment, release_id):
 
     return jsonify(
         {"status": "ok", "num_docs": release._metadata.num_docs, "documents": docs}
+    )
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/upload_image",
+    methods=["POST"],
+)
+@login_required
+def upload_image(experiment, release_id):
+    """Upload one or more images attached to a parent document."""
+    parent_slug = request.form.get("parent_slug")
+    if not parent_slug:
+        abort(400, "Missing parent_slug")
+
+    files = [
+        image for image in request.files.getlist("images") if image and image.filename
+    ]
+    if not files:
+        abort(400, "No image files provided")
+
+    release = _get_release(experiment, release_id)
+
+    parent = next(
+        (doc for doc in release.documents if doc.get("slug") == parent_slug),
+        None,
+    )
+    if not parent:
+        abort(400, f"No document with slug '{parent_slug}' in release")
+
+    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+    target_dir = (images_root / parent_slug).resolve()
+    try:
+        target_dir.relative_to(images_root)
+    except ValueError:
+        abort(400, "Invalid parent_slug")
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    already_existing = {p.name for p in target_dir.iterdir()}
+
+    images = []
+    for file in files:
+        filename = secure_filename(file.filename or "").lower()
+        if not filename:
+            abort(400, "Invalid filename")
+        extension = Path(filename).suffix.lower()
+        if extension not in ALLOWED_IMAGE_EXTENSIONS:
+            return (
+                jsonify({"error": f"Unsupported image extension: {extension}"}),
+                400,
+            )
+
+        file.stream.seek(0, os.SEEK_END)
+        size = file.stream.tell()
+        file.stream.seek(0)
+        if size > MAX_IMAGE_SIZE:
+            return (
+                jsonify(
+                    {
+                        "error": f"Image '{filename}' exceeds maximum size of "
+                        f"{MAX_IMAGE_SIZE} bytes"
+                    }
+                ),
+                400,
+            )
+
+        target_path = (target_dir / filename).resolve()
+        try:
+            target_path.relative_to(target_dir)
+        except ValueError:
+            abort(400, "Invalid filename")
+
+        if filename in already_existing:
+            return (
+                jsonify(
+                    {
+                        "error": f"Image '{filename}' already exists for "
+                        f"'{parent_slug}'. Rename the file and try again."
+                    }
+                ),
+                409,
+            )
+        already_existing.add(filename)
+
+        file.save(str(target_path))
+        images.append(
+            {
+                "filename": filename,
+                "parent_slug": parent_slug,
+                "url": f"/static/upload/{parent_slug}/{filename}",
+            }
+        )
+
+    return jsonify({"status": "ok", "images": images})
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/images",
+    methods=["GET"],
+)
+@login_required
+def list_images(experiment, release_id):
+    """Return all uploaded images for a release, grouped by parent document slug."""
+    release = _get_release(experiment, release_id)
+    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+
+    images = []
+    for doc in release.documents:
+        slug = doc.get("slug")
+        if not slug:
+            continue
+        doc_dir = (images_root / slug).resolve()
+        try:
+            doc_dir.relative_to(images_root)
+        except ValueError:
+            continue
+        if not doc_dir.is_dir():
+            continue
+        for entry in sorted(doc_dir.iterdir()):
+            if entry.is_file() and entry.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
+                images.append(
+                    {
+                        "filename": entry.name,
+                        "parent_slug": slug,
+                        "url": f"/static/upload/{slug}/{entry.name}",
+                    }
+                )
+
+    return jsonify({"status": "ok", "images": images})
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/images/<parent_slug>/<filename>",
+    methods=["DELETE"],
+)
+@login_required
+def delete_image(experiment, release_id, parent_slug, filename):
+    """Delete a single uploaded image from a release."""
+    release = _get_release(experiment, release_id)
+
+    parent = next(
+        (doc for doc in release.documents if doc.get("slug") == parent_slug),
+        None,
+    )
+    if not parent:
+        abort(404, f"No document with slug '{parent_slug}' in release")
+
+    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+    slug_dir = (images_root / parent_slug).resolve()
+    try:
+        slug_dir.relative_to(images_root)
+    except ValueError:
+        abort(400, "Invalid parent_slug")
+
+    safe_filename = secure_filename(filename)
+    if not safe_filename:
+        abort(400, "Invalid filename")
+    target_path = (slug_dir / safe_filename).resolve()
+    try:
+        target_path.relative_to(slug_dir)
+    except ValueError:
+        abort(400, "Invalid filename")
+
+    if not target_path.is_file():
+        abort(404, "Image not found")
+
+    target_path.unlink()
+    if slug_dir.is_dir() and not any(slug_dir.iterdir()):
+        slug_dir.rmdir()
+
+    return jsonify({"status": "ok"})
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/images/<parent_slug>/<filename>",
+    methods=["PUT"],
+)
+@login_required
+def rename_image(experiment, release_id, parent_slug, filename):
+    """Rename a single uploaded image."""
+    data = request.get_json(silent=True) or {}
+    new_filename = data.get("filename")
+    if not new_filename:
+        abort(400, "Missing filename")
+
+    release = _get_release(experiment, release_id)
+
+    parent = next(
+        (doc for doc in release.documents if doc.get("slug") == parent_slug),
+        None,
+    )
+    if not parent:
+        abort(404, f"No document with slug '{parent_slug}' in release")
+
+    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+    slug_dir = (images_root / parent_slug).resolve()
+    try:
+        slug_dir.relative_to(images_root)
+    except ValueError:
+        abort(400, "Invalid parent_slug")
+
+    safe_old = secure_filename(filename).lower()
+    safe_new = secure_filename(new_filename).lower()
+    if not safe_old or not safe_new:
+        abort(400, "Invalid filename")
+
+    new_extension = Path(safe_new).suffix.lower()
+    if new_extension not in ALLOWED_IMAGE_EXTENSIONS:
+        return (
+            jsonify({"error": f"Unsupported image extension: {new_extension}"}),
+            400,
+        )
+
+    source_path = (slug_dir / safe_old).resolve()
+    target_path = (slug_dir / safe_new).resolve()
+    try:
+        source_path.relative_to(slug_dir)
+        target_path.relative_to(slug_dir)
+    except ValueError:
+        abort(400, "Invalid filename")
+
+    if not source_path.is_file():
+        abort(404, "Image not found")
+
+    if target_path == source_path:
+        return jsonify(
+            {
+                "status": "ok",
+                "image": {
+                    "filename": safe_new,
+                    "parent_slug": parent_slug,
+                    "url": f"/static/upload/{parent_slug}/{safe_new}",
+                },
+            }
+        )
+
+    if target_path.exists():
+        return (
+            jsonify(
+                {
+                    "error": f"An image named '{safe_new}' already exists. "
+                    "Choose a different name."
+                }
+            ),
+            409,
+        )
+
+    source_path.rename(target_path)
+
+    return jsonify(
+        {
+            "status": "ok",
+            "image": {
+                "filename": safe_new,
+                "parent_slug": parent_slug,
+                "url": f"/static/upload/{parent_slug}/{safe_new}",
+            },
+        }
     )
 
 

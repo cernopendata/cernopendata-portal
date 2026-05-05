@@ -793,3 +793,56 @@ def test_publish_commits_each_document(mocker):
 
     for doc in docs:
         doc.commit.assert_called_once()
+
+
+def test_delete_removes_uploaded_images(mocker, tmp_path):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    (tmp_path / "doc-a").mkdir()
+    (tmp_path / "doc-a" / "fig.png").write_bytes(b"a")
+    (tmp_path / "doc-b").mkdir()
+    (tmp_path / "doc-b" / "fig.png").write_bytes(b"b")
+    (tmp_path / "unrelated").mkdir()
+    (tmp_path / "unrelated" / "fig.png").write_bytes(b"x")
+
+    metadata = MagicMock()
+    metadata.documents = [{"slug": "doc-a"}, {"slug": "doc-b"}, {"title": "no slug"}]
+
+    r = Release(metadata)
+    r.delete()
+
+    assert not (tmp_path / "doc-a").exists()
+    assert not (tmp_path / "doc-b").exists()
+    assert (tmp_path / "unrelated" / "fig.png").exists()
+    mock_session.delete.assert_called_once_with(metadata)
+    mock_session.commit.assert_called_once()
+
+
+def test_delete_documents_images_skips_traversal_slugs(mocker, tmp_path):
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    sibling = tmp_path.parent / "sibling"
+    sibling.mkdir(exist_ok=True)
+    (sibling / "fig.png").write_bytes(b"x")
+
+    metadata = MagicMock()
+    metadata.documents = [{"slug": "../sibling"}]
+
+    r = Release(metadata)
+    r._delete_documents_images()
+
+    assert (sibling / "fig.png").exists()
+
+
+def test_delete_documents_images_no_documents_does_nothing(mocker, tmp_path):
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    metadata = MagicMock()
+    metadata.documents = None
+
+    r = Release(metadata)
+    r._delete_documents_images()

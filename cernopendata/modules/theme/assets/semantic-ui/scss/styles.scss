@@ -645,6 +645,40 @@ a {
     font-size: 0.85em;
 }
 
+.image-row-url {
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
+.ui.button.image-row-copy-btn {
+    margin-left: 0.4em;
+    vertical-align: middle;
+    box-shadow: none !important;
+}
+
+.image-snippet-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: 0.4em;
+
+    > .ui.button {
+        flex-shrink: 0;
+    }
+}
+
+.image-snippet-code {
+    flex: 1;
+    margin: 0;
+    padding: 0.6em 0.8em;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.9em;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 .validation-segment {
     padding: 0;
     margin-top: 1em;

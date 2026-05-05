@@ -675,6 +675,10 @@ CERNOPENDATA_MAX_DOWNLOAD_SIZE = os.environ.get(
 )
 #: Make download availalbe for Root files
 CERNOPENDATA_DISABLE_DOWNLOADS = os.environ.get("CERNOPENDATA_DISABLE_DOWNLOADS", False)
+#: Document image storage
+CERNOPENDATA_IMAGES_PATH = os.environ.get(
+    "CERNOPENDATA_IMAGES_PATH", "/opt/invenio/var/instance/static/upload"
+)
 # Search
 # ======
 #: Default OpenSearch document type.

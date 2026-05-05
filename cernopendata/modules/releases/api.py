@@ -25,8 +25,10 @@
 """CERN Open Data Release api."""
 
 import json
+import shutil
 from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 
 from deepdiff import DeepDiff
 from flask import current_app
@@ -313,8 +315,24 @@ class Release:
         db.session.add(event)
         return event
 
+    def _delete_documents_images(self):
+        """Remove all uploaded images for every document in this release."""
+        images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+        for doc in self._metadata.documents or []:
+            slug = doc.get("slug")
+            if not slug:
+                continue
+            slug_path = (images_root / slug).resolve()
+            try:
+                slug_path.relative_to(images_root)
+            except ValueError:
+                continue
+            if slug_path.is_dir():
+                shutil.rmtree(slug_path)
+
     def delete(self):
         """Delete a release."""
+        self._delete_documents_images()
         db.session.delete(self._metadata)
         db.session.commit()
 

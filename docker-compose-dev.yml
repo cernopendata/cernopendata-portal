@@ -34,6 +34,7 @@ services:
     volumes:
       - ./:/code/
       - ../opendata.cern.ch:/content/
+      - ./data/uploads:/opt/invenio/var/instance/static/upload
 
 #  web-files:
 #    profiles:
@@ -43,6 +44,7 @@ services:
     volumes:
       - ./:/code/
       - ../opendata.cern.ch:/content/
+      - ./data/uploads:/opt/invenio/var/instance/static/upload:ro
 
   pgadmin:
     image: dpage/pgadmin4
@@ -60,3 +62,4 @@ services:
     command: bash -c "/code/scripts/start-server-debug.sh worker"
     volumes:
       - ./:/code/
+      - ./data/uploads:/opt/invenio/var/instance/static/upload
