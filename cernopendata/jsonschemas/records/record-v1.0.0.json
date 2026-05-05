@@ -45,8 +45,7 @@
           "size": {
             "type": "integer"
           },
-          "tags": {
-          },
+          "tags": {},
           "type": {
             "type": "string"
           },
@@ -211,7 +210,7 @@
           "description": "Cross section filter efficiency as given by GenXSecAnalyser",
           "type": "string"
         },
-        "filter_efficiency_error":{
+        "filter_efficiency_error": {
           "type": "string"
         },
         "matching_efficiency": {
@@ -251,28 +250,28 @@
       "type": "object"
     },
     "dataset": {
-      "additionalProperties" : {
-          "type": "array",
-          "items": {
-            "additionalProperties": false,
-            "properties": {
-              "key": {
-                "type": "string"
-              },
-              "size": {
-                "type": "integer"
-              },
-              "type": {
-                "type": "string"
-              },
-              "uri": {
-                 "type": "string"
-                },
-              "version_id": {
-                "type": "string"
-              }
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            },
+            "type": {
+              "type": "string"
+            },
+            "uri": {
+              "type": "string"
+            },
+            "version_id": {
+              "type": "string"
             }
           }
+        }
       }
     },
     "dataset_semantics": {
@@ -320,10 +319,7 @@
       "properties": {
         "availability": {
           "description": "Specifies if dataset is on-demand, online in future might be also tape, disk",
-          "enum": [
-            "ondemand",
-            "online"
-          ],
+          "enum": ["ondemand", "online"],
           "type": "string"
         },
         "formats": {
@@ -376,7 +372,7 @@
           "checksum": {
             "type": "string"
           },
-          "description":{
+          "description": {
             "type": "string"
           },
           "key": {
@@ -546,20 +542,19 @@
                     "description": {
                       "type": "string"
                     },
-                    "links":{
+                    "links": {
                       "type": "array",
-                      "items": [{
-                        "additionalProperties": false,
-                        "properties": {
-                          "recid": {
-                            "type": "string"
+                      "items": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "recid": {
+                              "type": "string"
+                            }
                           }
                         }
-                      }
-
                       ]
                     }
-
                   }
                 },
                 "output_dataset": {
@@ -589,23 +584,22 @@
         "description": {
           "type": "string"
         },
-        "links":{
+        "links": {
           "type": "array",
-          "items": [{
-            "additionalProperties": false,
-            "properties": {
-              "recid": {
-                "type": "string"
+          "items": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "recid": {
+                  "type": "string"
+                }
               }
             }
-          }
-
           ]
         }
-
       }
     },
-    "pids":{
+    "pids": {
       "additionalProperties": false,
       "properties": {
         "oai": {
@@ -616,7 +610,6 @@
             }
           }
         }
-
       }
     },
     "pileup": {
@@ -722,7 +715,7 @@
     "rucio_dataset": {
       "type": "string"
     },
-    "run_numbers" : {
+    "run_numbers": {
       "items": {
         "description": "The data-taking run numbers for the given collision data",
         "type": "string"

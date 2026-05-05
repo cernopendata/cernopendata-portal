@@ -28,33 +28,33 @@ import React from "react";
 import { Input } from "semantic-ui-react";
 
 export const CODSearchBarElement = ({
-    queryString,
-    onInputChange,
-    executeSearch,
-  }) => {
-    const onBtnSearchClick = () => {
-      executeSearch();
-    };
-    const onKeyPress = (event) => {
-      if (event.key === "Enter") {
-        executeSearch();
-      }
-    };
-    return (
-      <Input
-        className="search-bar"
-        action={{
-          content: 'Search',
-          onClick: onBtnSearchClick,
-        }}
-        fluid
-        onChange={(event, { value }) => {
-          onInputChange(value);
-        }}
-        value={queryString}
-        onKeyPress={onKeyPress}
-      />
-    );
+  queryString,
+  onInputChange,
+  executeSearch,
+}) => {
+  const onBtnSearchClick = () => {
+    executeSearch();
   };
+  const onKeyPress = (event) => {
+    if (event.key === "Enter") {
+      executeSearch();
+    }
+  };
+  return (
+    <Input
+      className="search-bar"
+      action={{
+        content: "Search",
+        onClick: onBtnSearchClick,
+      }}
+      fluid
+      onChange={(event, { value }) => {
+        onInputChange(value);
+      }}
+      value={queryString}
+      onKeyPress={onKeyPress}
+    />
+  );
+};
 
 export default CODSearchBarElement;

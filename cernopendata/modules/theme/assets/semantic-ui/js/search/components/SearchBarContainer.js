@@ -27,11 +27,8 @@
 import React from "react";
 import { SearchBar } from "react-searchkit";
 
-export const CODSearchBarContainer = ({
-  }) => {
-    return (
-        <SearchBar />
-    );
-  };
+export const CODSearchBarContainer = ({}) => {
+  return <SearchBar />;
+};
 
 export default CODSearchBarContainer;

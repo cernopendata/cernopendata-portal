@@ -6,12 +6,7 @@
       "format": "md"
     },
     "date_published": "2020-12-11",
-    "experiment": [
-      "ALICE",
-      "ATLAS",
-      "CMS",
-      "LHCb"
-    ],
+    "experiment": ["ALICE", "ATLAS", "CMS", "LHCb"],
     "short_description": {
       "content": "CERN Open Data Policy for the LHC Experiments"
     },

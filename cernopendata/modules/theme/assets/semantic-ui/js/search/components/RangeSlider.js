@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 const RangeSlider = ({ min, max, value, onChange }) => {
   const step = 1;
@@ -22,28 +22,28 @@ const RangeSlider = ({ min, max, value, onChange }) => {
   const areLabelsOverlapping = percentageDifference < 10;
 
   const labelPlacement = (percentage) => {
-    return percentage + ((- 3 * percentage)/50 + 3);
+    return percentage + ((-3 * percentage) / 50 + 3);
   };
 
   const labelOffset = () => {
     return (10 - percentageDifference) / 2;
-  }
+  };
 
   const minLabelPlacement = () => {
-    let placement = labelPlacement(minPercent)
+    let placement = labelPlacement(minPercent);
     if (areLabelsOverlapping) {
-      placement -= labelOffset()
+      placement -= labelOffset();
     }
-    return placement
-  }
+    return placement;
+  };
 
   const maxLabelPlacement = () => {
-    let placement = labelPlacement(maxPercent)
+    let placement = labelPlacement(maxPercent);
     if (areLabelsOverlapping) {
-      placement += labelOffset()
+      placement += labelOffset();
     }
-    return placement
-  }
+    return placement;
+  };
 
   const handleMinChange = (e) => {
     onChange?.([Number(e.target.value), currentMaxInputVal]);

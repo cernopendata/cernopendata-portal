@@ -26,14 +26,14 @@ ExperimentLabel.defaultProps = {
 const ListItemLabels = ({ metadata }) => {
   return (
     <>
-     {metadata.type?.primary &&
-      <Label
-        className="tiny blue"
-        href={`/search?f=type:${metadata.type.primary}`}
-      >
-        {metadata.type.primary}
-      </Label>
-      }
+      {metadata.type?.primary && (
+        <Label
+          className="tiny blue"
+          href={`/search?f=type:${metadata.type.primary}`}
+        >
+          {metadata.type.primary}
+        </Label>
+      )}
       {metadata.type?.secondary &&
         metadata.type.secondary.map((subtype) => (
           <Label
@@ -69,10 +69,7 @@ const ListItemLabels = ({ metadata }) => {
           </Label>
         ))}
       {metadata.experiment &&
-          metadata.experiment.map(( exp ) => (
-            <ExperimentLabel name={exp} />
-          ))
-      }
+        metadata.experiment.map((exp) => <ExperimentLabel name={exp} />)}
     </>
   );
 };

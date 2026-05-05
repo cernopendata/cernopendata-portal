@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Icon, Table, Loader } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom"; // if using React Router
 
-export default function ReleasesTable({experiment}) {
+export default function ReleasesTable({ experiment }) {
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
   const experiment_lower = experiment.toLowerCase();
   useEffect(() => {
-      let url = `/releases/api/list/${experiment_lower}`;
+    let url = `/releases/api/list/${experiment_lower}`;
 
     fetch(url)
       .then((response) => {

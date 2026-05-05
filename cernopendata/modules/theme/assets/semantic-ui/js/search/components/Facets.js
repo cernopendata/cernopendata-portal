@@ -26,26 +26,38 @@
 
 import React from "react";
 import { BucketAggregation, ActiveFilters, withState } from "react-searchkit";
-import { default as RangeAggregation } from "./RangeAggregation"
+import { default as RangeAggregation } from "./RangeAggregation";
 
 const CODFacets = ({ aggs, updateQueryState, currentQueryState }) => {
   return (
     <>
       <div class="ui card" visibility="display">
         <div class="content">
-          <div class="header">Current parameters
-          <tag id="clear_all" class="ui" primary onClick={() => updateQueryState({... currentQueryState, filters:[], })}><a href >Clear all</a></tag>
+          <div class="header">
+            Current parameters
+            <tag
+              id="clear_all"
+              class="ui"
+              primary
+              onClick={() =>
+                updateQueryState({ ...currentQueryState, filters: [] })
+              }
+            >
+              <a href>Clear all</a>
+            </tag>
           </div>
         </div>
-        <div class="content"><ActiveFilters /></div>
+        <div class="content">
+          <ActiveFilters />
+        </div>
       </div>
 
       {aggs.map((agg) =>
-        agg.agg.aggName === 'year' ? (
-          <RangeAggregation key={agg.title} title={agg.title} agg={agg.agg}/>
+        agg.agg.aggName === "year" ? (
+          <RangeAggregation key={agg.title} title={agg.title} agg={agg.agg} />
         ) : (
           <BucketAggregation key={agg.title} title={agg.title} agg={agg.agg} />
-        )
+        ),
       )}
     </>
   );

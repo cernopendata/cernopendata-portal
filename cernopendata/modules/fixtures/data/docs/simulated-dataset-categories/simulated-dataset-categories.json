@@ -8,15 +8,11 @@
       "content": "Description of the simulated dataset categories used in the CERN Open Data Portal."
     },
     "slug": "simulated-dataset-categories",
-    "tags": [
-      "Getting Started"
-    ],
+    "tags": ["Getting Started"],
     "title": "Simulated Dataset Categories",
     "type": {
       "primary": "Documentation",
-      "secondary": [
-        "Guide"
-      ]
+      "secondary": ["Guide"]
     }
   }
 ]

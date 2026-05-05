@@ -4,7 +4,5 @@
     "__SEARCH_INDEX_PREFIX__opendata-docs-v1.0.0",
     "__SEARCH_INDEX_PREFIX__oairecord-v1.0.0"
   ],
-  "index_patterns": [
-    "__SEARCH_INDEX_PREFIX__records-docs*"
-  ]
+  "index_patterns": ["__SEARCH_INDEX_PREFIX__records-docs*"]
 }

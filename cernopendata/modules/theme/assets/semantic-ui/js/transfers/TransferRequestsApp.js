@@ -22,7 +22,12 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
 
   const [summary, setSummary] = useState([]);
   const [details, setDetails] = useState([]);
-  const [pagination, setPagination] = useState({ total: 0, pages: 0, current_page: 1, per_page: 50 });
+  const [pagination, setPagination] = useState({
+    total: 0,
+    pages: 0,
+    current_page: 1,
+    per_page: 50,
+  });
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState(null);
 
@@ -37,13 +42,18 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
           ...(sortDirection && { direction: sortDirection }),
           ...(statusFilters.length > 0 && { status: statusFilters.join(",") }),
           ...(actionFilter.length > 0 && { action: actionFilter.join(",") }),
-          ...(recordFilter && { record: recordFilter })
+          ...(recordFilter && { record: recordFilter }),
         });
 
         const res = await axios.get(`/transfer_requests_content?${params}`);
         setSummary(res.data.summary);
         setDetails(res.data.details);
-        setPagination(res.data.pagination || { ...pagination, total: res.data.details.length });
+        setPagination(
+          res.data.pagination || {
+            ...pagination,
+            total: res.data.details.length,
+          },
+        );
       } catch (err) {
         console.error("Failed to fetch transfer data", err);
       } finally {
@@ -51,11 +61,18 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
       }
     };
     fetchData();
-  }, [statusFilters, actionFilter, recordFilter, sortField, sortDirection, pagination.current_page]);
+  }, [
+    statusFilters,
+    actionFilter,
+    recordFilter,
+    sortField,
+    sortDirection,
+    pagination.current_page,
+  ]);
 
   const formatBytes = (bytes) => {
     if (typeof bytes !== "number" || isNaN(bytes) || bytes <= 0) {
-        return "";
+      return "";
     }
     const sizes = ["B", "KB", "MB", "GB", "TB", "PB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
@@ -169,8 +186,8 @@ const container = document.querySelector("#transfer-requests-react-app");
 if (container) {
   const initialRecid = container.dataset.recordId;
 
-  ReactDOM.render(<TransferRequestsApp
-        defaultRecid={initialRecid}
-        />,
-        container);
+  ReactDOM.render(
+    <TransferRequestsApp defaultRecid={initialRecid} />,
+    container,
+  );
 }

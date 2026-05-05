@@ -40,10 +40,15 @@ import {
 import { DownloadWarningModal } from "../components";
 import config, { ITEMS_PER_PAGE, INDEX_FILES_URL } from "../config";
 import { toHumanReadableSize } from "../utils";
-import { Popup } from 'semantic-ui-react';
+import { Popup } from "semantic-ui-react";
 import "./IndexFilesModal.scss";
 
-export default function IndexFilesModal({ open, setOpen, indexFile, recordAvailability }) {
+export default function IndexFilesModal({
+  open,
+  setOpen,
+  indexFile,
+  recordAvailability,
+}) {
   const files = indexFile.files;
   const [page, setPage] = useState(1);
   const [openDownloadModal, setOpenDownloadModal] = useState(false);
@@ -53,11 +58,12 @@ export default function IndexFilesModal({ open, setOpen, indexFile, recordAvaila
     const end = page * ITEMS_PER_PAGE;
     return files.slice(start, end);
   };
-  const getFileUri = (file_key) => `/record/${config.pidValue}/files/${file_key}`;
+  const getFileUri = (file_key) =>
+    `/record/${config.pidValue}/files/${file_key}`;
 
   const disableMessage =
-    recordAvailability === 'requested'
-      ? 'It has already been requested. Once it is ready, this button will become available.'
+    recordAvailability === "requested"
+      ? "It has already been requested. Once it is ready, this button will become available."
       : `If you want to access it, please request it using the button "Request all files".`;
 
   return (
@@ -73,55 +79,62 @@ export default function IndexFilesModal({ open, setOpen, indexFile, recordAvaila
       >
         <Modal.Header>List of files</Modal.Header>
         <Modal.Content>
-
-            <div>
-                <Table singleLine>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.HeaderCell>Filename</Table.HeaderCell>
-                      <Table.HeaderCell>Size</Table.HeaderCell>
-                      <Table.HeaderCell></Table.HeaderCell>
+          <div>
+            <Table singleLine>
+              <Table.Header>
+                <Table.Row>
+                  <Table.HeaderCell>Filename</Table.HeaderCell>
+                  <Table.HeaderCell>Size</Table.HeaderCell>
+                  <Table.HeaderCell></Table.HeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {getPageFiles().map((file) => {
+                  const downloadProp =
+                    file.size > config.downloadThreshold
+                      ? {
+                          onClick: () => {
+                            setSelectedFile(file);
+                            setOpenDownloadModal(true);
+                          },
+                        }
+                      : {
+                          href: getFileUri(file.key),
+                        };
+                  return (
+                    <Table.Row key={file.checksum}>
+                      <Table.Cell>{file.filename}</Table.Cell>
+                      <Table.Cell collapsing>
+                        {toHumanReadableSize(file.size)}
+                      </Table.Cell>
+                      <Table.Cell collapsing>
+                        <Popup
+                          disabled={file.availability !== "on demand"}
+                          content={`This file is not currently available. ${disableMessage}`}
+                          trigger={
+                            <span>
+                              <Button
+                                as="a"
+                                icon
+                                size="mini"
+                                primary
+                                {...downloadProp}
+                                disabled={file.availability === "on demand"}
+                              >
+                                <Icon name="download" />
+                                Download
+                              </Button>
+                            </span>
+                          }
+                          position="top center"
+                        />
+                      </Table.Cell>
                     </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {getPageFiles().map((file) => {
-                      const downloadProp =
-                        file.size > config.downloadThreshold
-                          ? {
-                              onClick: () => {
-                                setSelectedFile(file);
-                                setOpenDownloadModal(true);
-                              },
-                            }
-                          : {
-                              href: getFileUri(file.key),
-                            };
-                      return (
-                        <Table.Row key={file.checksum}>
-                          <Table.Cell>{file.filename}</Table.Cell>
-                          <Table.Cell collapsing>
-                            {toHumanReadableSize(file.size)}
-                          </Table.Cell>
-                          <Table.Cell collapsing>
-                            <Popup
-                              disabled={file.availability !== 'on demand'}
-                              content={`This file is not currently available. ${disableMessage}`}
-                              trigger={
-                                <span>
-                                  <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'on demand'}>
-                                    <Icon name="download" />Download
-                                  </Button>
-                                </span>
-                              }
-                              position="top center"
-                            />
-                          </Table.Cell>
-                        </Table.Row>
-                      );
-                    })}
-                  </Table.Body>
-                </Table>
-            </div>
+                  );
+                })}
+              </Table.Body>
+            </Table>
+          </div>
 
           {files.length > ITEMS_PER_PAGE && (
             <Pagination

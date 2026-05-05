@@ -31,10 +31,9 @@ import $ from "jquery"; // You need jQuery for Semantic UI's JS
 import { IndexFilesModal, DownloadWarningModal } from "../components";
 import { toHumanReadableSize } from "../utils";
 import config from "../config";
-import RequestRecordApp from "./RequestRecord"
+import RequestRecordApp from "./RequestRecord";
 
 import "./FileTable.scss";
-
 
 function FileActionsDropdown({ file, table_type, getFileUri }) {
   const dropdownRef = useRef(null);
@@ -47,14 +46,17 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
     }, 0);
     return () => clearTimeout(timeout);
   }, []);
-  const isOnline = Object.keys(file.availability).length === 1 && file.availability.hasOwnProperty('online');
+  const isOnline =
+    Object.keys(file.availability).length === 1 &&
+    file.availability.hasOwnProperty("online");
 
   return (
     <div
       className="ui floating dropdown labeled button mini blue icon"
       ref={dropdownRef}
     >
-      Download index<i className="download icon" style={{ marginLeft: "0.5em" }} />
+      Download index
+      <i className="download icon" style={{ marginLeft: "0.5em" }} />
       <div className="menu">
         <a
           className="item ui fluid button"
@@ -66,17 +68,17 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         >
           Format: txt
         </a>
-        { !isOnline && (
-            <a
-              className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key, 'txt')}?qos=online`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Download this file in plain text format"
-              download
-            >
-              Format: txt (online files only)
-            </a>
+        {!isOnline && (
+          <a
+            className="item ui fluid button"
+            href={`${getFileUri(table_type, file.key, "txt")}?qos=online`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Download this file in plain text format"
+            download
+          >
+            Format: txt (online files only)
+          </a>
         )}
         <a
           className="item ui fluid button"
@@ -88,18 +90,18 @@ function FileActionsDropdown({ file, table_type, getFileUri }) {
         >
           Format: json
         </a>
-        { !isOnline && (
-            <a
-              className="item ui fluid button"
-              href={`${getFileUri(table_type, file.key)}?qos=online`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Download this file in JSON format"
-              download
-            >
-              Format: json (online files only)
-            </a>
-         )}
+        {!isOnline && (
+          <a
+            className="item ui fluid button"
+            href={`${getFileUri(table_type, file.key)}?qos=online`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Download this file in JSON format"
+            download
+          >
+            Format: json (online files only)
+          </a>
+        )}
       </div>
     </div>
   );
@@ -121,10 +123,10 @@ export default function FileTable({ items, table_type, recordAvailability }) {
   function isOnDemand(file) {
     return (
       file.availability === "on demand" ||
-      (typeof file.availability === "object" && file.availability?.["on demand"])
+      (typeof file.availability === "object" &&
+        file.availability?.["on demand"])
     );
   }
-
 
   const hasOnDemandColumn = useMemo(() => {
     return items.files.some(isOnDemand);
@@ -134,16 +136,22 @@ export default function FileTable({ items, table_type, recordAvailability }) {
     <Table singleLine>
       <Table.Header>
         <Table.Row>
-          <Table.HeaderCell>{table_type === 'file_index' ? 'Index description' : 'Filename'}</Table.HeaderCell>
-          <Table.HeaderCell>{table_type === 'file_index' ? 'Index size' : 'Size'}</Table.HeaderCell>
-          {hasOnDemandColumn && <Table.HeaderCell>Availability</Table.HeaderCell>}
+          <Table.HeaderCell>
+            {table_type === "file_index" ? "Index description" : "Filename"}
+          </Table.HeaderCell>
+          <Table.HeaderCell>
+            {table_type === "file_index" ? "Index size" : "Size"}
+          </Table.HeaderCell>
+          {hasOnDemandColumn && (
+            <Table.HeaderCell>Availability</Table.HeaderCell>
+          )}
           <Table.HeaderCell></Table.HeaderCell>
         </Table.Row>
       </Table.Header>
       <Table.Body>
         {items.files.map((file) => {
           const downloadProp =
-            table_type !== 'file_index' && file.size > config.downloadThreshold
+            table_type !== "file_index" && file.size > config.downloadThreshold
               ? {
                   onClick: () => {
                     setSelectedFile(file);
@@ -155,7 +163,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
           return (
             <Table.Row key={file.key}>
               <Table.Cell className="filename-cell">
-                {table_type === 'file_index' ? file.description : file.key}
+                {table_type === "file_index" ? file.description : file.key}
               </Table.Cell>
               <Table.Cell collapsing>
                 {toHumanReadableSize(file.size)}
@@ -165,20 +173,30 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                   {isOnDemand(file) && (
                     <Popup
                       content={
-                         file.availability?.online
+                        file.availability?.online
                           ? "Some files of the dataset are available for immediate download"
                           : "The files have to be requested before they are available"
                       }
                       trigger={
-                        <div className="ui mini message" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5em" }}>
-                          <span>{file.availability.online ? "Partial" : "On demand"}</span>
-                            <RequestRecordApp
-                              recordId={config.pidValue}
-                              num_files={file.number_files}
-                              size={file.size}
-                              availability={recordAvailability}
-                              file={file.key}
-                            />
+                        <div
+                          className="ui mini message"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "0.5em",
+                          }}
+                        >
+                          <span>
+                            {file.availability.online ? "Partial" : "On demand"}
+                          </span>
+                          <RequestRecordApp
+                            recordId={config.pidValue}
+                            num_files={file.number_files}
+                            size={file.size}
+                            availability={recordAvailability}
+                            file={file.key}
+                          />
                         </div>
                       }
                       position="top center"
@@ -187,38 +205,46 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                 </Table.Cell>
               )}
               <Table.Cell collapsing>
-                {table_type === 'file_index' ? (
-                   <>
-                     <Button
-                       className="mini blue"
-                       onClick={() => {
-                         setSelectedFile(file);
-                         setOpenModal(true);
-                       }}
-                       title="Preview the content of this index file"
-                     >
-                       <i className="list icon" />
-                       List files
-                     </Button>
-                     <FileActionsDropdown
-                       file={file}
-                       table_type={table_type}
-                       getFileUri={getFileUri}
-                     />
-                   </>
-                ) : (
-                    <Popup
-                      disabled={file.availability !== 'on demand'}
-                      content={`This file is not currently available.`}
-                      trigger={
-                        <span>
-                          <Button as="a" icon size="mini" primary {...downloadProp} disabled={file.availability === 'on demand'}>
-                            <Icon name="download" />Download
-                          </Button>
-                        </span>
-                      }
-                      position="top center"
+                {table_type === "file_index" ? (
+                  <>
+                    <Button
+                      className="mini blue"
+                      onClick={() => {
+                        setSelectedFile(file);
+                        setOpenModal(true);
+                      }}
+                      title="Preview the content of this index file"
+                    >
+                      <i className="list icon" />
+                      List files
+                    </Button>
+                    <FileActionsDropdown
+                      file={file}
+                      table_type={table_type}
+                      getFileUri={getFileUri}
                     />
+                  </>
+                ) : (
+                  <Popup
+                    disabled={file.availability !== "on demand"}
+                    content={`This file is not currently available.`}
+                    trigger={
+                      <span>
+                        <Button
+                          as="a"
+                          icon
+                          size="mini"
+                          primary
+                          {...downloadProp}
+                          disabled={file.availability === "on demand"}
+                        >
+                          <Icon name="download" />
+                          Download
+                        </Button>
+                      </span>
+                    }
+                    position="top center"
+                  />
                 )}
               </Table.Cell>
             </Table.Row>
@@ -245,7 +271,6 @@ export default function FileTable({ items, table_type, recordAvailability }) {
     </Table>
   );
 }
-
 
 FileTable.propTypes = {
   items: PropTypes.object.isRequired,

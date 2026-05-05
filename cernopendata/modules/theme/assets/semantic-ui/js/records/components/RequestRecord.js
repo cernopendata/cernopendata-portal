@@ -4,7 +4,13 @@ import axios from "axios";
 import { toHumanReadableSize } from "../utils";
 import isEmail from "validator/lib/isEmail";
 
-const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => {
+const RequestRecordApp = ({
+  recordId,
+  availability,
+  num_files,
+  size,
+  file,
+}) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState(false);
@@ -64,27 +70,40 @@ const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => 
 
   if (availability === "requested") {
     actionButton = (
-      <a href={`/transfer_requests?record_id=${recordId}`} >
-        <Button className="ml-10" size="tiny" color="blue">See request status</Button>
+      <a href={`/transfer_requests?record_id=${recordId}`}>
+        <Button className="ml-10" size="tiny" color="blue">
+          See request status
+        </Button>
       </a>
     );
   } else {
     actionButton = (
       <>
-        <Button className="ml-10" size="tiny" color="blue" onClick={() => setOpen(true)}>
-          Request { (file)? 'file':'all files' }
+        <Button
+          className="ml-10"
+          size="tiny"
+          color="blue"
+          onClick={() => setOpen(true)}
+        >
+          Request {file ? "file" : "all files"}
         </Button>
 
         <Modal open={open} onClose={handleClose} size="small">
           <Modal.Header>Request to make data available</Modal.Header>
           <Modal.Content>
-            <p>Please confirm you want to request {(file)?'this file':'all files of the record'}.</p>
+            <p>
+              Please confirm you want to request{" "}
+              {file ? "this file" : "all files of the record"}.
+            </p>
             <Message warning>
-              <p>This action takes time. The more data requested, the longer it will take.</p>
+              <p>
+                This action takes time. The more data requested, the longer it
+                will take.
+              </p>
               <Checkbox
                 label={`I confirm that I want to request ${
-                    num_files ? `${num_files} files` : "this file"
-                    }${size ? ` (${toHumanReadableSize(size)} of data)` : ""}`}
+                  num_files ? `${num_files} files` : "this file"
+                }${size ? ` (${toHumanReadableSize(size)} of data)` : ""}`}
                 checked={confirmed}
                 onChange={(e, data) => setConfirmed(data.checked)}
               />
@@ -129,16 +148,16 @@ const RequestRecordApp = ({ recordId, availability, num_files, size, file }) => 
       </>
     );
   }
-  if (file ) {
-     /* If we want only a file, we just need the button */
-     return actionButton;
+  if (file) {
+    /* If we want only a file, we just need the button */
+    return actionButton;
   }
-
 
   return (
     <div className="ui info message">
-      <div className="header" style={{ display: 'flex', alignItems: 'center' }}>
-          Availability:&nbsp; <strong>{availability.toUpperCase()}</strong> {actionButton}
+      <div className="header" style={{ display: "flex", alignItems: "center" }}>
+        Availability:&nbsp; <strong>{availability.toUpperCase()}</strong>{" "}
+        {actionButton}
       </div>
       <p>{message}</p>
     </div>

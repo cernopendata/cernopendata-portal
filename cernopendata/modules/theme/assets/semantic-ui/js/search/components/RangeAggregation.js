@@ -1,6 +1,12 @@
-import _debounce from 'lodash/debounce';
+import _debounce from "lodash/debounce";
 import PropTypes from "prop-types";
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useSelector } from "react-redux";
 import {
   ResponsiveContainer,
@@ -12,30 +18,33 @@ import {
   Cell,
 } from "recharts";
 import { Card } from "semantic-ui-react";
-import RangeSlider from './RangeSlider';
-import { withState } from 'react-searchkit';
+import RangeSlider from "./RangeSlider";
+import { withState } from "react-searchkit";
 
 const SELECTED_COLOR = "#91d5ff";
 const DESELECTED_COLOR = "#bfbfbf";
 const HIGHLIGHT_COLOR = "#69c0ff";
 
-
 function extractBuckets(resultsAggregations, key) {
-    if (resultsAggregations && resultsAggregations[key] && Array.isArray(resultsAggregations[key].buckets)) {
-        return resultsAggregations[key].buckets;
-    }
-    return [];
+  if (
+    resultsAggregations &&
+    resultsAggregations[key] &&
+    Array.isArray(resultsAggregations[key].buckets)
+  ) {
+    return resultsAggregations[key].buckets;
+  }
+  return [];
 }
 
 function getInitialHistogramData(initialBuckets, min, max) {
   const dataMap = new Map();
 
-  initialBuckets.forEach(item => {
+  initialBuckets.forEach((item) => {
     const key = Number(item.key_as_string);
     dataMap.set(key, {
       name: key,
       y: item.doc_count,
-      color: DESELECTED_COLOR
+      color: DESELECTED_COLOR,
     });
   });
 
@@ -47,7 +56,7 @@ function getInitialHistogramData(initialBuckets, min, max) {
       completeData.push({
         name: year,
         y: 0,
-        color: DESELECTED_COLOR
+        color: DESELECTED_COLOR,
       });
     }
   }
@@ -58,9 +67,8 @@ function getInitialHistogramData(initialBuckets, min, max) {
 function getHistogramData(initialData, [lower, upper]) {
   return initialData.map((item, index) => {
     const { name } = item;
-    const color = (name >= lower && name <= upper) ?
-      SELECTED_COLOR :
-      DESELECTED_COLOR;
+    const color =
+      name >= lower && name <= upper ? SELECTED_COLOR : DESELECTED_COLOR;
 
     return {
       ...item,
@@ -76,8 +84,12 @@ const CustomTooltip = ({ active, payload, label, title }) => {
     if (dataPoint.y) {
       return (
         <div className="range-tooltip">
-          <p style={{ margin: 0 }}><strong>Results:</strong> {dataPoint.y}</p>
-          <p style={{ margin: 0 }}><strong>{title}:</strong> {dataPoint.name}</p>
+          <p style={{ margin: 0 }}>
+            <strong>Results:</strong> {dataPoint.y}
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>{title}:</strong> {dataPoint.name}
+          </p>
         </div>
       );
     }
@@ -88,10 +100,10 @@ const CustomTooltip = ({ active, payload, label, title }) => {
 const RangeAggregation = (props) => {
   const { title, agg, currentQueryState } = props;
   const resultsAggregations = useSelector(
-    (state) => state.results.data.aggregations
+    (state) => state.results.data.aggregations,
   );
   const initialBuckets = extractBuckets(resultsAggregations, agg.aggName);
-  const keys = initialBuckets.map(bucket => Number(bucket.key_as_string));
+  const keys = initialBuckets.map((bucket) => Number(bucket.key_as_string));
   const min = keys.length ? Math.min(...keys) : 0;
   const max = keys.length ? Math.max(...keys) : 0;
 
@@ -100,7 +112,7 @@ const RangeAggregation = (props) => {
 
   useEffect(() => {
     const currentFilter = currentQueryState.filters.find(
-      (filter) => Array.isArray(filter) && filter[0] === agg.aggName
+      (filter) => Array.isArray(filter) && filter[0] === agg.aggName,
     );
     if (!currentFilter) {
       setRange([min, max]);
@@ -115,18 +127,22 @@ const RangeAggregation = (props) => {
   }, [currentQueryState.filters, agg.aggName, min, max]);
 
   useEffect(() => {
-    if (Number.isFinite(min) && Number.isFinite(max) && (range[0] === undefined || range[1] === undefined)) {
+    if (
+      Number.isFinite(min) &&
+      Number.isFinite(max) &&
+      (range[0] === undefined || range[1] === undefined)
+    ) {
       setRange([min, max]);
     }
   }, [min, max, range]);
 
   const initialData = useMemo(
     () => getInitialHistogramData(initialBuckets, min, max),
-    [initialBuckets, min, max]
+    [initialBuckets, min, max],
   );
   const data = useMemo(
     () => getHistogramData(initialData, range),
-    [initialData, range]
+    [initialData, range],
   );
 
   const updateQuery = useRef(
@@ -135,13 +151,13 @@ const RangeAggregation = (props) => {
       const [from, to] = newRange;
       const newFilterValue = `${from}--${to}`;
       const currentFilters = (queryState.filters || []).filter(
-        (filter) => Array.isArray(filter) && filter[0] !== agg.aggName
+        (filter) => Array.isArray(filter) && filter[0] !== agg.aggName,
       );
       props.updateQueryState({
         ...queryState,
         filters: [...currentFilters, [agg.aggName, newFilterValue]],
       });
-    }, 500)
+    }, 500),
   ).current;
 
   function onSliderChange(newRange) {
@@ -155,7 +171,7 @@ const RangeAggregation = (props) => {
       const endpoints = [bucketKey, bucketKey];
       onSliderChange(endpoints);
     },
-    [onSliderChange]
+    [onSliderChange],
   );
 
   const handleBarMouseOver = useCallback((data) => {
@@ -167,7 +183,7 @@ const RangeAggregation = (props) => {
   }, []);
 
   if (!initialData.length) {
-    return (<></>)
+    return <></>;
   }
 
   return (
@@ -177,14 +193,12 @@ const RangeAggregation = (props) => {
       </Card.Content>
       <Card.Content>
         <ResponsiveContainer width="100%" height={100}>
-          <BarChart
-            data={data}
-          >
+          <BarChart data={data}>
             <XAxis dataKey="name" hide />
             <YAxis hide />
 
             <Tooltip
-              cursor={{ fill: 'transparent' }}
+              cursor={{ fill: "transparent" }}
               content={<CustomTooltip title={title} />}
             />
 
@@ -194,14 +208,16 @@ const RangeAggregation = (props) => {
               onMouseOver={handleBarMouseOver}
               onMouseOut={handleBarMouseOut}
             >
-              {
-                data.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={hoveredData && hoveredData.index === index ? HIGHLIGHT_COLOR : entry.color}
-                  />
-                ))
-              }
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    hoveredData && hoveredData.index === index
+                      ? HIGHLIGHT_COLOR
+                      : entry.color
+                  }
+                />
+              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -217,7 +233,6 @@ const RangeAggregation = (props) => {
     </Card>
   );
 };
-
 
 RangeAggregation.propTypes = {
   title: PropTypes.string.isRequired,

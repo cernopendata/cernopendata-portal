@@ -54,7 +54,7 @@
               "type": "keyword",
               "fields": {
                 "primary_text": {
-                  "type":"text"
+                  "type": "text"
                 }
               }
             },
@@ -62,7 +62,7 @@
               "type": "keyword",
               "fields": {
                 "secondary_text": {
-                  "type":"text"
+                  "type": "text"
                 }
               }
             }

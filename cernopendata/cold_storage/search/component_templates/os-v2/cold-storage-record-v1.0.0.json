@@ -19,7 +19,7 @@
               },
               "type": "object"
             },
-            "bucket": {"type": "keyword"},
+            "bucket": { "type": "keyword" },
             "files": {
               "properties": {
                 "availability": {
@@ -29,7 +29,10 @@
                   "type": "text"
                 },
                 "tags": {
-                  "properties": {"uri_cold": {"type": "keyword"},"hot_deleted": {"type": "keyword"}}
+                  "properties": {
+                    "uri_cold": { "type": "keyword" },
+                    "hot_deleted": { "type": "keyword" }
+                  }
                 }
               },
               "type": "object"

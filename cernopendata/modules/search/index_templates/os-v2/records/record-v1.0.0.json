@@ -7,7 +7,5 @@
 
     "__SEARCH_INDEX_PREFIX__oairecord-v1.0.0"
   ],
-  "index_patterns": [
-    "__SEARCH_INDEX_PREFIX__records-record*"
-  ]
+  "index_patterns": ["__SEARCH_INDEX_PREFIX__records-record*"]
 }

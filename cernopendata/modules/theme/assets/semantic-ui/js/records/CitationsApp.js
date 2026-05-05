@@ -24,16 +24,19 @@
  * as an Intergovernmental Organization or submit itself to any jurisdiction.
  */
 
-
 import React, { useEffect, useState } from "react";
 const CitationsApp = () => {
   const [references, setReferences] = useState(0);
   const [message, setMessage] = useState("");
 
-  const doi = document.querySelector("#citations-react-app").getAttribute("data-doi");
-  const recid = document.querySelector("#citations-react-app").getAttribute("data-recid");
-  
-  const inspireHost = "https://inspirehep.net"
+  const doi = document
+    .querySelector("#citations-react-app")
+    .getAttribute("data-doi");
+  const recid = document
+    .querySelector("#citations-react-app")
+    .getAttribute("data-recid");
+
+  const inspireHost = "https://inspirehep.net";
   const inspireURL = `/literature?sort=mostrecent&page=1&q=references.reference.dois%3A${doi}%20or%20references.reference.urls.value%3Ahttps%3A%2F%2Fopendata.cern.ch%2Frecord%2F${recid}`;
   const inspireFullPath = `${inspireHost}${inspireURL}`;
 
@@ -43,20 +46,18 @@ const CitationsApp = () => {
       .then((data) => {
         setReferences(data.hits.total);
         if (data.hits.total == 1) {
-           setMessage("There is one publication referring to these data");
-         } else {
-           setMessage("There are "+data.hits.total+" publications referring to these data");
-         }
+          setMessage("There is one publication referring to these data");
+        } else {
+          setMessage(
+            "There are " +
+              data.hits.total +
+              " publications referring to these data",
+          );
+        }
       });
   }, []);
 
-  return (
-    <>
-        { references > 0 &&
-          <a href={inspireFullPath}>{message}</a>
-        }
-    </>
-  );
+  return <>{references > 0 && <a href={inspireFullPath}>{message}</a>}</>;
 };
 
 export default CitationsApp;
