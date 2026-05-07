@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal, Form, TextArea, Tab, Button } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
+import PreviewTab from "./Preview";
 import SchemaNode from "./SchemaNode";
 import createBridge from "./schema";
 
@@ -105,6 +106,14 @@ export default function EditRecordModal({
               style={{ width: "100%" }}
             />
           </Form>
+        </Tab.Pane>
+      ),
+    },
+    {
+      menuItem: "Preview",
+      render: () => (
+        <Tab.Pane>
+          <PreviewTab data={editAllMode ? records : editingRecord} />
         </Tab.Pane>
       ),
     },
