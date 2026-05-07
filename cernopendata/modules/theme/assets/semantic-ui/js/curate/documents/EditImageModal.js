@@ -76,7 +76,7 @@ export default function EditImageModal({
         </Form>
       </Modal.Content>
       <Modal.Actions>
-        <Button floated="left" className="red" onClick={handleDelete}>
+        <Button floated="left" color="red" onClick={handleDelete}>
           <Icon name="trash" /> Delete
         </Button>
         <Button onClick={onClose}>Cancel</Button>
