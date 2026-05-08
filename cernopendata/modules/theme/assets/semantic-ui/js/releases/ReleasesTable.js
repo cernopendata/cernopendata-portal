@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Icon, Table, Loader } from "semantic-ui-react";
-import { useNavigate } from "react-router-dom"; // if using React Router
+import { Table, Loader } from "semantic-ui-react";
 
 export default function ReleasesTable({ experiment }) {
   const [releases, setReleases] = useState([]);
@@ -77,13 +76,6 @@ export default function ReleasesTable({ experiment }) {
       </Table.Body>
     </Table>
   );
-}
-
-function renderUser(user) {
-  if (!user) {
-    return "–";
-  }
-  return user.email || user.id;
 }
 
 function formatDate(value) {
