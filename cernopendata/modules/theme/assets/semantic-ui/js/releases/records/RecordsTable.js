@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Table, Button, Icon, Pagination } from "semantic-ui-react";
 import $ from "jquery";
-import EditRecordModal from "./records/EditRecordModal";
-import BulkEditModal from "./records/BulkEditModal";
-import usePagination from "./shared/usePagination";
-import RowActions from "./shared/RowActions";
+import EditRecordModal from "./EditRecordModal";
+import BulkEditModal from "./BulkEditModal";
+import usePagination from "../shared/usePagination";
+import RowActions from "../shared/RowActions";
 
 export default function RecordsTable({
   experiment,

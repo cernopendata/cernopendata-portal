@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Icon, Pagination } from "semantic-ui-react";
-import AddDocumentModal from "./documents/AddDocumentModal";
-import EditDocumentModal from "./documents/EditDocumentModal";
-import UploadImagesModal from "./documents/UploadImagesModal";
-import EditImageModal from "./documents/EditImageModal";
-import PreviewImageModal from "./documents/PreviewImageModal";
-import usePagination from "./shared/usePagination";
-import RowActions from "./shared/RowActions";
+import AddDocumentModal from "./AddDocumentModal";
+import EditDocumentModal from "./EditDocumentModal";
+import UploadImagesModal from "./UploadImagesModal";
+import EditImageModal from "./EditImageModal";
+import PreviewImageModal from "./PreviewImageModal";
+import usePagination from "../shared/usePagination";
+import RowActions from "../shared/RowActions";
 
 export default function DocumentsTable({
   experiment,
