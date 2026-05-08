@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Table, Button, Icon, Pagination } from "semantic-ui-react";
-import $ from "jquery";
 import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
 import usePagination from "../shared/usePagination";
@@ -40,14 +39,6 @@ export default function RecordsTable({
   useEffect(() => {
     typesetMath();
   }, [page, records]);
-
-  const openEditModal = (record) => {
-    window.editingRecordId = record.recid;
-
-    $("#records-json-textarea").val(JSON.stringify(record, null, 2));
-
-    $("#edit-records-modal").modal("show");
-  };
 
   const closeEditModal = () => {
     setEditingRecord(null);

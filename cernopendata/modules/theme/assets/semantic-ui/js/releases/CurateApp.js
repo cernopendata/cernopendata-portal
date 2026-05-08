@@ -1,16 +1,4 @@
 import $ from "jquery";
-
-import {
-  AccordionField,
-  CustomFields,
-  FieldLabel,
-  RemoteSelectField,
-  SelectField,
-  TextField,
-  TextAreaField,
-  AffiliationsSuggestions,
-} from "react-invenio-forms";
-
 import React from "react";
 import ReactDOM from "react-dom";
 
@@ -115,28 +103,19 @@ $("#save-metadata").on("click", function () {
     body: JSON.stringify(payload),
   })
     .then((res) => {
-      console.log(res.ok);
       if (!res.ok) throw new Error("Update failed");
-      console.log("We get here");
       return res.json();
     })
     .then((updated) => {
-      // 🟢 1. Update title
       if (updated.name) {
         $("#release-name").text(updated.name);
       }
-
-      // 🟢 2. Update link
       if (updated.discussion_url) {
         $("#release-discussion-url").attr("href", updated.discussion_url);
       }
-
-      // 🟢 3. Update description
       if (updated.description) {
         $("#release-description").text(updated.description);
       }
-
-      // 🟢 4. Close modal
       $("#edit-metadata-modal").modal("hide");
     })
     .catch((err) => {
