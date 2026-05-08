@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal, Form, TextArea, Tab, Button } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
-import SchemaNode from "../recordstable/SchemaNode";
-import createBridge from "../recordstable/schema";
+import SchemaNode from "./SchemaNode";
+import createBridge from "./schema";
 
 export default function EditRecordModal({
   editingRecord,

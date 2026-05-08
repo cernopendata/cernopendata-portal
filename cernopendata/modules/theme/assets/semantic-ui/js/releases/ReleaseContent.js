@@ -1,8 +1,8 @@
 import React from "react";
 import { Tab } from "semantic-ui-react";
 
-import RecordsTable from "./RecordsTable";
-import DocumentsTable from "./DocumentsTable";
+import RecordsTable from "./records/RecordsTable";
+import DocumentsTable from "./documents/DocumentsTable";
 
 export default function ReleaseContent({
   experiment,
