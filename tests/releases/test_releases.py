@@ -846,3 +846,96 @@ def test_delete_documents_images_no_documents_does_nothing(mocker, tmp_path):
 
     r = Release(metadata)
     r._delete_documents_images()
+
+
+def test_add_records_triggers_validate(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+
+    metadata = MagicMock()
+    metadata.records = []
+
+    r = Release(metadata)
+    mock_validate = mocker.patch.object(r, "validate")
+
+    user = MagicMock()
+    r.add_records([{"recid": 1}], user)
+
+    mock_validate.assert_called_once_with(user)
+
+
+def test_add_records_sets_schema_on_each_record(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+
+    metadata = MagicMock()
+    metadata.records = []
+
+    r = Release(metadata)
+    mocker.patch.object(r, "validate")
+
+    new_records = [{"recid": 1}, {"recid": 2}]
+    r.add_records(new_records, MagicMock())
+
+    assert all(rec["$schema"] == "schema-url" for rec in new_records)
+
+
+def test_add_records_appends_to_existing_records(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": 1, "title": "Existing"}]
+
+    r = Release(metadata)
+    mocker.patch.object(r, "validate")
+
+    r.add_records(
+        [{"recid": 2, "title": "New A"}, {"recid": 3, "title": "New B"}], MagicMock()
+    )
+
+    assert len(metadata.records) == 3
+    assert [rec["recid"] for rec in metadata.records] == [1, 2, 3]
+
+
+def test_add_records_to_release_with_no_records(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+
+    metadata = MagicMock()
+    metadata.records = None
+
+    r = Release(metadata)
+    mocker.patch.object(r, "validate")
+
+    r.add_records([{"recid": 1}], MagicMock())
+
+    assert metadata.records == [{"recid": 1, "$schema": "schema-url"}]

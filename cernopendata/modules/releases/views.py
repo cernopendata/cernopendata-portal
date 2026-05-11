@@ -59,6 +59,18 @@ blueprint = Blueprint(
 )
 
 
+def _normalise_payload(payload):
+    """Normalise an uploaded JSON payload into a list of items."""
+    if isinstance(payload, dict):
+        # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
+        if "metadata" in payload:
+            for field in ("_files", "_bucket", "bucket", "_file_indices"):
+                payload["metadata"].pop(field, None)
+            return [payload["metadata"]]
+        return [payload]
+    return payload
+
+
 def _detect_payload_type(items):
     """Return 'documents' if items look like docs, 'records' otherwise."""
     if not items:
@@ -159,16 +171,8 @@ def release_upload(experiment):
 
     else:
         abort(400, "Invalid source")
-    if isinstance(payload, dict):
-        # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
-        if "metadata" in payload:
-            for field in "_files", "_bucket", "bucket", "_file_indices":
-                if field in payload["metadata"]:
-                    del payload["metadata"][field]
-            payload = [payload["metadata"]]
-        else:
-            payload = [payload]
 
+    payload = _normalise_payload(payload)
     payload_type = _detect_payload_type(payload)
     if payload_type == "records":
         create_dict = {"records": payload}
@@ -404,6 +408,50 @@ def add_documents(experiment, release_id):
 
     return jsonify(
         {"status": "ok", "num_docs": release._metadata.num_docs, "documents": docs}
+    )
+
+
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/add_records",
+    methods=["POST"],
+)
+@login_required
+def add_records(experiment, release_id):
+    """Add records to a release."""
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, "Missing request body")
+
+    release = _get_release(experiment, release_id)
+    source = data.get("source", "json")
+
+    if source == "url":
+        url = data.get("url")
+        if not url:
+            abort(400, "Missing URL")
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+        except Exception as e:
+            return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
+        payload = resp.json()
+    else:
+        payload = data.get("records")
+        if payload is None:
+            abort(400, "Missing records")
+
+    records = _normalise_payload(payload)
+    if not isinstance(records, list):
+        abort(400, "Records must be a list")
+
+    release.add_records(records, current_user)
+
+    return jsonify(
+        {
+            "status": "ok",
+            "num_records": release._metadata.num_records,
+            "records": records,
+        }
     )
 
 
