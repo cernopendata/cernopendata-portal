@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Icon, Pagination } from "semantic-ui-react";
-import AddDocumentModal from "./AddDocumentModal";
+import AddItemsModal from "../shared/AddItemsModal";
 import EditDocumentModal from "./EditDocumentModal";
 import UploadImagesModal from "./UploadImagesModal";
 import EditImageModal from "./EditImageModal";
@@ -151,7 +151,8 @@ export default function DocumentsTable({
         )}
       </div>
 
-      <AddDocumentModal
+      <AddItemsModal
+        collection="documents"
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         experiment={experiment}

@@ -9,13 +9,38 @@ import {
   Icon,
 } from "semantic-ui-react";
 
-export default function AddDocumentModal({
+const CONFIG = {
+  documents: {
+    urlBody: (url) => ({ source: "urls", urls: [url] }),
+    validateItem: (doc, file) => {
+      const content = doc.body?.content;
+      if (typeof content !== "string" || content.endsWith(".md")) {
+        return "The JSON must have body.content inlined as markdown text, not a filename pointer.";
+      }
+      if (!doc._source_filename) {
+        doc._source_filename = file.name;
+      }
+      return null;
+    },
+  },
+  records: {
+    urlBody: (url) => ({ source: "url", url }),
+    validateItem: null,
+  },
+};
+
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export default function AddItemsModal({
+  collection,
   open,
   onClose,
   experiment,
   releaseId,
   onAdded,
 }) {
+  const config = CONFIG[collection];
+  const endpoint = `add_${collection}`;
   const [source, setSource] = useState("file");
   const [url, setUrl] = useState("");
   const [error, setError] = useState(null);
@@ -56,37 +81,28 @@ export default function AddDocumentModal({
         }
 
         const items = Array.isArray(payload) ? payload : [payload];
-        for (const doc of items) {
-          if (
-            typeof doc.body?.content !== "string" ||
-            doc.body.content.endsWith(".md")
-          ) {
-            setError(
-              "The JSON must have body.content inlined as markdown text, not a filename pointer.",
-            );
-            return;
-          }
-          if (!doc._source_filename) {
-            doc._source_filename = file.name;
+        if (config.validateItem) {
+          for (const item of items) {
+            const err = config.validateItem(item, file);
+            if (err) {
+              setError(err);
+              return;
+            }
           }
         }
 
-        requestBody = { source: "json", documents: items };
+        requestBody = { source: "json", [collection]: items };
       } else {
         const trimmed = url.trim();
         if (!trimmed) {
-          setError("Please enter a .json URL.");
+          setError("Please enter a URL.");
           return;
         }
-        if (!trimmed.split("?")[0].endsWith(".json")) {
-          setError("The URL must point to a .json file.");
-          return;
-        }
-        requestBody = { source: "urls", urls: [trimmed] };
+        requestBody = config.urlBody(trimmed);
       }
 
       const response = await fetch(
-        `/releases/${experiment}/${releaseId}/add_documents`,
+        `/releases/${experiment}/${releaseId}/${endpoint}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,11 +112,11 @@ export default function AddDocumentModal({
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to save documents");
+        throw new Error(err.error || `Failed to save ${collection}`);
       }
 
       const result = await response.json();
-      onAdded(result.documents || []);
+      onAdded(result[collection] || []);
       onClose();
     } catch (e) {
       setError(e.message);
@@ -111,14 +127,16 @@ export default function AddDocumentModal({
 
   return (
     <Modal open={open} onClose={onClose} closeIcon size="small">
-      <Modal.Header>Add a new document</Modal.Header>
+      <Modal.Header>Add {collection}</Modal.Header>
       <Modal.Content>
         <Form loading={loading}>
           <Form.Group grouped>
-            <span className="field-group-label">Document source</span>
+            <span className="field-group-label">
+              {capitalize(collection.slice(0, -1))} source
+            </span>
             <Form.Field>
               <Radio
-                label="Upload files"
+                label="Upload file"
                 name="addSource"
                 value="file"
                 checked={source === "file"}
@@ -127,7 +145,7 @@ export default function AddDocumentModal({
             </Form.Field>
             <Form.Field>
               <Radio
-                label="Load from URLs"
+                label="Load from URL"
                 name="addSource"
                 value="url"
                 checked={source === "url"}
@@ -138,9 +156,9 @@ export default function AddDocumentModal({
 
           {source === "file" ? (
             <Form.Field>
-              <label htmlFor="doc-files-input">File</label>
+              <label htmlFor="add-items-file-input">File</label>
               <input
-                id="doc-files-input"
+                id="add-items-file-input"
                 type="file"
                 accept=".json"
                 ref={fileInputRef}
@@ -151,9 +169,9 @@ export default function AddDocumentModal({
             </Form.Field>
           ) : (
             <Form.Field>
-              <label htmlFor="doc-url-input">URL</label>
+              <label htmlFor="add-items-url-input">URL</label>
               <Input
-                id="doc-url-input"
+                id="add-items-url-input"
                 fluid
                 type="url"
                 placeholder="https://raw.githubusercontent.com/..."
@@ -173,7 +191,7 @@ export default function AddDocumentModal({
           disabled={source === "file" ? !filesChosen : !url.trim()}
           onClick={handleSubmit}
         >
-          <Icon name="plus" /> Add document
+          <Icon name="plus" /> Add {collection}
         </Button>
       </Modal.Actions>
     </Modal>

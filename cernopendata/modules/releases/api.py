@@ -362,6 +362,20 @@ class Release:
         db.session.add(self._metadata)
         db.session.commit()
 
+    def add_records(self, new_records, current_user):
+        """Append records to the release."""
+        current = self._metadata.records or []
+        if new_records:
+            schema = self._record_schema_url()
+            for record in new_records:
+                record["$schema"] = schema
+        current.extend(new_records)
+        self._metadata.records = current
+        flag_modified(self._metadata, "records")
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
     def update_document(self, slug, updated_doc, current_user):
         """Replace a document in the release identified by its slug."""
         current = self._metadata.documents or []

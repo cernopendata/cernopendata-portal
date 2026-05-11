@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Table, Button, Icon, Pagination } from "semantic-ui-react";
 import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
+import AddItemsModal from "../shared/AddItemsModal";
 import usePagination from "../shared/usePagination";
 import RowActions from "../shared/RowActions";
 
@@ -24,6 +25,7 @@ export default function RecordsTable({
     pageSize,
   );
 
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   function typesetMath() {
@@ -64,6 +66,13 @@ export default function RecordsTable({
             </div>
           )}
           <div className="records-table-toolbar-buttons">
+            <Button
+              color="blue"
+              disabled={editDisabled}
+              onClick={() => setAddModalOpen(true)}
+            >
+              <Icon name="plus" /> Add Records
+            </Button>
             <Button
               color="blue"
               disabled={editDisabled}
@@ -141,6 +150,15 @@ export default function RecordsTable({
         onClose={closeEditModal}
         experiment={experiment}
         releaseId={releaseId}
+      />
+
+      <AddItemsModal
+        collection="records"
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        experiment={experiment}
+        releaseId={releaseId}
+        onAdded={(newRecords) => setRecords((prev) => [...prev, ...newRecords])}
       />
 
       <BulkEditModal
