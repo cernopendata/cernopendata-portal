@@ -50,7 +50,6 @@ class Validation:
         """Optional fix method."""
         raise NotImplementedError
 
-    @property
-    def fixable(self):
-        """Check if a validation has a fix method."""
+    def fixable(self, release=None):
+        """Check whether this validation has fixes to apply to the given release."""
         return self.fix.__func__ is not Validation.fix

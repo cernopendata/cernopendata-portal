@@ -37,7 +37,7 @@ def test_fixable_false_when_not_overridden():
             pass
 
     v = NoFixValidation()
-    assert v.fixable is False
+    assert v.fixable() is False
 
 
 def test_fixable_true_when_overridden():
@@ -51,4 +51,4 @@ def test_fixable_true_when_overridden():
             pass
 
     v = FixValidation()
-    assert v.fixable is True
+    assert v.fixable() is True

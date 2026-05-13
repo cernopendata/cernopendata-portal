@@ -70,8 +70,8 @@ class ReleaseValidation:
 
     @property
     def fixable(self):
-        """Check if a validation can be fixed automatically."""
-        return self.validator.fixable
+        """Check if a validation has pending errors that can be fixed automatically."""
+        return self.validator.fixable(self._metadata.release)
 
     @property
     def error_message(self):
