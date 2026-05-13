@@ -157,6 +157,7 @@ export default function DocumentsTable({
         onClose={() => setAddModalOpen(false)}
         experiment={experiment}
         releaseId={releaseId}
+        existingItems={documents}
         onAdded={(newDocs) => setDocuments((prev) => [...prev, ...newDocs])}
       />
 

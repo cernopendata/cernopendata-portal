@@ -37,6 +37,7 @@ def test_release_validation():
         name = "Duplicate files"
         status = "OK"
         enabled = True
+        release = None
 
     release_validation = ReleaseValidation(ReleaseValidationMetadata())
 
@@ -360,6 +361,31 @@ def test_add_documents_updates_count(mocker):
 
     assert metadata.num_docs == 3
     assert len(metadata.documents) == 3
+
+
+def test_add_documents_accepts_large_list(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+
+    metadata = MagicMock()
+    metadata.documents = []
+    metadata.num_docs = 0
+
+    r = Release(metadata)
+    mocker.patch.object(r, "validate")
+
+    large_batch = [{"slug": f"doc-{i}"} for i in range(500)]
+    r.add_documents(large_batch, MagicMock())
+
+    assert metadata.num_docs == 500
+    assert len(metadata.documents) == 500
 
 
 def test_update_document_success(mocker):
