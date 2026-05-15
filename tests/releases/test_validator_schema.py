@@ -55,7 +55,7 @@ def test_validate_records_type_and_missing_fields(app):
             errors = validator.validate(release)
             assert len(errors) == 2
             assert "not_a_dict" not in errors[0]  # error message includes index
-            assert "Record 0 is not an object" in errors[0]
+            assert "Record 1 is not an object" in errors[0]
             assert "recid" in errors[1]  # missing recid triggers schema error
 
 

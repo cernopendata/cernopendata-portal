@@ -51,16 +51,16 @@ class ExpectedFieldsValidation(Validation):
     def _check_field(self, label, i, item, field, expected_value):
         """Return an error message if the field doesn't match the expected value, else None."""
         if not expected_value:
-            return f"{label} {i}, field {field}: can't figure out what the value is supposed to be"
+            return f"{label} {i + 1}, field {field}: can't figure out what the value is supposed to be"
         actual_value = self.get_nested(item, field)
         if actual_value != expected_value:
-            return f"{label} {i}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
+            return f"{label} {i + 1}, field {field}: expected: '{expected_value}' and got '{actual_value}'"
         return None
 
     def _fix_field(self, label, i, item, field, expected_value):
         """Set the field to its expected value. Returns an error if the value can't be determined."""
         if not expected_value:
-            return f"{label} {i}, field {field}: can't figure out what the value is supposed to be"
+            return f"{label} {i + 1}, field {field}: can't figure out what the value is supposed to be"
         self.set_nested(item, field, expected_value)
         return None
 
