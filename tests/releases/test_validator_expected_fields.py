@@ -45,7 +45,7 @@ def test_resolve_expected_value_static_mismatch():
     release = DummyRelease(records=[{"experiment": ["ATLAS"]}])
     errors = validator.validate(release)
     assert errors == [
-        "Record 0, field experiment: expected: '['CMS']' and got '['ATLAS']'"
+        "Record 1, field experiment: expected: '['CMS']' and got '['ATLAS']'"
     ]
 
 
@@ -54,7 +54,7 @@ def test_check_field_returns_error_when_expected_value_falsy():
     release = DummyRelease(records=[{"experiment": ["CMS"]}])
     errors = validator.validate(release)
     assert errors == [
-        "Record 0, field experiment: can't figure out what the value is supposed to be"
+        "Record 1, field experiment: can't figure out what the value is supposed to be"
     ]
 
 
@@ -63,7 +63,7 @@ def test_fix_records_collects_unresolvable_errors():
     release = DummyRelease(records=[{"experiment": ["CMS"]}])
     errors = validator.fix(release)
     assert errors == [
-        "Record 0, field experiment: can't figure out what the value is supposed to be"
+        "Record 1, field experiment: can't figure out what the value is supposed to be"
     ]
 
 
@@ -72,5 +72,5 @@ def test_fix_documents_collects_unresolvable_errors():
     release = DummyRelease(documents=[{"experiment": ["CMS"]}])
     errors = validator.fix(release)
     assert errors == [
-        "Document 0, field experiment: can't figure out what the value is supposed to be"
+        "Document 1, field experiment: can't figure out what the value is supposed to be"
     ]

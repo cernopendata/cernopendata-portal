@@ -22,7 +22,7 @@ def test_validate_detects_missing_files():
     errors = validator.validate(release)
 
     assert len(errors) == 1
-    assert "record 0" in errors[0]
+    assert "record 1" in errors[0]
 
 
 def test_validate_ok_when_files_present():

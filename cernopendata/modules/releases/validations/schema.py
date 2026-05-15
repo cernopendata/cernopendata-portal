@@ -40,7 +40,7 @@ class SchemaValidation(Validation):
         try:
             for i, item in enumerate(items):
                 if not isinstance(item, dict):
-                    errors.append(f"{self.label} {i} is not an object")
+                    errors.append(f"{self.label} {i + 1} is not an object")
                     continue
                 if self.excluded_keys:
                     item = {
@@ -48,7 +48,7 @@ class SchemaValidation(Validation):
                     }
                 for error in validator.iter_errors(item):
                     path = ".".join(str(p) for p in error.path)
-                    errors.append(f"{self.label} {i} -> {path}: {error.message}")
+                    errors.append(f"{self.label} {i + 1} -> {path}: {error.message}")
         except Exception as e:
             return [f"Could not validate the schema: {e}"]
 

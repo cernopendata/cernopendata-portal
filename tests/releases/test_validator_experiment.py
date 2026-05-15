@@ -16,7 +16,7 @@ def test_missing_experiment():
 
     errors = validator.validate(release)
 
-    assert errors == ["Record 0, field experiment: expected: '['CMS']' and got 'None'"]
+    assert errors == ["Record 1, field experiment: expected: '['CMS']' and got 'None'"]
 
 
 def test_experiment_not_list():
@@ -25,7 +25,7 @@ def test_experiment_not_list():
 
     errors = validator.validate(release)
 
-    assert errors == ["Record 0, field experiment: expected: '['CMS']' and got 'CMS'"]
+    assert errors == ["Record 1, field experiment: expected: '['CMS']' and got 'CMS'"]
 
 
 def test_wrong_experiment_value():
@@ -35,7 +35,7 @@ def test_wrong_experiment_value():
     errors = validator.validate(release)
 
     assert errors == [
-        "Record 0, field experiment: expected: '['CMS']' and got '['ATLAS']'"
+        "Record 1, field experiment: expected: '['CMS']' and got '['ATLAS']'"
     ]
 
 
@@ -46,7 +46,7 @@ def test_two_experiments_value():
     errors = validator.validate(release)
 
     assert errors == [
-        "Record 0, field experiment: expected: '['CMS']' and got '['ATLAS', 'CMS']'"
+        "Record 1, field experiment: expected: '['CMS']' and got '['ATLAS', 'CMS']'"
     ]
 
 
@@ -80,14 +80,14 @@ def test_valid_experiment_doc_wrong_experiment():
     release = DummyRelease([], experiment="cms", documents=[{"experiment": ["ALICE"]}])
     validator = ValidExperiment()
     errors = validator.validate(release)
-    assert any("Document 0" in e for e in errors)
+    assert any("Document 1" in e for e in errors)
 
 
 def test_valid_experiment_doc_missing_field():
     release = DummyRelease([], experiment="cms", documents=[{"title": "no experiment"}])
     validator = ValidExperiment()
     errors = validator.validate(release)
-    assert any("Document 0" in e for e in errors)
+    assert any("Document 1" in e for e in errors)
 
 
 def test_fix_sets_experiment_on_documents():

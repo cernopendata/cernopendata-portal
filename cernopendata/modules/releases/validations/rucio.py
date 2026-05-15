@@ -20,7 +20,7 @@ class RucioDatasets(Validation):
         errors = []
         for i, record in enumerate(release.records):
             if "rucio_dataset" in record and "files" not in record:
-                errors.append(f"The record {i} has a rucio rule and no files")
+                errors.append(f"The record {i + 1} has a rucio rule and no files")
         return errors
 
     def _get_files_from_rucio_dataset(self, rucio_client, did):
