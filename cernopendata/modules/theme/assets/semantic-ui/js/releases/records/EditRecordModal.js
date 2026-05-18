@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal, Form, TextArea, Tab, Button } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
-import PreviewTab from "./Preview";
+import PreviewTab from "../shared/PreviewTab";
 import SchemaNode from "./SchemaNode";
 import createBridge from "./schema";
 
@@ -113,7 +113,10 @@ export default function EditRecordModal({
       menuItem: "Preview",
       render: () => (
         <Tab.Pane>
-          <PreviewTab data={editAllMode ? records : editingRecord} />
+          <PreviewTab
+            endpoint="/releases/preview_record"
+            data={editAllMode ? records : editingRecord}
+          />
         </Tab.Pane>
       ),
     },

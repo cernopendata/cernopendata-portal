@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, TextArea, Tab, Button, Icon } from "semantic-ui-react";
+import PreviewTab from "../shared/PreviewTab";
 
 export default function EditDocumentModal({
   doc,
@@ -60,6 +61,18 @@ export default function EditDocumentModal({
     onClose();
   };
 
+  const previewData = (() => {
+    try {
+      const meta = JSON.parse(metaDataBuffer);
+      return {
+        ...meta,
+        body: { format: "md", ...(meta.body || {}), content: bodyBuffer },
+      };
+    } catch {
+      return null;
+    }
+  })();
+
   return (
     <Modal open={!!doc} onClose={onClose} closeIcon size="large">
       <Modal.Header>Edit Document</Modal.Header>
@@ -90,6 +103,24 @@ export default function EditDocumentModal({
                       onChange={(e) => setBodyBuffer(e.target.value)}
                       className="doc-textarea"
                     />
+                  </Tab.Pane>
+                ),
+              },
+              {
+                menuItem: "Preview",
+                render: () => (
+                  <Tab.Pane>
+                    {previewData ? (
+                      <PreviewTab
+                        endpoint="/releases/preview_document"
+                        data={previewData}
+                      />
+                    ) : (
+                      <p>
+                        Invalid JSON in Metadata tab — fix it to see the
+                        preview.
+                      </p>
+                    )}
                   </Tab.Pane>
                 ),
               },

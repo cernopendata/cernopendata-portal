@@ -828,7 +828,7 @@ def enable_validation(experiment, release_id, validation_id):
 
 @blueprint.route("/releases/preview_record", methods=["POST"])
 @login_required
-def preview():
+def preview_record():
     """Preview a record."""
     data = request.json
     if not data or not isinstance(data, dict):
@@ -841,5 +841,22 @@ def preview():
             pid=data.get("recid", ""),
             record=data,
             title=data.get("title", "Untitled record") + " | CERN Open Data Portal",
+        )
+    }
+
+
+@blueprint.route("/releases/preview_document", methods=["POST"])
+@login_required
+def preview_document():
+    """Preview a document."""
+    data = request.json
+    if not data or not isinstance(data, dict):
+        abort(400, description="Invalid JSON payload")
+    return {
+        "html": render_template(
+            ["cernopendata_records_ui/docs/detail.html"],
+            pid=data.get("slug", ""),
+            record=data,
+            title=data.get("title", "Untitled document") + " | CERN Open Data Portal",
         )
     }
