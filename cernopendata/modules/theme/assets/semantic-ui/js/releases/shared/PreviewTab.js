@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Loader } from "semantic-ui-react";
 
-export default function PreviewTab({ data }) {
+export default function PreviewTab({ endpoint, data }) {
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -9,7 +9,7 @@ export default function PreviewTab({ data }) {
     setLoading(true);
 
     try {
-      const res = await fetch("/releases/preview_record", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
