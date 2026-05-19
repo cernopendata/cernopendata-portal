@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Modal, Form, TextArea, Tab, Button } from "semantic-ui-react";
+import { Modal, Form, TextArea, Tab, Button, Message } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
 import SchemaNode from "./SchemaNode";
@@ -17,14 +17,22 @@ export default function EditRecordModal({
 }) {
   const [bridge, setBridge] = useState(null);
   const [origSchema, setOrigSchema] = useState(null);
+  const [schemaError, setSchemaError] = useState(false);
 
   useEffect(() => {
     fetch("/schema/records/record-v1.0.0.json")
-      .then((res) => res.json())
+      .then((response) => {
+        if (!response.ok) throw new Error("Schema not found");
+        return response.json();
+      })
       .then((data) => {
         const [schema, bridge] = createBridge(data);
         setOrigSchema(schema);
         setBridge(bridge);
+      })
+      .catch((err) => {
+        console.error(err);
+        setSchemaError(true);
       });
   }, []);
 
@@ -50,7 +58,12 @@ export default function EditRecordModal({
       menuItem: "Form",
       render: () => (
         <Tab.Pane>
-          {bridge && (
+          {schemaError ? (
+            <Message negative>
+              Could not load the record schema. Use the Raw editor tab to make
+              changes.
+            </Message>
+          ) : bridge ? (
             <AutoForm
               schema={bridge}
               model={editingRecord}
@@ -83,7 +96,7 @@ export default function EditRecordModal({
                 selectedSet={selectedSet}
               />
             </AutoForm>
-          )}
+          ) : null}
         </Tab.Pane>
       ),
     },
@@ -143,8 +156,11 @@ export default function EditRecordModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ records: updatedRecords }),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error("Save failed");
+      .then(async (response) => {
+        if (!response.ok) {
+          const json = await response.json().catch(() => ({}));
+          throw new Error(json.error || "Save failed");
+        }
         setRecords(updatedRecords);
         onClose();
       })

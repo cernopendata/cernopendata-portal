@@ -740,6 +740,33 @@ def test_publish_preserves_schema_on_each_record(mocker):
     assert all(rec["$schema"] == "schema-url" for rec in metadata.records)
 
 
+def test_validate_catches_validator_crash_and_records_synthetic_error(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = []
+
+    r = Release(metadata)
+
+    crashing_validation = MagicMock(enabled=True)
+    crashing_validation.name = "BrokenValidator"
+    crashing_validation.validate.side_effect = RuntimeError("unexpected crash")
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [crashing_validation]
+
+    mock_change = mocker.patch.object(r, "change_status")
+
+    r.validate(MagicMock())
+
+    mock_current_app.logger.error.assert_called_once()
+    assert any("BrokenValidator" in e for e in metadata.errors)
+    assert any("unexpected error" in e for e in metadata.errors)
+    mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
+
+
 def test_validate_with_errors_sets_status_draft(mocker):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
@@ -861,6 +888,27 @@ def test_delete_documents_images_skips_traversal_slugs(mocker, tmp_path):
     r._delete_documents_images()
 
     assert (sibling / "fig.png").exists()
+
+
+def test_delete_documents_images_oserror_logs_and_continues(mocker, tmp_path):
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    slug_dir = tmp_path / "my-doc"
+    slug_dir.mkdir()
+
+    mocker.patch(
+        "cernopendata.modules.releases.api.shutil.rmtree", side_effect=OSError("locked")
+    )
+
+    metadata = MagicMock()
+    metadata.documents = [{"slug": "my-doc"}]
+
+    r = Release(metadata)
+    r._delete_documents_images()
+
+    mock_current_app.logger.warning.assert_called_once()
+    assert slug_dir.exists()
 
 
 def test_delete_documents_images_no_documents_does_nothing(mocker, tmp_path):

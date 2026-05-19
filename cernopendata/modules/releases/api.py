@@ -328,7 +328,12 @@ class Release:
             except ValueError:
                 continue
             if slug_path.is_dir():
-                shutil.rmtree(slug_path)
+                try:
+                    shutil.rmtree(slug_path)
+                except OSError:
+                    current_app.logger.warning(
+                        f"Could not delete images directory {slug_path}"
+                    )
 
     def delete(self):
         """Delete a release."""
@@ -414,7 +419,15 @@ class Release:
 
         for validation in self.validations:
             if validation.enabled:
-                errors = validation.validate()
+                try:
+                    errors = validation.validate()
+                except Exception as e:
+                    current_app.logger.error(
+                        f"Validator {validation.name} crashed: {e}"
+                    )
+                    errors = [
+                        f"Validator '{validation.name}' encountered an unexpected error."
+                    ]
                 if errors:
                     self._metadata.errors.extend(errors)
                 validation.set_status(len(errors) == 0)

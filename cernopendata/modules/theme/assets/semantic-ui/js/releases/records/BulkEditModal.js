@@ -139,7 +139,8 @@ export default function BulkEditModal({
     );
 
     if (!res.ok) {
-      alert("Preview failed");
+      const json = await res.json().catch(() => ({}));
+      alert(json.error || "Preview failed");
       return;
     }
 
@@ -169,7 +170,8 @@ export default function BulkEditModal({
     );
 
     if (!res.ok) {
-      alert("Apply failed");
+      const json = await res.json().catch(() => ({}));
+      alert(json.error || "Apply failed");
       return;
     }
 

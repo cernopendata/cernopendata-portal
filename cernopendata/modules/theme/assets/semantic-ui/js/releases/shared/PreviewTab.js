@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Loader } from "semantic-ui-react";
+import { Loader, Message } from "semantic-ui-react";
 
 export default function PreviewTab({ endpoint, data }) {
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const loadPreview = async () => {
     setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch(endpoint, {
@@ -17,10 +19,16 @@ export default function PreviewTab({ endpoint, data }) {
         body: JSON.stringify(data),
       });
 
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error || "Preview failed");
+        return;
+      }
+
       const json = await res.json();
       setHtml(json.html);
     } catch (e) {
-      setHtml("<p style='color:red'>Preview failed</p>");
+      setError("Preview failed");
     } finally {
       setLoading(false);
     }
@@ -44,7 +52,7 @@ export default function PreviewTab({ endpoint, data }) {
   return (
     <div>
       {loading && <Loader active inline="centered" />}
-
+      {error && <Message negative>{error}</Message>}
       <div
         style={{ marginTop: 10 }}
         dangerouslySetInnerHTML={{ __html: html }}
