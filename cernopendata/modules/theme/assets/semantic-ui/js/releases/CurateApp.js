@@ -49,6 +49,36 @@ if (container) {
   $('input[name="file"], input[name="url"]').on("input change", validateForm);
 
   updateSource();
+
+  $("#create-release-form").on("submit", async function (e) {
+    e.preventDefault();
+    const $btn = $("#uploadButton");
+    const $error = $("#create-release-error");
+    $error.hide().text("");
+    $btn.addClass("loading disabled");
+    try {
+      const response = await fetch(window.location.pathname, {
+        method: "POST",
+        body: new FormData(this),
+      });
+      if (response.ok) {
+        window.location.reload();
+        return;
+      }
+      const contentType = response.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        $error.text(data.error || "An error occurred.").show();
+      } else {
+        $error.text("An unexpected error occurred.").show();
+      }
+    } catch (err) {
+      $error.text("Network error: " + err.message).show();
+    } finally {
+      $btn.removeClass("loading disabled");
+      validateForm();
+    }
+  });
 }
 const releaseContent = document.getElementById("release-content-root");
 if (releaseContent) {
@@ -102,8 +132,11 @@ $("#save-metadata").on("click", function () {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
-    .then((res) => {
-      if (!res.ok) throw new Error("Update failed");
+    .then(async (res) => {
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Could not save changes");
+      }
       return res.json();
     })
     .then((updated) => {
@@ -120,6 +153,6 @@ $("#save-metadata").on("click", function () {
     })
     .catch((err) => {
       console.error(err);
-      alert("Could not save changes");
+      alert(err.message);
     });
 });

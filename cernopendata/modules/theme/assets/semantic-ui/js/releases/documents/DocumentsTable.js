@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Icon, Pagination } from "semantic-ui-react";
+import { Table, Button, Icon, Pagination, Message } from "semantic-ui-react";
 import AddItemsModal from "../shared/AddItemsModal";
 import EditDocumentModal from "./EditDocumentModal";
 import UploadImagesModal from "./UploadImagesModal";
@@ -27,6 +27,7 @@ export default function DocumentsTable({
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   const [images, setImages] = useState([]);
+  const [imagesError, setImagesError] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [editingImage, setEditingImage] = useState(null);
@@ -34,11 +35,17 @@ export default function DocumentsTable({
   useEffect(() => {
     let cancelled = false;
     fetch(`/releases/${experiment}/${releaseId}/images`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && data) setImages(data.images || []);
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load images");
+        return response.json();
       })
-      .catch(() => {});
+      .then((data) => {
+        if (!cancelled) setImages(data.images || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setImagesError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -65,6 +72,12 @@ export default function DocumentsTable({
             </Button>
           </div>
         </div>
+        {imagesError && (
+          <Message size="small" warning>
+            <Icon name="warning sign" /> Could not load images. Some rows may be
+            missing.
+          </Message>
+        )}
         <Table celled compact>
           <Table.Header>
             <Table.Row>

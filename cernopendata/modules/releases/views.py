@@ -51,6 +51,36 @@ from .utils import curator_experiments
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
+
+class URLFetchError(Exception):
+    """URL cannot be fetched or its response cannot be parsed as JSON."""
+
+    pass
+
+
+def _fetch_json(url):
+    """Fetch a URL and return the parsed JSON body, or raise URLFetchError."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        status = e.response.status_code
+        reason = e.response.reason
+        detail = f"{status} ({reason})" if reason else str(status)
+        raise URLFetchError(
+            f"The URL returned {detail}. Please check the URL and try again."
+        )
+    except requests.RequestException as e:
+        raise URLFetchError(f"Could not reach the URL: {e}")
+
+    try:
+        return response.json()
+    except ValueError:
+        raise URLFetchError(
+            "The URL did not return valid JSON. Please check the URL and try again."
+        )
+
+
 blueprint = Blueprint(
     "cernopendata_curate",
     __name__,
@@ -164,9 +194,10 @@ def release_upload(experiment):
         if not url:
             abort(400, "Missing URL")
 
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        payload = resp.json()
+        try:
+            payload = _fetch_json(url)
+        except URLFetchError as e:
+            return jsonify({"error": str(e)}), 400
         release_name = url.rsplit("/", 1)[-1]
 
     else:
@@ -373,14 +404,19 @@ def add_documents(experiment, release_id):
         for url in urls:
             clean_url = url.split("?")[0]
             if not clean_url.endswith(".json"):
-                return jsonify({"error": f"URL must point to a .json file: {url}"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "The URL must point to a .json file. Please check the URL and try again."
+                        }
+                    ),
+                    400,
+                )
             try:
-                resp = requests.get(url, timeout=10)
-                resp.raise_for_status()
-            except Exception as e:
-                return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
+                payload = _fetch_json(url)
+            except URLFetchError as e:
+                return jsonify({"error": str(e)}), 400
             filename = clean_url.rsplit("/", 1)[-1]
-            payload = resp.json()
             payload = payload if isinstance(payload, list) else [payload]
             for doc in payload:
                 doc.setdefault("_source_filename", filename)
@@ -430,11 +466,9 @@ def add_records(experiment, release_id):
         if not url:
             abort(400, "Missing URL")
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-        except Exception as e:
-            return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
-        payload = resp.json()
+            payload = _fetch_json(url)
+        except URLFetchError as e:
+            return jsonify({"error": str(e)}), 400
     else:
         payload = data.get("records")
         if payload is None:
@@ -487,9 +521,11 @@ def upload_image(experiment, release_id):
         target_dir.relative_to(images_root)
     except ValueError:
         abort(400, "Invalid parent_slug")
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    already_existing = {p.name for p in target_dir.iterdir()}
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        already_existing = {p.name for p in target_dir.iterdir()}
+    except OSError as e:
+        return jsonify({"error": f"Could not prepare upload directory: {e}"}), 500
 
     images = []
     for file in files:
@@ -535,7 +571,10 @@ def upload_image(experiment, release_id):
             )
         already_existing.add(filename)
 
-        file.save(str(target_path))
+        try:
+            file.save(str(target_path))
+        except OSError as e:
+            return jsonify({"error": f"Could not save image '{filename}': {e}"}), 500
         images.append(
             {
                 "filename": filename,
@@ -569,7 +608,12 @@ def list_images(experiment, release_id):
             continue
         if not doc_dir.is_dir():
             continue
-        for entry in sorted(doc_dir.iterdir()):
+        try:
+            entries = sorted(doc_dir.iterdir())
+        except OSError:
+            current_app.logger.warning(f"Could not list images directory {doc_dir}")
+            continue
+        for entry in entries:
             if entry.is_file() and entry.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
                 images.append(
                     {
@@ -617,9 +661,18 @@ def delete_image(experiment, release_id, parent_slug, filename):
     if not target_path.is_file():
         abort(404, "Image not found")
 
-    target_path.unlink()
-    if slug_dir.is_dir() and not any(slug_dir.iterdir()):
-        slug_dir.rmdir()
+    try:
+        target_path.unlink()
+    except FileNotFoundError:
+        return jsonify({"error": "Image not found."}), 404
+    except OSError as e:
+        return jsonify({"error": f"Could not delete image: {e}"}), 500
+
+    try:
+        if slug_dir.is_dir() and not any(slug_dir.iterdir()):
+            slug_dir.rmdir()
+    except OSError:
+        current_app.logger.warning(f"Could not remove images directory {slug_dir}")
 
     return jsonify({"status": "ok"})
 
@@ -698,7 +751,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
             409,
         )
 
-    source_path.rename(target_path)
+    try:
+        source_path.rename(target_path)
+    except OSError as e:
+        return jsonify({"error": f"Could not rename image: {e}"}), 500
 
     return jsonify(
         {

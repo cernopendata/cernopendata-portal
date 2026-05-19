@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Table, Loader } from "semantic-ui-react";
+import { Table, Loader, Icon } from "semantic-ui-react";
 
 export default function ReleasesTable({ experiment }) {
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const experiment_lower = experiment.toLowerCase();
   useEffect(() => {
     let url = `/releases/api/list/${experiment_lower}`;
@@ -19,8 +20,9 @@ export default function ReleasesTable({ experiment }) {
         setReleases(data);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error(error);
+      .catch((err) => {
+        console.error(err);
+        setError(true);
         setLoading(false);
       });
   }, []);
@@ -44,7 +46,13 @@ export default function ReleasesTable({ experiment }) {
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {releases.length === 0 ? (
+        {error ? (
+          <Table.Row>
+            <Table.Cell colSpan="8" textAlign="center">
+              <Icon name="warning circle" /> Could not load releases.
+            </Table.Cell>
+          </Table.Row>
+        ) : releases.length === 0 ? (
           <Table.Row>
             <Table.Cell colSpan="8" textAlign="center">
               No releases found.
