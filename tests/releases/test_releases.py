@@ -11,18 +11,6 @@ from cernopendata.modules.releases.models import (
 from cernopendata.modules.releases.validations.base import Validation
 
 
-@pytest.fixture
-def dummy_metadata():
-    """Return a fresh ReleaseMetadata object for tests."""
-    return ReleaseMetadata(
-        name="dummy_release",
-        experiment="cms",
-        records=[],
-        validations=[],
-        status=ReleaseStatus.DRAFT.value,
-    )
-
-
 # -----------------------------
 # TEST ReleaseValidation
 # -----------------------------
