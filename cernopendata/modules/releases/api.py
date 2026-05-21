@@ -315,29 +315,21 @@ class Release:
         db.session.add(event)
         return event
 
-    def _delete_documents_images(self):
-        """Remove all uploaded images for every document in this release."""
+    def _delete_release_images(self):
+        """Remove the images for this release."""
         images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-        for doc in self._metadata.documents or []:
-            slug = doc.get("slug")
-            if not slug:
-                continue
-            slug_path = (images_root / slug).resolve()
+        release_dir = images_root / str(self._metadata.id)
+        if release_dir.is_dir():
             try:
-                slug_path.relative_to(images_root)
-            except ValueError:
-                continue
-            if slug_path.is_dir():
-                try:
-                    shutil.rmtree(slug_path)
-                except OSError:
-                    current_app.logger.warning(
-                        f"Could not delete images directory {slug_path}"
-                    )
+                shutil.rmtree(release_dir)
+            except OSError:
+                current_app.logger.warning(
+                    f"Could not delete images directory {release_dir}"
+                )
 
     def delete(self):
         """Delete a release."""
-        self._delete_documents_images()
+        self._delete_release_images()
         db.session.delete(self._metadata)
         db.session.commit()
 

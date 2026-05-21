@@ -853,73 +853,56 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
-    (tmp_path / "doc-a").mkdir()
-    (tmp_path / "doc-a" / "fig.png").write_bytes(b"a")
-    (tmp_path / "doc-b").mkdir()
-    (tmp_path / "doc-b" / "fig.png").write_bytes(b"b")
-    (tmp_path / "unrelated").mkdir()
-    (tmp_path / "unrelated" / "fig.png").write_bytes(b"x")
+    release_dir = tmp_path / "1"
+    (release_dir / "doc-a").mkdir(parents=True)
+    (release_dir / "doc-a" / "fig.png").write_bytes(b"a")
+    (release_dir / "doc-b").mkdir()
+    (release_dir / "doc-b" / "fig.png").write_bytes(b"b")
+    (tmp_path / "2" / "doc-a").mkdir(parents=True)
+    (tmp_path / "2" / "doc-a" / "fig.png").write_bytes(b"other-release")
 
     metadata = MagicMock()
-    metadata.documents = [{"slug": "doc-a"}, {"slug": "doc-b"}, {"title": "no slug"}]
+    metadata.id = 1
 
     r = Release(metadata)
     r.delete()
 
-    assert not (tmp_path / "doc-a").exists()
-    assert not (tmp_path / "doc-b").exists()
-    assert (tmp_path / "unrelated" / "fig.png").exists()
+    assert not release_dir.exists()
+    assert (tmp_path / "2" / "doc-a" / "fig.png").exists()
     mock_session.delete.assert_called_once_with(metadata)
     mock_session.commit.assert_called_once()
 
 
-def test_delete_documents_images_skips_traversal_slugs(mocker, tmp_path):
+def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
-    sibling = tmp_path.parent / "sibling"
-    sibling.mkdir(exist_ok=True)
-    (sibling / "fig.png").write_bytes(b"x")
-
-    metadata = MagicMock()
-    metadata.documents = [{"slug": "../sibling"}]
-
-    r = Release(metadata)
-    r._delete_documents_images()
-
-    assert (sibling / "fig.png").exists()
-
-
-def test_delete_documents_images_oserror_logs_and_continues(mocker, tmp_path):
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
-
-    slug_dir = tmp_path / "my-doc"
-    slug_dir.mkdir()
+    release_dir = tmp_path / "1"
+    release_dir.mkdir()
 
     mocker.patch(
         "cernopendata.modules.releases.api.shutil.rmtree", side_effect=OSError("locked")
     )
 
     metadata = MagicMock()
-    metadata.documents = [{"slug": "my-doc"}]
+    metadata.id = 1
 
     r = Release(metadata)
-    r._delete_documents_images()
+    r._delete_release_images()
 
     mock_current_app.logger.warning.assert_called_once()
-    assert slug_dir.exists()
+    assert release_dir.exists()
 
 
-def test_delete_documents_images_no_documents_does_nothing(mocker, tmp_path):
+def test_delete_release_images_no_directory_does_nothing(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
     metadata = MagicMock()
-    metadata.documents = None
+    metadata.id = 1
 
     r = Release(metadata)
-    r._delete_documents_images()
+    r._delete_release_images()
 
 
 def test_add_records_triggers_validate(mocker):

@@ -516,9 +516,10 @@ def upload_image(experiment, release_id):
         abort(400, f"No document with slug '{parent_slug}' in release")
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    target_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    target_dir = (release_dir / parent_slug).resolve()
     try:
-        target_dir.relative_to(images_root)
+        target_dir.relative_to(release_dir)
     except ValueError:
         abort(400, "Invalid parent_slug")
     try:
@@ -579,7 +580,7 @@ def upload_image(experiment, release_id):
             {
                 "filename": filename,
                 "parent_slug": parent_slug,
-                "url": f"/static/upload/{parent_slug}/{filename}",
+                "url": f"/static/upload/{release_id}/{parent_slug}/{filename}",
             }
         )
 
@@ -595,15 +596,16 @@ def list_images(experiment, release_id):
     """Return all uploaded images for a release, grouped by parent document slug."""
     release = _get_release(experiment, release_id)
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
 
     images = []
     for doc in release.documents:
         slug = doc.get("slug")
         if not slug:
             continue
-        doc_dir = (images_root / slug).resolve()
+        doc_dir = (release_dir / slug).resolve()
         try:
-            doc_dir.relative_to(images_root)
+            doc_dir.relative_to(release_dir)
         except ValueError:
             continue
         if not doc_dir.is_dir():
@@ -619,7 +621,7 @@ def list_images(experiment, release_id):
                     {
                         "filename": entry.name,
                         "parent_slug": slug,
-                        "url": f"/static/upload/{slug}/{entry.name}",
+                        "url": f"/static/upload/{release_id}/{slug}/{entry.name}",
                     }
                 )
 
@@ -643,9 +645,10 @@ def delete_image(experiment, release_id, parent_slug, filename):
         abort(404, f"No document with slug '{parent_slug}' in release")
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    slug_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(images_root)
+        slug_dir.relative_to(release_dir)
     except ValueError:
         abort(400, "Invalid parent_slug")
 
@@ -699,9 +702,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
         abort(404, f"No document with slug '{parent_slug}' in release")
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    slug_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(images_root)
+        slug_dir.relative_to(release_dir)
     except ValueError:
         abort(400, "Invalid parent_slug")
 
@@ -735,7 +739,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
                 "image": {
                     "filename": safe_new,
                     "parent_slug": parent_slug,
-                    "url": f"/static/upload/{parent_slug}/{safe_new}",
+                    "url": f"/static/upload/{release_id}/{parent_slug}/{safe_new}",
                 },
             }
         )
@@ -762,7 +766,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
             "image": {
                 "filename": safe_new,
                 "parent_slug": parent_slug,
-                "url": f"/static/upload/{parent_slug}/{safe_new}",
+                "url": f"/static/upload/{release_id}/{parent_slug}/{safe_new}",
             },
         }
     )
