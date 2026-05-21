@@ -603,10 +603,10 @@ def test_upload_image_success(mock_get_release, logged_in_client, images_path):
         {
             "filename": "figure1.png",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/figure1.png",
+            "url": "/static/upload/1/alice-doc/figure1.png",
         }
     ]
-    written = images_path / "alice-doc" / "figure1.png"
+    written = images_path / "1" / "alice-doc" / "figure1.png"
     assert written.is_file()
     assert written.read_bytes() == b"fake-png-bytes"
 
@@ -630,8 +630,8 @@ def test_upload_image_multiple_files(mock_get_release, logged_in_client, images_
     assert resp.status_code == 200
     filenames = [img["filename"] for img in resp.get_json()["images"]]
     assert filenames == ["a.png", "b.jpg"]
-    assert (images_path / "alice-doc" / "a.png").is_file()
-    assert (images_path / "alice-doc" / "b.jpg").is_file()
+    assert (images_path / "1" / "alice-doc" / "a.png").is_file()
+    assert (images_path / "1" / "alice-doc" / "b.jpg").is_file()
 
 
 def test_upload_image_missing_parent_slug(logged_in_client, images_path):
@@ -702,7 +702,7 @@ def test_upload_image_rejects_oversized_file(
         content_type="multipart/form-data",
     )
     assert resp.status_code == 400
-    assert not (images_path / "alice-doc" / "big.png").exists()
+    assert not (images_path / "1" / "alice-doc" / "big.png").exists()
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -727,8 +727,8 @@ def test_upload_image_rejects_collision_with_existing_file(
     mock_get_release, logged_in_client, images_path
 ):
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
-    (images_path / "alice-doc").mkdir()
-    (images_path / "alice-doc" / "figure1.png").write_bytes(b"original")
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
+    (images_path / "1" / "alice-doc" / "figure1.png").write_bytes(b"original")
 
     resp = logged_in_client.post(
         "/releases/cms/1/upload_image",
@@ -741,7 +741,7 @@ def test_upload_image_rejects_collision_with_existing_file(
 
     assert resp.status_code == 409
     assert "already exists" in resp.get_json()["error"]
-    assert (images_path / "alice-doc" / "figure1.png").read_bytes() == b"original"
+    assert (images_path / "1" / "alice-doc" / "figure1.png").read_bytes() == b"original"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -763,17 +763,17 @@ def test_upload_image_rejects_collision_within_batch(
     )
 
     assert resp.status_code == 409
-    assert (images_path / "alice-doc" / "figure1.png").read_bytes() == b"first"
+    assert (images_path / "1" / "alice-doc" / "figure1.png").read_bytes() == b"first"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_list_images_returns_images_on_disk(
     mock_get_release, logged_in_client, images_path
 ):
-    (images_path / "alice-doc").mkdir()
-    (images_path / "alice-doc" / "a.png").write_bytes(b"a")
-    (images_path / "alice-doc" / "b.jpg").write_bytes(b"b")
-    (images_path / "alice-doc" / "ignored.txt").write_bytes(b"x")
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
+    (images_path / "1" / "alice-doc" / "a.png").write_bytes(b"a")
+    (images_path / "1" / "alice-doc" / "b.jpg").write_bytes(b"b")
+    (images_path / "1" / "alice-doc" / "ignored.txt").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(
         documents=[{"slug": "alice-doc"}, {"slug": "no-images-doc"}]
     )
@@ -787,12 +787,12 @@ def test_list_images_returns_images_on_disk(
         {
             "filename": "a.png",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/a.png",
+            "url": "/static/upload/1/alice-doc/a.png",
         },
         {
             "filename": "b.jpg",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/b.jpg",
+            "url": "/static/upload/1/alice-doc/b.jpg",
         },
     ]
 
@@ -825,8 +825,8 @@ def test_list_images_when_no_directory_exists(
 def test_delete_image_success_and_removes_empty_dir(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -842,8 +842,8 @@ def test_delete_image_success_and_removes_empty_dir(
 def test_delete_image_keeps_non_empty_dir(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"a")
     (slug_dir / "b.png").write_bytes(b"b")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
@@ -875,8 +875,8 @@ def test_delete_image_file_not_found(mock_get_release, logged_in_client, images_
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_rename_image_success(mock_get_release, logged_in_client, images_path):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -891,7 +891,7 @@ def test_rename_image_success(mock_get_release, logged_in_client, images_path):
     assert body["image"] == {
         "filename": "new.png",
         "parent_slug": "alice-doc",
-        "url": "/static/upload/alice-doc/new.png",
+        "url": "/static/upload/1/alice-doc/new.png",
     }
     assert not (slug_dir / "old.png").exists()
     assert (slug_dir / "new.png").is_file()
@@ -901,8 +901,8 @@ def test_rename_image_success(mock_get_release, logged_in_client, images_path):
 def test_rename_image_same_name_is_noop(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "same.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -919,8 +919,8 @@ def test_rename_image_same_name_is_noop(
 def test_rename_image_conflict_when_target_exists(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     (slug_dir / "new.png").write_bytes(b"b")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
@@ -937,7 +937,7 @@ def test_rename_image_conflict_when_target_exists(
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_rename_image_source_not_found(mock_get_release, logged_in_client, images_path):
-    (images_path / "alice-doc").mkdir()
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
     resp = logged_in_client.put(
@@ -964,8 +964,8 @@ def test_rename_image_missing_new_filename(
 def test_rename_image_rejects_unsupported_extension(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1065,7 +1065,7 @@ def test_delete_image_rejects_filename_that_sanitizes_to_empty(
 def test_delete_image_rejects_target_path_escape(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    (images_path / "alice-doc").mkdir()
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
     monkeypatch.setattr(views, "secure_filename", lambda _: "../escape.png")
 
@@ -1090,8 +1090,8 @@ def test_rename_image_rejects_parent_slug_path_traversal(
 def test_rename_image_rejects_target_path_escape(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
     monkeypatch.setattr(views, "secure_filename", lambda _: "../escape.png")
@@ -1108,8 +1108,8 @@ def test_rename_image_rejects_target_path_escape(
 def test_rename_image_rejects_new_filename_that_sanitizes_to_empty(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1148,7 +1148,8 @@ def test_upload_image_mkdir_oserror_returns_500(
 def test_upload_image_save_oserror_returns_500(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.parent.mkdir()
     slug_dir.mkdir(mode=0o444)  # read-only: file.save() will raise OSError
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1169,8 +1170,8 @@ def test_upload_image_save_oserror_returns_500(
 def test_list_images_iterdir_oserror_skips_directory(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "ok.png").write_bytes(b"x")
 
     mock_get_release.return_value = MagicMock(
@@ -1189,8 +1190,8 @@ def test_list_images_iterdir_oserror_skips_directory(
 def test_delete_image_unlink_oserror_returns_500(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1210,8 +1211,8 @@ def test_delete_image_unlink_oserror_returns_500(
 def test_rename_image_oserror_returns_500(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1404,8 +1405,8 @@ def test_release_upload_url_source_fetch_failure(
 def test_list_images_iterdir_raising_oserror_logs_and_skips(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "ok.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1424,8 +1425,8 @@ def test_list_images_iterdir_raising_oserror_logs_and_skips(
 def test_delete_image_unlink_file_not_found_returns_404(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1445,8 +1446,8 @@ def test_delete_image_unlink_file_not_found_returns_404(
 def test_delete_image_rmdir_oserror_still_returns_ok(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
