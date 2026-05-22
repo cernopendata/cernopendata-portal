@@ -24,8 +24,8 @@
 """Validation process."""
 from invenio_files_rest.models import FileInstance
 
-from ..models import ReleaseStatus
 from .base import Validation
+from cernopendata.api import RecordFilesWithIndex
 
 
 class CheckDuplicateFiles(Validation):
@@ -37,30 +37,17 @@ class CheckDuplicateFiles(Validation):
     def validate(self, release):
         """Check that URIs in this release are not already persisted in the system."""
         errors = []
-        if not release.status or release.status in [
-            ReleaseStatus.DRAFT.value,
-            ReleaseStatus.READY.value,
-            ReleaseStatus.EDITING.value,
-        ]:
-            uris = {
-                f["uri"]
-                for record in release.records
-                for f in record.get("files", [])
-                if "uri" in f
-            }
-
-            if uris:
-                # Query ObjectVersion for existing URIs
-                existing_files = FileInstance.query.filter(
-                    FileInstance.uri.in_(uris)
-                ).all()
-
-                # Collect colliding URIs
-                used_uris = {obj.uri for obj in existing_files}
-
-                if used_uris:
-                    errors.append(
-                        f"The following file URIs are already stored in the system: "
-                        f"{', '.join(sorted(used_uris))}"
-                    )
+        for record in release.records:
+            for f in record.get("files", []):
+                # We should check that the file is not there for other recid
+                error = self._file_already_used(f["uri"], record["recid"])
+                if error:
+                    errors.append(error)
         return errors
+
+    def _file_already_used(self, uri, recid):
+        """Check if a particular file is used by a different record."""
+        existing_recid = RecordFilesWithIndex.get_record_for_file(uri)
+        if existing_recid and existing_recid != recid:
+            return f"The file {uri} is already used by a different record: {recid} (instead of {existing_recid})"
+        return None

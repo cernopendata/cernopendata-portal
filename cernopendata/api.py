@@ -12,9 +12,12 @@ from invenio_files_rest.models import (
     ObjectVersion,
     ObjectVersionTag,
 )
+from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_files.api import FileObject, FilesIterator
+from invenio_records_files.models import RecordsBuckets
 
 from cernopendata.cold_storage.api import ColdRecord, FileAvailability
+from cernopendata.modules.records.api import OpenDataRecord
 
 
 class FileIndexIterator(object):
@@ -68,7 +71,7 @@ class FileIndexIterator(object):
         return indices
 
 
-class RecordFilesWithIndex(ColdRecord):
+class RecordFilesWithIndex(ColdRecord, OpenDataRecord):
     """Class for a Record with File Indices."""
 
     def __init__(self, *args, **kwargs):
@@ -90,6 +93,79 @@ class RecordFilesWithIndex(ColdRecord):
                 FileIndexMetadata.get(None, str(elem.bucket)).dumps()
             )
         self.check_availability()
+
+    @classmethod
+    def create(cls, data, id_field, id_=None, **kwargs):
+        """Make sure that the recid follows the proper format."""
+        experiment = data.get("experiment")
+        if not isinstance(experiment, list) or not experiment:
+            raise ValueError("'experiment' must be a defined, non-empty list")
+
+        if len(experiment) != 1:
+            raise ValueError("'experiment' must contain exactly one experiment")
+
+        experiment = experiment[0]
+        recid = data.get("recid")
+
+        if not isinstance(recid, str):
+            raise ValueError("'recid' must be a string")
+
+        if recid.isdigit():
+            recid = f"{experiment}-{recid}"
+            data["recid"] = recid
+        elif not re.fullmatch(rf"{re.escape(experiment)}-\d+", recid):
+            raise ValueError(
+                f"'recid' must have the format '{experiment}-<integer>'; "
+                f"got {recid!r}"
+            )
+
+        return OpenDataRecord.create.__func__(cls, data, id_field, id_=id_, **kwargs)
+
+    @staticmethod
+    def get_record_for_file(uri):
+        """Get the record for the given file URI."""
+        fileinstance = FileInstance.query.filter(FileInstance.uri == uri).first()
+        if not fileinstance:
+            return None
+
+        object_version = ObjectVersion.query.filter_by(file_id=fileinstance.id).first()
+
+        if not object_version:
+            logger.error("The file instance exists, but no file objects points to it")
+            return -1
+
+        record_bucket = RecordsBuckets.query.filter_by(
+            bucket_id=object_version.bucket_id
+        ).first()
+
+        if not record_bucket:
+            return None
+        record = OpenDataRecord.get_record(record_bucket.record_id)
+
+        if not record:
+            return None
+
+        return record["recid"]
+
+    @staticmethod
+    def get_record_for_doi(doi):
+        """Get the recid for the given DOI."""
+        pid = PersistentIdentifier.query.filter_by(
+            pid_type="doi",
+            pid_value=doi,
+        ).first()
+
+        if not pid:
+            return None
+
+        recid_pid = PersistentIdentifier.query.filter_by(
+            pid_type="recid",
+            object_uuid=pid.object_uuid,
+        ).first()
+
+        if not recid_pid:
+            return None
+        return recid_pid.pid_value
 
 
 class FileIndexMetadata:
@@ -223,7 +299,7 @@ class MultiURIFileObject(FileObject):
     """
 
     @classmethod
-    def create_version(self, bucket, filename, file_id):
+    def create(self, bucket, filename, file_id):
         """Create a MultiURIFileObject."""
         return ObjectVersion.create(bucket, filename, file_id)
 

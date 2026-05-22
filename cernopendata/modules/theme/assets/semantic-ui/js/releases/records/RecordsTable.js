@@ -178,6 +178,7 @@ export default function RecordsTable({
             <Table.Header>
               <Table.Row>
                 <Table.HeaderCell>RecId</Table.HeaderCell>
+                <Table.HeaderCell>Version</Table.HeaderCell>
                 <Table.HeaderCell>DOI</Table.HeaderCell>
                 <Table.HeaderCell>Title</Table.HeaderCell>
                 <Table.HeaderCell collapsing>Actions</Table.HeaderCell>
@@ -186,7 +187,7 @@ export default function RecordsTable({
             <Table.Body>
               {visible.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan="4" textAlign="center">
+                  <Table.Cell colSpan="5" textAlign="center">
                     No records in this release.
                   </Table.Cell>
                 </Table.Row>
@@ -205,6 +206,9 @@ export default function RecordsTable({
                         {record.recid}
                       </Table.Cell>
                       <Table.Cell className="no-glossary">
+                        {record.version || "—"}
+                      </Table.Cell>
+                      <Table.Cell className="no-glossary">
                         {record.doi}
                       </Table.Cell>
                       <Table.Cell>{record.title || "—"}</Table.Cell>
@@ -216,7 +220,7 @@ export default function RecordsTable({
                           }}
                           editDisabled={editDisabled}
                           viewDisabled={viewDisabled}
-                          viewHref={`/record/${record.recid}`}
+                          viewHref={`/record/${record.recid}${record.version != null ? `-v${record.version}` : ""}`}
                         />
                       </Table.Cell>
                     </Table.Row>

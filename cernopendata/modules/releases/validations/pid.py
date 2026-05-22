@@ -44,8 +44,13 @@ class PIDValidation(Validation):
 
     def _duplicate_pids(self, release):
         """Return identifiers already registered as PIDs."""
+        # THIS SHOULD BE ONLY FOR THE ENTRIES WITH VERSION==1
         items = getattr(release, self.items_attr) or []
-        values = [item.get(self.id_field) for item in items if item.get(self.id_field)]
+        values = [
+            item.get(self.id_field)
+            for item in items
+            if item.get(self.id_field) and item.get("version", 1) == 1
+        ]
         if not values:
             return []
         existing = PersistentIdentifier.query.filter(

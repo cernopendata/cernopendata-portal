@@ -7,7 +7,7 @@ from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from sqlalchemy import Integer, cast
 from sqlalchemy.sql import func
 
-from ..models import ReleaseMetadata
+from ..models import ReleaseMetadata, ReleaseStatus
 from .pid import PIDValidation
 
 
@@ -116,6 +116,9 @@ class ValidRecid(PIDValidation):
 
         for record in release.records:
             recid = record.get("recid")
+            version = record.get("version")
+            if isinstance(version, int) and version > 1:
+                continue
             is_registered = recid in duplicates
             has_numeric_collision = recid in colliding
             if (
