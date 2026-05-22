@@ -40,7 +40,10 @@ def _create_query(term):
                 type="cross_fields",
             )
         ],
-        must_not=[dsl.query.Match(distribution__availability="ondemand")],
+        must_not=[
+            dsl.query.Term(_versions__is_latest=False),
+            dsl.query.Match(distribution__availability="ondemand"),
+        ],
     )
 
 
@@ -55,9 +58,14 @@ def test_cernopendata_query_parser(app):
         assert _query_parser_and("CMS AND /btau") == _create_query("CMS AND \\/btau")
 
     with app.test_request_context("/?ondemand=true"):
-        assert _query_parser_and("CMS AND /btau") == dsl.query.QueryString(
-            default_operator="AND",
-            fields=["title.tokens^2", "*"],
-            query="CMS AND \\/btau",
-            type="cross_fields",
+        assert _query_parser_and("CMS AND /btau") == dsl.query.Bool(
+            must=[
+                dsl.query.QueryString(
+                    default_operator="AND",
+                    fields=["title.tokens^2", "*"],
+                    query="CMS AND \\/btau",
+                    type="cross_fields",
+                )
+            ],
+            must_not=[dsl.query.Term(_versions__is_latest=False)],
         )

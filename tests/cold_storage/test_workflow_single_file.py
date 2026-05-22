@@ -9,7 +9,7 @@ from .utils import assert_list_output, run_command
 
 SINGLE_FILE_RECORDS = [
     {
-        "recid": "1114",
+        "recid": "alice-1114",
         "title": "File Record",
         "file_specs": [
             {"name": "file.txt", "content": b"This is a dummy file for testing."}

@@ -9,16 +9,35 @@
           "copy_to": "facet_schema",
           "type": "text"
         },
+        "_concept_parent": {
+          "type": "keyword"
+        },
         "_created": {
           "type": "date"
         },
+        "_id_field": {
+          "type": "keyword"
+        },
         "_updated": {
           "type": "date"
+        },
+        "_versions": {
+          "properties": {
+            "index": {
+              "type": "integer"
+            },
+            "is_latest": {
+              "type": "boolean"
+            }
+          }
         },
         "accelerator": {
           "type": "keyword"
         },
         "availability": {
+          "type": "keyword"
+        },
+        "concept_doi": {
           "type": "keyword"
         },
         "date_created": {
@@ -67,6 +86,9 @@
               }
             }
           }
+        },
+        "version": {
+          "type": "integer"
         }
       }
     },

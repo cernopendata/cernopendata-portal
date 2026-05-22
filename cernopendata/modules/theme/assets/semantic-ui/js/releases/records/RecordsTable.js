@@ -191,6 +191,7 @@ export default function RecordsTable({
               <Table.Row>
                 <Table.HeaderCell collapsing>#</Table.HeaderCell>
                 <Table.HeaderCell>RecId</Table.HeaderCell>
+                <Table.HeaderCell>Version</Table.HeaderCell>
                 <Table.HeaderCell>DOI</Table.HeaderCell>
                 <Table.HeaderCell>Title</Table.HeaderCell>
                 <Table.HeaderCell collapsing>Actions</Table.HeaderCell>
@@ -221,6 +222,9 @@ export default function RecordsTable({
                         {record.recid}
                       </Table.Cell>
                       <Table.Cell className="no-glossary">
+                        {record.version || "—"}
+                      </Table.Cell>
+                      <Table.Cell className="no-glossary">
                         {record.doi}
                       </Table.Cell>
                       <Table.Cell>{record.title || "—"}</Table.Cell>
@@ -233,7 +237,7 @@ export default function RecordsTable({
                           onDelete={() => setDeletingRecord(record)}
                           editDisabled={editDisabled}
                           viewDisabled={viewDisabled}
-                          viewHref={`/record/${record.recid}`}
+                          viewHref={`/record/${record.recid}${record.version != null ? `-v${record.version}` : ""}`}
                         />
                       </Table.Cell>
                     </Table.Row>
