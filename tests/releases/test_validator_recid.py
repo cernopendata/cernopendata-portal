@@ -43,15 +43,37 @@ def test_validator_recid_fix():
     assert release.max_recid == 103
 
 
-def test_validator_recid_validate():
+@pytest.mark.parametrize(
+    ("record", "existing_pids", "expected_error"),
+    [
+        ({"recid": "93950"}, [], None),
+        ({"recid": "93950"}, ["93950"], "already registered"),
+        ({"recid": "93950", "version": 2}, ["93950-v1"], None),
+        ({"recid": "93950", "version": 2}, [], "previous version"),
+        (
+            {"recid": "93950", "version": 2},
+            ["93950-v1", "93950-v2"],
+            "version '93950-v2' is already registered",
+        ),
+    ],
+)
+def test_validator_recid_validates_version_history(
+    record, existing_pids, expected_error
+):
     validator = ValidRecid()
-    release = DummyRelease([{"recid": "CMS-5"}, {"recid": "80000"}])
-    with patch.object(validator, "_duplicate_pids", return_value=[]), patch.object(
-        validator, "_numeric_collisions", return_value=[]
-    ):
+    release = DummyRelease([record])
+    with patch(
+        "cernopendata.modules.releases.validations.recid.PersistentIdentifier"
+    ) as mock_pid:
+        mock_pid.query.filter.return_value.all.return_value = [
+            MagicMock(pid_value=pid) for pid in existing_pids
+        ]
         errors = validator.validate(release)
-    assert any("80000" in error and "does not match" in error for error in errors)
-    assert not any("CMS-5" in error for error in errors)
+
+    if expected_error:
+        assert any(expected_error in error for error in errors)
+    else:
+        assert errors == []
 
 
 @pytest.mark.parametrize(
@@ -101,3 +123,10 @@ def test_validator_recid_numeric_collision():
         mock_pid.query.filter.return_value.all.return_value = [MagicMock(pid_value="1")]
         collisions = validator._numeric_collisions(release)
     assert collisions == [(0, "atlas-1", "1")]
+
+
+def test_validator_recid_versioned_record_skips_base_collision_check():
+    validator = ValidRecid()
+    release = DummyRelease([{"recid": "93950", "version": 1}])
+
+    assert validator._numeric_collisions(release) == []
