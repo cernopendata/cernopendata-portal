@@ -21,6 +21,12 @@
     "_bucket": {
       "type": "string"
     },
+    "_concept_parent": {
+      "type": "string"
+    },
+    "_id_field": {
+      "type": "string"
+    },
     "_files": {
       "items": {
         "additionalProperties": false,
@@ -69,6 +75,18 @@
       "items": {
         "type": "object"
       }
+    },
+    "_versions": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "is_latest": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
     },
     "availability": {
       "type": "string"

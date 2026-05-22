@@ -7,6 +7,12 @@
             <div class="ui segment">
                 <div class="card-body">
                     <h1> {{ record.anchor }} </h1>
+                    {% if not record._versions.is_latest %}
+                    <div class="ui warning message">
+                          Please, note that this is not the latest version of this entry. An updated version can be found
+                        <a href="{{record.anchor}}">here</a>
+                    </div>
+                    {% endif %}
                     <br>
                     <p class="definition-paragraph">{{ record.definition | safe }}</p>
                     {% if record.links %}
@@ -31,6 +37,20 @@
                             <a href="/glossary/{{term.term}}"><span class="ui tiny label grey">{{ term.term }}</span></a>
                             {% endfor %}
                         </span>
+                    </div>
+                    {% endif %}
+                    {% if record._versions.index >1 %}
+                    <div class="ui message">
+                        There are older versions of this entry:
+                        <ul>
+                            {% for counter in range(1, record._versions.index) %}
+                            <li>
+                                <a href="{{ record.anchor }}-v{{ counter }}">
+                                    Version {{ counter }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
                     </div>
                     {% endif %}
                 </div>
