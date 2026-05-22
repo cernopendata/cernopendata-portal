@@ -26,8 +26,10 @@
 
 import json
 import os
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from itertools import chain
 
 import requests
 from flask import (
@@ -43,7 +45,12 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from invenio_db import db
+from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_pidstore.models import PersistentIdentifier
+from sqlalchemy.exc import NoResultFound
 from werkzeug.utils import secure_filename
+
+from cernopendata.api import RecordFilesWithIndex
 
 from .api import Release
 from .models import ReleaseStatus
@@ -171,8 +178,65 @@ def _check_experiment(experiment):
     """Ensure that the experiment name is valid."""
     if not Release.validate_experiment(experiment):
         abort(404)
-    if experiment not in curator_experiments()["curator_experiments"]:
+    curator_exps = {
+        str(curator_experiment).lower()
+        for curator_experiment in curator_experiments()["curator_experiments"]
+    }
+    if experiment.lower() not in curator_exps:
         abort(403)
+
+
+@blueprint.route("/releases/create_from_entry/<id_field>/<entry_id>")
+@login_required
+def create_from_entry(id_field, entry_id):
+    """Create a draft release using an existing record as its input."""
+    from sys import stderr
+
+    try:
+        print(f"Checking if ht entry exists {id_field}, {entry_id}", file=stderr)
+        pid = PersistentIdentifier.get(id_field, entry_id)
+        record = RecordFilesWithIndex.get_record(pid.object_uuid)
+    except (NoResultFound, PIDDoesNotExistError):
+        abort(404)
+
+    record_experiments = record.get("experiment") or []
+    if not record_experiments:
+        abort(404)
+    experiment = str(record_experiments[0]).lower()
+    _check_experiment(experiment)
+
+    for release_metadata in Release.list_releases(experiment):
+        if release_metadata.status == ReleaseStatus.PUBLISHED.value:
+            continue
+        if any(
+            str(entry.get(id_field)) == str(entry_id)
+            for entry in chain(
+                release_metadata.records or [],
+                release_metadata.documents or [],
+            )
+        ):
+            return redirect(f"/releases/{experiment}/{release_metadata.id}")
+
+    record_data = deepcopy(record.dumps())
+    # Records without an explicit version are legacy v1 records, so a copied
+    # record always becomes the next version.
+    record_data["version"] = int(record_data.get("version") or 1) + 1
+    record_data["_versions"] = {
+        "index": record_data["version"],
+        "is_latest": True,
+    }
+    print(record_data, file=stderr)
+    release = Release.create(
+        experiment=experiment,
+        current_user=current_user,
+        **(
+            {"records": [record_data]}
+            if id_field == "recid"
+            else {"documents": [record_data]}
+        ),
+        name=f"Modify entry {id_field}={entry_id}",
+    )
+    return redirect(f"/releases/{experiment}/{release._metadata.id}")
 
 
 @blueprint.route("/releases/api/list/<experiment>", methods=["GET"])

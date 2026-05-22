@@ -6,6 +6,24 @@
     "$schema": {
       "type": "string"
     },
+    "_concept_parent": {
+      "type": "string"
+    },
+    "_id_field": {
+      "type": "string"
+    },
+    "_versions": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "is_latest": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "accelerator": {
       "title": "Accelerator",
       "type": "string"
