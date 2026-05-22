@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from invenio_pidstore.errors import PIDDoesNotExistError
 
 from cernopendata.modules.releases.api import Release, ReleaseValidation
 from cernopendata.modules.releases.models import (
@@ -49,6 +50,26 @@ def test_release_validation():
     release_validation.set_status("FAILED")
     assert release_validation.status == "FAILED"
     assert release_validation.to_dict()
+
+
+def test_release_validation_handles_removed_validator():
+    class ReleaseValidationMetadata:
+        id = 1
+        release_id = 2
+        name = "Removed validation"
+        status = False
+        enabled = True
+        release = None
+
+    release_validation = ReleaseValidation(ReleaseValidationMetadata())
+
+    assert release_validation.validator is None
+    assert release_validation.optional
+    assert not release_validation.fixable
+    assert not release_validation.is_document_validation
+    assert not release_validation.is_record_validation
+    assert "no longer available" in release_validation.error_message
+    assert release_validation.fix() == []
 
 
 def test_release_properties(dummy_metadata):
@@ -271,6 +292,35 @@ def test_stage_success(mocker):
     mock_record.commit.assert_called()
 
 
+def test_stage_record_revision_skips_file_creation(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_create = mocker.patch("cernopendata.modules.releases.api.create_record")
+    mocker.patch("cernopendata.modules.releases.api.create_doc")
+
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.extensions = {
+        "invenio-jsonschemas": MagicMock(
+            path_to_url=MagicMock(return_value="schema-url")
+        )
+    }
+    mock_create.return_value = MagicMock()
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": "93950", "version": 2, "_versions": {"index": 2}}]
+    metadata.documents = []
+    metadata.experiment = "cms"
+    metadata.id = 1
+    metadata.num_errors = 0
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+    mocker.patch.object(release, "change_status")
+
+    release.stage(MagicMock())
+
+    assert mock_create.call_args[0][1] is True
+
+
 def test_stage_publish_or_rollback_wrong_status(mocker):
     r = Release(MagicMock())
 
@@ -316,7 +366,7 @@ def test_publish(mocker):
 
 def test_rollback(mocker):
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
-    mocker.patch("cernopendata.modules.releases.api.delete_record")
+    mock_delete_record = mocker.patch("cernopendata.modules.releases.api.delete_record")
 
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
@@ -330,6 +380,7 @@ def test_rollback(mocker):
 
     r.rollback(MagicMock())
 
+    mock_delete_record.assert_called_once_with(mocker.ANY, "recid")
     mock_session.commit.assert_called_once()
 
 
@@ -668,8 +719,168 @@ def test_rollback_with_documents(mocker):
 
     r.rollback(MagicMock())
 
-    mock_pid_get.assert_called_with("docid", "my-doc")
-    mock_delete_doc.assert_called_once()
+    mock_pid_get.assert_called_with("docid", "my-doc-v1")
+    mock_delete_doc.assert_called_once_with(mocker.ANY, "docid")
+
+
+class _FakeEntry(dict):
+    """A record/document: a dict of metadata that can be committed."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.commit = MagicMock()
+
+
+def _publishing_release(mocker, records=None, documents=None):
+    """Return a release that is ready to be published, with the db mocked out."""
+    metadata = MagicMock()
+    metadata.records = records or []
+    metadata.documents = documents or []
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+    mocker.patch.object(release, "change_status")
+    return release
+
+
+def test_publish_updates_the_version_being_published(mocker):
+    """The version PID is used, so that the previous version is not overwritten."""
+    mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mock_update_record = mocker.patch("cernopendata.modules.releases.api.update_record")
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_move = mocker.patch.object(Release, "_move_concept_pids")
+
+    release = _publishing_release(mocker, records=[{"recid": "cms-1", "version": 2}])
+    release.publish(MagicMock())
+
+    mock_pid_get.assert_called_once_with("recid", "cms-1-v2")
+    assert mock_update_record.call_args[0][0] is mock_pid_get.return_value
+    assert mock_move.call_args[0][:2] == ("recid", "cms-1")
+    assert mock_move.call_args[1] == {"oai": True}
+
+
+def test_publish_of_a_first_version_does_not_move_the_concept_pids(mocker):
+    mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mocker.patch("cernopendata.modules.releases.api.update_record")
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_move = mocker.patch.object(Release, "_move_concept_pids")
+
+    release = _publishing_release(mocker, records=[{"recid": "cms-1"}])
+    release.publish(MagicMock())
+
+    mock_pid_get.assert_called_once_with("recid", "cms-1-v1")
+    mock_move.assert_not_called()
+
+
+def test_publish_updates_the_version_of_the_document_being_published(mocker):
+    mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mock_update_doc = mocker.patch(
+        "cernopendata.modules.releases.api.update_doc_or_glossary"
+    )
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_move = mocker.patch.object(Release, "_move_concept_pids")
+
+    release = _publishing_release(mocker, documents=[{"slug": "my-doc", "version": 3}])
+    release.publish(MagicMock())
+
+    mock_pid_get.assert_called_once_with("docid", "my-doc-v3")
+    assert mock_update_doc.call_args[0][0] is mock_pid_get.return_value
+    assert mock_move.call_args[0][:2] == ("docid", "my-doc")
+    assert mock_move.call_args[1] == {}
+
+
+def test_move_concept_pids_follows_the_latest_version(mocker):
+    """The concept and OAI PIDs point to the new version, which becomes latest."""
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    concept_pid = MagicMock(object_uuid="uuid-v1")
+    oai_pid = MagicMock(object_uuid="uuid-v1")
+    mock_pid_get.side_effect = [concept_pid, oai_pid]
+
+    previous = _FakeEntry({"_versions": {"index": 1, "is_latest": True}})
+    entry_cls = MagicMock()
+    entry_cls.get_record.return_value = previous
+    published = MagicMock(id="uuid-v2")
+    indexer = MagicMock()
+
+    Release._move_concept_pids(
+        "recid", "cms-1", published, entry_cls, indexer, oai=True
+    )
+
+    entry_cls.get_record.assert_called_once_with("uuid-v1")
+    assert previous["_versions"]["is_latest"] is False
+    assert concept_pid.object_uuid == "uuid-v2"
+    assert oai_pid.object_uuid == "uuid-v2"
+    assert mock_pid_get.call_args_list[1][0] == (
+        "oai",
+        "oai:cernopendata.cern:cms-1",
+    )
+    indexer.index.assert_called_once_with(previous)
+
+
+def test_move_concept_pids_survives_a_missing_oai_pid(mocker):
+    """Entries loaded before the OAI PIDs existed must not break publishing."""
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    # 'new' is needed because current_app is a proxy and there is no app context.
+    mocker.patch("cernopendata.modules.releases.api.current_app", new=MagicMock())
+
+    concept_pid = MagicMock(object_uuid="uuid-v1")
+    mock_pid_get.side_effect = [concept_pid, PIDDoesNotExistError("oai", "x")]
+
+    entry_cls = MagicMock()
+    entry_cls.get_record.return_value = _FakeEntry()
+
+    Release._move_concept_pids(
+        "recid", "cms-1", MagicMock(id="uuid-v2"), entry_cls, MagicMock(), oai=True
+    )
+
+    assert concept_pid.object_uuid == "uuid-v2"
+
+
+def test_move_concept_pids_is_a_noop_when_already_on_the_latest(mocker):
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mock_pid_get.return_value = MagicMock(object_uuid="uuid-v2")
+
+    entry_cls = MagicMock()
+    Release._move_concept_pids(
+        "recid", "cms-1", MagicMock(id="uuid-v2"), entry_cls, MagicMock(), oai=True
+    )
+
+    entry_cls.get_record.assert_not_called()
+
+
+def test_rollback_removes_the_version_of_the_document(mocker):
+    mock_pid_get = mocker.patch(
+        "cernopendata.modules.releases.api.PersistentIdentifier.get"
+    )
+    mock_delete_doc = mocker.patch(
+        "cernopendata.modules.releases.api.delete_doc_or_glossary"
+    )
+    mocker.patch("cernopendata.modules.releases.api.delete_record")
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    release = _publishing_release(mocker, documents=[{"slug": "my-doc", "version": 2}])
+    release.rollback(MagicMock())
+
+    mock_pid_get.assert_called_with("docid", "my-doc-v2")
+    mock_delete_doc.assert_called_once_with(mocker.ANY, "docid")
 
 
 def test_rollback_skips_doc_without_slug(mocker):
