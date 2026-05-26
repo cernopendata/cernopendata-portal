@@ -17,33 +17,4 @@
 {% block javascript %}
     {{ super() }}
 {{ webpack['cernopendata_curate.js'] }}
-
-    <script>
-      $('[data-tooltip]').popup();
-      $('.ui.checkbox').checkbox();
-
-      const form = document.getElementById('primary-action-form');
-      const checkbox = document.getElementById('generate-doi-checkbox');
-
-      if (form && checkbox) {
-        form.addEventListener('submit', function (e) {
-          if (!checkbox.checked) {
-            e.preventDefault();
-
-            $('#primary-action-btn')
-              .popup({
-                content: 'You can generate DOIs for all entries before publishing.',
-                position: 'top center',
-                on: 'manual'
-              })
-              .popup('show');
-
-            // Hide popup automatically after a moment
-            setTimeout(() => {
-              $('#primary-action-btn').popup('hide');
-            }, 3000);
-          }
-        });
-      }
-    </script>
 {%- endblock %}

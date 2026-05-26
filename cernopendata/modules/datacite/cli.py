@@ -27,7 +27,6 @@ import os
 
 import click
 from click import ClickException
-from datacite import schema43
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
@@ -37,8 +36,7 @@ from invenio_records.api import Record
 
 from .client import DataCiteMDSClientWrapper
 from .providers import DataCiteProviderWrapper
-from .serializers import DataCiteSerializer
-from .utils import generate_doi
+from .utils import generate_doi, register_record_doi, validate_record
 
 
 @click.group()
@@ -84,15 +82,6 @@ def gen_doi(exp):
     click.echo(doi)
 
 
-def _validate_record(record):
-    """Function to validate a record according to the schema of datacite."""
-    # serialize record to schema43
-
-    doc = DataCiteSerializer().dump(record)
-    schema43.validate(doc)
-    return schema43.tostring(doc)
-
-
 @datacite.command()
 @click.option("--recid", help="Test serialisation of record with given recid")
 @with_appcontext
@@ -100,9 +89,7 @@ def test_serialisation(recid):
     """Test serialisation of record with given recid."""
     uuid = PersistentIdentifier.get("recid", recid).object_uuid
     record = Record.get_record(uuid)
-    experiment = record.get("experiment", None)
-    doi = record["doi"]
-    doc = _validate_record(record)
+    doc = validate_record(record)
     click.echo(doc)
 
 
@@ -113,23 +100,9 @@ def register(recid):
     """Register record with given recid in DataCite."""
     uuid = PersistentIdentifier.get("recid", recid).object_uuid
     record = Record.get_record(uuid)
-    experiment = record.get("experiment", None)
     doi = record["doi"]
-
-    try:
-        provider = DataCiteProviderWrapper.get(pid_value=doi, pid_type="doi")
-    except PIDDoesNotExistError:
-        provider = DataCiteProviderWrapper.create(pid_value=doi, experiment=experiment)
-
-    doc = _validate_record(record)
-
-    landing_page = os.path.join(
-        current_app.config.get("PIDSTORE_LANDING_BASE_URL"), recid
-    )
-
-    provider.register(url=landing_page, doc=doc)
+    register_record_doi(record)
     db.session.commit()
-
     click.echo("Record registered with DOI {}".format(doi))
 
 
@@ -149,7 +122,7 @@ def update(recid):
             "Record with DOI {} not registered in DataCite.".format(doi)
         )
 
-    doc = _validate_record(record)
+    doc = validate_record(record)
 
     landing_page = os.path.join(
         current_app.config.get("PIDSTORE_LANDING_BASE_URL"), recid

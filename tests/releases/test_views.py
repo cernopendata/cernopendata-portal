@@ -3,7 +3,7 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, abort
 
 from cernopendata.modules.releases import views
 from cernopendata.modules.releases.api import Release
@@ -1462,3 +1462,72 @@ def test_delete_image_rmdir_oserror_still_returns_ok(
     assert response.status_code == 200
     assert response.get_json()["status"] == "ok"
     assert not (slug_dir / "a.png").exists()
+
+
+@patch("cernopendata.modules.releases.views.db")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_generate_doi_endpoint_returns_records_and_errors(
+    mock_get_release, mock_db, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_release.generate_doi.return_value = [{"recid": 1, "error": "bad field"}]
+    mock_release.records = [{"recid": 1, "doi": ""}]
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.post(
+        "/releases/cms/1/generate_doi", json={"recids": [1]}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["records"] == [{"recid": 1, "doi": ""}]
+    assert data["errors"] == [{"recid": 1, "error": "bad field"}]
+    mock_release.generate_doi.assert_called_once_with([1])
+    mock_db.session.commit.assert_called_once()
+
+
+def test_generate_doi_endpoint_rejects_non_staged(logged_in_client):
+    with patch(
+        "cernopendata.modules.releases.views._get_release",
+        side_effect=lambda *_args, **_kwargs: abort(409),
+    ):
+        response = logged_in_client.post("/releases/cms/1/generate_doi")
+
+    assert response.status_code == 409
+
+
+@patch("cernopendata.modules.releases.views.flash")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_publish_flashes_datacite_error_summary(
+    mock_get_release, mock_flash, logged_in_client
+):
+    mock_release = MagicMock()
+    errors = [{"recid": recid, "error": "fail"} for recid in range(1, 8)]
+    mock_release.publish.return_value = errors
+    mock_get_release.return_value = mock_release
+
+    logged_in_client.post("/releases/cms/1/publish")
+
+    all_calls = mock_flash.call_args_list
+    error_calls = [args[0] for args, _ in all_calls if args[1:] == ("error",)]
+    assert len(error_calls) == 1
+    assert "1, 2, 3, 4, 5" in error_calls[0]
+    assert "(+2 more)" in error_calls[0]
+    assert any("published" in args[0] for args, _ in all_calls)
+
+
+@patch("cernopendata.modules.releases.views.flash")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_publish_no_errors_only_flashes_success(
+    mock_get_release, mock_flash, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_release.publish.return_value = []
+    mock_get_release.return_value = mock_release
+
+    logged_in_client.post("/releases/cms/1/publish")
+
+    all_calls = mock_flash.call_args_list
+    assert not any(args[1:] == ("error",) for args, _ in all_calls)
+    assert any("published" in args[0] for args, _ in all_calls)

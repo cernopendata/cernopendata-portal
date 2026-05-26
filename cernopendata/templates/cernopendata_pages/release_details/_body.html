@@ -1,14 +1,7 @@
 
 {% set release_status = release.status.value %}
 
-{% if release_status == 'STAGED' %}
-<div class="ui warning message release-status-message">
-    <p><i class="lock icon"></i> This release is staged and read-only. To modify it, go back to DRAFT.</p>
-    <form method="post" action="/releases/{{ experiment }}/{{ release._metadata.id }}/rollback">
-        <button class="ui tiny basic button"><i class="undo icon"></i> Return to Draft</button>
-    </form>
-</div>
-{% elif release_status == 'EDITING' %}
+{% if release_status == 'EDITING' %}
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> Changes are currently being applied. If this message persists, something may have gone wrong.</p>
 </div>

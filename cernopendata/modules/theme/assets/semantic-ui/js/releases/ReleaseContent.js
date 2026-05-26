@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Tab } from "semantic-ui-react";
 
 import RecordsTable from "./records/RecordsTable";
@@ -13,6 +13,10 @@ export default function ReleaseContent({
   viewDisabled,
   releaseStatus,
 }) {
+  const [records, setRecords] = useState(initialRecords);
+  const showDoiWarning =
+    releaseStatus === "STAGED" && records.some((record) => !record.doi);
+
   const panes = [
     {
       menuItem: { key: "records", icon: "database", content: "Records" },
@@ -21,7 +25,8 @@ export default function ReleaseContent({
           <RecordsTable
             experiment={experiment}
             releaseId={releaseId}
-            initialRecords={initialRecords}
+            records={records}
+            setRecords={setRecords}
             editDisabled={editDisabled}
             viewDisabled={viewDisabled}
             releaseStatus={releaseStatus}
@@ -51,6 +56,15 @@ export default function ReleaseContent({
 
   return (
     <div style={{ marginBottom: "2em" }}>
+      {showDoiWarning && (
+        <div className="ui warning message release-status-message">
+          <p>
+            <i className="info circle icon"></i>
+            Some records do not have DOIs yet. You can generate them before
+            publishing.
+          </p>
+        </div>
+      )}
       <Tab panes={panes} />
     </div>
   );

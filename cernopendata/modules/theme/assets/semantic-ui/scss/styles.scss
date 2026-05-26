@@ -608,9 +608,20 @@ a {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    position: relative;
 
-    .ui.checkbox {
+    .release-navigation-rollback-btn {
         margin-right: auto;
+    }
+
+    .release-navigation-status-text {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+        white-space: nowrap;
     }
 
     #primary-action-btn > .icon {
@@ -620,6 +631,10 @@ a {
 
 .release-status-message {
     text-align: center;
+}
+
+#release-content-root {
+    margin-top: 1em;
 }
 
 .records-table-toolbar {
