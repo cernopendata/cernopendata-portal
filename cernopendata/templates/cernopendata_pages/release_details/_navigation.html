@@ -46,10 +46,24 @@
     {% endfor %}
 </div>
 
+{% if release_status == 'STAGED' %}
+<form id="rollback-form" method="post" action="/releases/{{ experiment }}/{{ release._metadata.id }}/rollback"></form>
+{% endif %}
+
 <form id="primary-action-form"
       method="post"
       action="{% if next_action %}/releases/{{ experiment }}/{{ release._metadata.id }}/{{ next_action }}{% endif %}">
     <div class="ui bottom attached segment release-navigation-actions">
+
+        {% if release_status == 'STAGED' %}
+        <button type="submit" form="rollback-form" class="ui tiny basic button release-navigation-rollback-btn">
+            <i class="undo icon"></i> Return to Draft
+        </button>
+        <div class="release-navigation-status-text">
+            <i class="lock icon"></i>
+            <span>This release is staged and read-only. To modify it, go back to DRAFT.</span>
+        </div>
+        {% endif %}
 
         <div class="release-navigation-actions-button"
              {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING'] %}

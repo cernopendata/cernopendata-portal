@@ -42,6 +42,7 @@ from flask import (
     request,
 )
 from flask_login import current_user, login_required
+from invenio_db import db
 from werkzeug.utils import secure_filename
 
 from .api import Release
@@ -262,26 +263,24 @@ def release_json(experiment, release_id):
     )
 
 
-# @blueprint.route(
-#    "/releases/<experiment>/<int:release_id>/generate_doi",
-#    methods=["POST"],
-# )
-# def generate_doi(experiment, release_id):
-#    """Generate DOI for the records inside a release. TODO."""
-#    release = _get_release(
-#        experiment, release_id, lock=True, status=ReleaseStatus.DRAFT
-#    )##
-#
-#    if release.valid_doi:
-#        abort(400, "RECIDs already generated")#
-#
-#    release.generate_doi()
-#    db.session.add(release)
-#    db.session.commit()
-#
-#    flash(f"Recid created for records in release {release.id}.", "success")
-#
-#    return redirect(f"/releases/{experiment}/{release_id}")
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/generate_doi",
+    methods=["POST"],
+)
+@login_required
+def generate_doi(experiment, release_id):
+    """Mint DOIs for specified records in a staged release and validate them."""
+    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    recids = request.json.get("recids", [])
+    errors = release.generate_doi(recids)
+    db.session.commit()
+    return jsonify(
+        {
+            "status": "ok",
+            "records": release.records,
+            "errors": errors,
+        }
+    )
 
 
 @blueprint.route(
@@ -377,7 +376,13 @@ def publish(experiment, release_id):
     """Publish the records: put them in the search, and remove the box saying that they were work in progress."""
     release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
 
-    release.publish(current_user)
+    errors = release.publish(current_user)
+    if errors:
+        preview = ", ".join(str(error["recid"]) for error in errors[:5])
+        summary = f"DataCite registration failed for recids: {preview}"
+        if len(errors) > 5:
+            summary += f" (+{len(errors) - 5} more)"
+        flash(summary, "error")
     flash("Release published!")
     return redirect(f"/releases/{experiment}/{release_id}")
 
