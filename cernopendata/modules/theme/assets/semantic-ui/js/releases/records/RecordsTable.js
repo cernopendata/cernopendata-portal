@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Table, Button, Icon, Pagination } from "semantic-ui-react";
+import { Table, Button, Icon, Pagination, Popup } from "semantic-ui-react";
 import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
 import AddItemsModal from "../shared/AddItemsModal";
@@ -9,12 +9,12 @@ import RowActions from "../shared/RowActions";
 export default function RecordsTable({
   experiment,
   releaseId,
-  initialRecords,
+  records,
+  setRecords,
   editDisabled = false,
   viewDisabled = false,
   releaseStatus = null,
 }) {
-  const [records, setRecords] = useState(initialRecords);
   const [editingRecord, setEditingRecord] = useState(null);
   const [editAllMode, setEditAllMode] = useState(false);
 
@@ -27,6 +27,39 @@ export default function RecordsTable({
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [doiLoading, setDoiLoading] = useState(false);
+  const [doiErrors, setDoiErrors] = useState([]);
+
+  const allHaveDoi =
+    records.length > 0 && records.every((record) => record.doi);
+
+  async function handleGenerateDoi() {
+    setDoiLoading(true);
+    const recidsWithoutDoi = records
+      .filter((record) => !record.doi)
+      .map((record) => record.recid);
+    try {
+      const response = await fetch(
+        `/releases/${experiment}/${releaseId}/generate_doi`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recids: recidsWithoutDoi }),
+        },
+      );
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        throw new Error(json.error || "Request failed");
+      }
+      const data = await response.json();
+      setRecords(data.records);
+      setDoiErrors(data.errors || []);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDoiLoading(false);
+    }
+  }
 
   function typesetMath() {
     if (window.MathJax && window.MathJax.Hub) {
@@ -49,21 +82,53 @@ export default function RecordsTable({
 
   return (
     <>
+      {doiErrors.length > 0 && (
+        <div className="ui segment validation-segment">
+          <div className="validation-header">
+            <strong>
+              <i className="tasks icon"></i>DOI validation
+            </strong>
+            <div className="validation-header-labels">
+              <span className="ui red label">{doiErrors.length} failed</span>
+            </div>
+          </div>
+          {doiErrors.map((error, index) => (
+            <div
+              key={error.recid}
+              className={`validation-row${index < doiErrors.length - 1 ? " validation-row-bordered" : ""}`}
+            >
+              <div className="validation-row-icon">
+                <i className="times circle red icon"></i>
+              </div>
+              <div className="validation-row-body">
+                <b>
+                  recid {error.recid}: {error.error}
+                </b>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div>
         <div className="records-table-toolbar">
           {releaseStatus === "STAGED" && records.length > 0 && (
-            <div className="ui checkbox">
-              <input
-                type="checkbox"
-                name="generate_doi"
-                id="generate-doi-checkbox"
-                value="1"
-                form="primary-action-form"
-              />
-              <label htmlFor="generate-doi-checkbox">
-                Generate DOI for all entries
-              </label>
-            </div>
+            <Popup
+              content="All records already have DOIs"
+              disabled={!allHaveDoi}
+              position="top center"
+              trigger={
+                <span>
+                  <Button
+                    color="teal"
+                    disabled={allHaveDoi || doiLoading}
+                    loading={doiLoading}
+                    onClick={handleGenerateDoi}
+                  >
+                    <Icon name="id card" /> Generate DOIs
+                  </Button>
+                </span>
+              }
+            />
           )}
           <div className="records-table-toolbar-buttons">
             <Button

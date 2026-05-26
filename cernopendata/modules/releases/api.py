@@ -39,6 +39,11 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from cernopendata.modules.datacite.utils import (
+    generate_doi as mint_doi,
+    register_record_doi,
+    validate_record as validate_datacite_record,
+)
 from cernopendata.modules.fixtures.cli import (
     create_doc,
     create_record,
@@ -483,11 +488,18 @@ class Release:
             raise RuntimeError("Release is not STAGED")
 
         indexer = RecordIndexer()
+        errors = []
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
             record = update_record(pid_object, record_data, True)
             record.commit()
             indexer.index(record)
+            if record_data.get("doi"):
+                try:
+                    register_record_doi(record_data)
+                except Exception as error:
+                    current_app.logger.exception("DataCite registration failed")
+                    errors.append({"recid": record_data["recid"], "error": str(error)})
 
         for i, doc_data in enumerate(self._metadata.documents or []):
             slug = doc_data.get("slug")
@@ -504,6 +516,7 @@ class Release:
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
+        return errors
 
     def rollback(self, current_user):
         """Remove the STAGED entries of a release."""
@@ -591,21 +604,27 @@ class Release:
 
         return records_modified
 
-    def generate_doi(self):
-        """
-        Assign RECIDs to all records in the release.
+    def generate_doi(self, recids):
+        """Mint DOIs for specified records, validate them, return per-record errors."""
+        prefix = current_app.config.get("PIDSTORE_DATACITE_DOI_PREFIX")
+        experiment = self._metadata.experiment
 
-        RECID format: <experiment>-<counter>
-        """
-        if self.valid_doi:
-            raise RuntimeError("RECIDs already generated")
+        errors = []
+        for record in self._metadata.records:
+            if record.get("recid") not in recids:
+                continue
+            if record.get("doi"):
+                continue
+            record["doi"] = mint_doi(prefix, experiment)
+            try:
+                validate_datacite_record(record)
+            except Exception as error:
+                del record["doi"]
+                errors.append({"recid": record.get("recid"), "error": str(error)})
 
-        for record in self.records:
-            if "doi" not in record:
-                record["doi"] = f"FAKE DOI FOR  {self.experiment}"
-                # This is to tell alchemy that the field has been modified
-                flag_modified(self, "records")
-        self.validate()
+        flag_modified(self._metadata, "records")
+
+        return errors
 
     def fix_checks(self, current_user):
         """Fix all the validations that can be fixed automatically."""

@@ -996,3 +996,91 @@ def test_add_records_to_release_with_no_records(mocker):
     r.add_records([{"recid": 1}], MagicMock())
 
     assert metadata.records == [{"recid": 1, "$schema": "schema-url"}]
+
+
+def test_generate_doi_mints_missing_dois(mocker):
+    mock_mint = mocker.patch(
+        "cernopendata.modules.releases.api.mint_doi", return_value="10.1234/NEW"
+    )
+    mocker.patch("cernopendata.modules.releases.api.validate_datacite_record")
+    mock_flag = mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"PIDSTORE_DATACITE_DOI_PREFIX": "10.1234"}
+
+    metadata = MagicMock()
+    metadata.experiment = "CMS"
+    metadata.records = [
+        {"recid": 1},
+        {"recid": 2, "doi": "10.1234/EXISTING"},
+        {"recid": 3},
+    ]
+
+    release = Release(metadata)
+    errors = release.generate_doi([1, 2])
+
+    assert metadata.records[0]["doi"] == "10.1234/NEW"
+    assert metadata.records[1]["doi"] == "10.1234/EXISTING"
+    assert "doi" not in metadata.records[2]
+    mock_mint.assert_called_once_with("10.1234", "CMS")
+    mock_flag.assert_called_once_with(metadata, "records")
+    assert errors == []
+
+
+def test_generate_doi_returns_validation_errors(mocker):
+    mocker.patch("cernopendata.modules.releases.api.mint_doi")
+    mock_validate = mocker.patch(
+        "cernopendata.modules.releases.api.validate_datacite_record"
+    )
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {}
+
+    mock_validate.side_effect = [None, ValueError("bad field")]
+
+    metadata = MagicMock()
+    metadata.experiment = "CMS"
+    metadata.records = [
+        {"recid": 1},
+        {"recid": 2},
+    ]
+
+    release = Release(metadata)
+    errors = release.generate_doi([1, 2])
+
+    assert len(errors) == 1
+    assert errors[0]["recid"] == 2
+    assert "bad field" in errors[0]["error"]
+    assert "doi" not in metadata.records[1]
+
+
+def test_publish_collects_datacite_errors(mocker):
+    mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
+    mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
+    mocker.patch("cernopendata.modules.releases.api.update_record")
+    mock_register = mocker.patch(
+        "cernopendata.modules.releases.api.register_record_doi"
+    )
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    mock_register.side_effect = [None, RuntimeError("DataCite down")]
+
+    metadata = MagicMock()
+    metadata.records = [
+        {"recid": 1, "doi": "10.1234/A"},
+        {"recid": 2, "doi": "10.1234/B"},
+        {"recid": 3},
+    ]
+    metadata.documents = []
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+    mocker.patch.object(release, "change_status")
+
+    errors = release.publish(MagicMock())
+
+    assert len(errors) == 1
+    assert errors[0]["recid"] == 2
+    assert "DataCite down" in errors[0]["error"]
+    assert mock_register.call_count == 2
+    mock_session.commit.assert_called_once()
