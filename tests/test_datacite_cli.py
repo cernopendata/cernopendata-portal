@@ -22,17 +22,73 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-from click.testing import CliRunner
-from flask.cli import ScriptInfo
+from unittest.mock import MagicMock
 
-from cernopendata.modules.datacite.cli import register
+from cernopendata.modules.datacite.cli import register, test_serialisation, update
 
-# def test_register_when_non_existing_uuid_given(app):
-#    runner = CliRunner()
-#    script_info = ScriptInfo(create_app=lambda info: app)
-#
-#    result = runner.invoke(register, [
-#        '--uuid', 'non-existing-uuid'
-#    ], obj=script_info)
-#
-#    assert result.exit_code == -1
+
+def test_test_serialisation_outputs_validated_doc(app, cli_runner, mocker):
+    mock_pid = mocker.patch("cernopendata.modules.datacite.cli.PersistentIdentifier")
+    mock_pid.get.return_value = MagicMock(object_uuid="some-uuid")
+    mock_record_cls = mocker.patch("cernopendata.modules.datacite.cli.Record")
+    mock_record_cls.get_record.return_value = {"recid": 1, "doi": "10.1234/TEST"}
+    mock_validate = mocker.patch(
+        "cernopendata.modules.datacite.cli.validate_record",
+        return_value="<resource/>",
+    )
+
+    result = cli_runner.invoke(test_serialisation, ["--recid", "1"], obj=app)
+
+    assert result.exit_code == 0
+    assert "<resource/>" in result.output
+    mock_pid.get.assert_called_once_with("recid", "1")
+    mock_record_cls.get_record.assert_called_once_with("some-uuid")
+    mock_validate.assert_called_once_with({"recid": 1, "doi": "10.1234/TEST"})
+
+
+def test_register_calls_register_record_doi_and_echoes_doi(app, cli_runner, mocker):
+    mock_pid = mocker.patch("cernopendata.modules.datacite.cli.PersistentIdentifier")
+    mock_pid.get.return_value = MagicMock(object_uuid="some-uuid")
+    mock_record_cls = mocker.patch("cernopendata.modules.datacite.cli.Record")
+    record = {"recid": 1, "doi": "10.1234/TEST"}
+    mock_record_cls.get_record.return_value = record
+    mock_register = mocker.patch(
+        "cernopendata.modules.datacite.cli.register_record_doi"
+    )
+    mock_db = mocker.patch("cernopendata.modules.datacite.cli.db")
+
+    result = cli_runner.invoke(register, ["--recid", "1"], obj=app)
+
+    assert result.exit_code == 0
+    assert "Record registered with DOI 10.1234/TEST" in result.output
+    mock_register.assert_called_once_with(record)
+    mock_db.session.commit.assert_called_once()
+
+
+def test_update_validates_and_updates_when_doi_registered(app, cli_runner, mocker):
+    mock_pid = mocker.patch("cernopendata.modules.datacite.cli.PersistentIdentifier")
+    mock_pid.get.return_value = MagicMock(object_uuid="some-uuid")
+    mock_record_cls = mocker.patch("cernopendata.modules.datacite.cli.Record")
+    record = {"recid": 1, "doi": "10.1234/TEST"}
+    mock_record_cls.get_record.return_value = record
+    mock_provider = MagicMock()
+    mock_wrapper = mocker.patch(
+        "cernopendata.modules.datacite.cli.DataCiteProviderWrapper"
+    )
+    mock_wrapper.get.return_value = mock_provider
+    mock_validate = mocker.patch(
+        "cernopendata.modules.datacite.cli.validate_record",
+        return_value="<resource/>",
+    )
+    mock_db = mocker.patch("cernopendata.modules.datacite.cli.db")
+    app.config["PIDSTORE_LANDING_BASE_URL"] = "https://opendata.cern.ch/record"
+
+    result = cli_runner.invoke(update, ["--recid", "1"], obj=app)
+
+    assert result.exit_code == 0
+    assert "Record with DOI 10.1234/TEST updated in DataCite" in result.output
+    mock_validate.assert_called_once_with(record)
+    mock_provider.update.assert_called_once_with(
+        url="https://opendata.cern.ch/record/1", doc="<resource/>"
+    )
+    mock_db.session.commit.assert_called_once()
