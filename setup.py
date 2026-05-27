@@ -58,7 +58,7 @@ tests_require = [
     "pycodestyle>=2.4.0",
     "pytest-cache>=1.0",
     "pytest-cov==4.1.0",
-    "pytest==7.4.4",
+    "pytest==9.0.3",
     "beautifulsoup4==4.12.3",
     "aiosmtpd>=1.4.6",
     "email-validator>=2.3.0,<3.0.0",
