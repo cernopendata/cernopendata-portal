@@ -10,7 +10,6 @@
         <div class="sixteen wide column">
           <div class="ui segment">
             <div class="card-body">
-
                 {% block heading %}
                 <h2>
                     {{record.title}}
@@ -128,6 +127,20 @@
           </div>
         </div>
     </div>
+    {% if record._versions.index >1 %}
+    <div class="ui message">
+        There are older versions of this entry:
+        <ul>
+            {% for counter in range(1, record._versions.index) %}
+            <li>
+                <a href="{{ record.recid }}-v{{ counter }}">
+                    Version {{ counter }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
 {%- endblock %}
 
