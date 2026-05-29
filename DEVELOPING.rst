@@ -11,6 +11,17 @@ Installation
 You can run a local CERN Open Data instance for development purposes using
 container technology such as Docker or Podman.
 
+This repository contains the CERN Open Data portal infrastructure code. The
+content lives in a separate repository, `opendata.cern.ch
+<https://github.com/cernopendata/opendata.cern.ch>`_. The development
+configuration (``docker-compose-dev.yml``) mounts the content repository from
+``../opendata.cern.ch``, so it should be cloned as a sibling directory of this
+one:
+
+.. code-block:: console
+
+   $ git clone https://github.com/cernopendata/opendata.cern.ch
+
 Install with Docker
 -------------------
 
@@ -26,6 +37,8 @@ development or for pull request integration purposes. A usage example:
    $ docker compose -f docker-compose.yml -f docker-compose-dev.yml build
    $ docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d
    $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
+   $ docker exec -i -t cernopendata-portal-web-1 \
+       cernopendata fixtures records --mode insert -f /content/data/records/cms-primary-datasets.json
    $ firefox http://0.0.0.0:8000/
    $ docker compose -f docker-compose-dev.yml down -v
 
@@ -39,7 +52,7 @@ will not be mounted in the container in this case. A usage example:
    $ ./scripts/generate-localhost-certificate.sh
    $ docker compose build
    $ docker compose up -d
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
    $ firefox http://0.0.0.0/
    $ docker compose down -v
 
@@ -63,10 +76,10 @@ An example of a Podman development session:
    $ ./scripts/generate-localhost-certificate.sh
    $ podman-compose -f docker-compose-dev.yml --podman-build-args='--format docker' build
    $ podman-compose -f docker-compose-dev.yml up
-   $ podman exec -i -t opendatacernch_web_1 \
-       ./scripts/populate-instance.sh --skip-docs --skip-glossary --skip-records
-   $ podman exec -i -t opendatacernch_web_1 \
-       cernopendata fixtures records --mode insert -f cernopendata/modules/fixtures/data/records/cms-primary-datasets.json
+   $ podman exec -i -t cernopendata-portal_web_1 \
+       ./scripts/populate-instance.sh --skip-docs --skip-glossary
+   $ podman exec -i -t cernopendata-portal_web_1 \
+       cernopendata fixtures records --mode insert -f /content/data/records/cms-primary-datasets.json
    $ firefox http://0.0.0.0:8000/
    $ podman-compose -f docker-compose-dev.yml down -v
 
@@ -125,39 +138,39 @@ Working with docs
 -----------------
 
 If you are working with docs, for example ``/docs/cms-simulated-dataset-names``,
-and you edit the fixtures under ``cernopendata/modules/fixtures/data/docs``, you
+and you edit the fixtures under ``/content/data/docs``, you
 will need to re-upload the docs fixtures to see your changes. For example, you
 can re-upload all the docs by cleaning the instance first:
 
 .. code-block:: console
 
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/clean-instance.sh
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh --skip-records
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/clean-instance.sh
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
 
 Working with records
 --------------------
 
 If you are working with certain records only, for example OPERA datasets and
 events, you can edit the fixtures under
-``cernopendata/modules/fixtures/data/records`` and upload only the files you
+``/content/data/records`` and upload only the files you
 wish by doing:
 
 .. code-block:: console
 
-   $ docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh --skip-records
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-multiplicity.json --mode insert
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-tau.json --mode insert
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-multiplicity.json --mode insert
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-tau.json --mode insert
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ecc-datasets.json --mode insert
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ed-datasets.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-multiplicity.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-tau.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-multiplicity.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-tau.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ecc-datasets.json --mode insert
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ed-datasets.json --mode insert
 
 If you alter one of the fixture files, you can upload your changes by using the
 ``replace`` mode:
 
 .. code-block:: console
 
-   $ docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ed-datasets.json --mode replace
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ed-datasets.json --mode replace
 
 Working with files
 ------------------
@@ -179,7 +192,7 @@ cache content, you can run:
 
 .. code-block:: console
 
-   $ docker exec opendatacernch-nginx-1 find /var/cache/nginx -type f -delete
+   $ docker exec cernopendata-portal-nginx-1 find /var/cache/nginx -type f -delete
 
 Working with UI packages
 ------------------------
@@ -189,14 +202,14 @@ When working on UI packages that have JavaScript and CSS files, you can have
 
 .. code-block:: console
 
-   $ docker exec -i -t opendatacernch_web_1 cernopendata webpack run start
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata webpack run start
 
 Keep in mind that you need to recreate the ``package.json`` when adding or
 removing dependencies:
 
 .. code-block:: console
 
-   $ docker exec -i -t opendatacernch_web_1 cernopendata webpack clean create
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata webpack clean create
 
 Working with iSpy visualizer
 ----------------------------
@@ -247,13 +260,13 @@ can do:
    docker compose build
    docker compose up -d
    sleep 20
-   docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh --skip-records
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-multiplicity.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-tau.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-multiplicity.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-tau.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ecc-datasets.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ed-datasets.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-multiplicity.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-tau.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-multiplicity.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-tau.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ecc-datasets.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ed-datasets.json --mode insert
 
 For switching from any mode to the development mode working on OPERA records,
 you can do:
@@ -265,14 +278,14 @@ you can do:
    docker compose -f docker-compose-dev.yml build
    docker compose -f docker-compose-dev.yml up -d
    sleep 20
-   docker exec -i -t opendatacernch-web-1 /code/scripts/populate-instance.sh --skip-records
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/cms-derived-csv-Run2011A.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-multiplicity.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-author-list-tau.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-multiplicity.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-detector-events-tau.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ecc-datasets.json --mode insert
-   docker exec -i -t opendatacernch-web-1 cernopendata fixtures records -f /code/cernopendata/modules/fixtures/data/records/opera-ed-datasets.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/cms-derived-csv-Run2011A.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-multiplicity.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-author-list-tau.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-multiplicity.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-detector-events-tau.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ecc-datasets.json --mode insert
+   docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ed-datasets.json --mode insert
 
 Beware when switching between production and development or between different
 version of Python, since this may necessitate to delete all `*.pyc` and similar
@@ -332,25 +345,15 @@ like this:
 Understanding repository branches
 ---------------------------------
 
-We use three official base branches:
-
-master
-  What is installed on the `development server <http://opendata-dev.cern.ch>`_.
-
-qa
-  What is installed on the `pre-production server <http://opendata-qa.cern.ch>`_.
-
-production
-  What is installed on the `production server <http://opendata.cern.ch>`_.
+We use a single official base branch, ``main``, into which all reviewed pull
+requests are merged. Deployments to our servers are driven by version tags
+(e.g. ``v0.1.0``) cut from ``main``.
 
 The life-cycle of a typical new feature is therefore: (1) development
 starts on a personal laptop in a new topical branch stemming from the
-``master`` branch; (2) when the feature is ready, the developer issues
-a pull request, the branch is reviewed by the system integrator,
-merged into the ``qa`` branch , and deployed on the pre-production
-server; (3) after sufficient testing time on the pre-publication
-server, the feature is merged into the ``production`` branch and
-deployed on the production server.
+``main`` branch; (2) when the feature is ready, the developer issues a
+pull request, which is reviewed by the system integrator and merged
+into ``main``.
 
 The following sections document the development life cycle in fuller
 detail.
@@ -359,21 +362,14 @@ Working on topical branches
 ---------------------------
 
 You are now ready to work on something.  You should always create
-separate topical branches for separate issues, starting from
-appropriate base branch:
-
-- for bug fixes solving problems spotted on the production server, you
-  would typically start your topical branch from the ``production``
-  branch;
-
-- for new developments, you would typically start your topical branch
-  from the ``master`` branch.
+separate topical branches for separate issues, starting from the
+``main`` branch (for both bug fixes and new developments).
 
 Here is example:
 
 .. code-block:: console
 
-   $ git checkout master
+   $ git checkout main
    $ git checkout -b improve-event-display-icons
    $ $EDITOR some_file.py
    $ git commit -a -m 'some improvement'
@@ -386,7 +382,7 @@ to get rid of unnecessary commits:
 .. code-block:: console
 
    $ git checkout improve-event-display-icons
-   $ git rebase master -i # squash commits here
+   $ git rebase main -i # squash commits here
 
 Making pull requests
 --------------------
@@ -409,14 +405,14 @@ Updating pull requests
 Consider the integrator had some remarks about your branch and you
 have to update your pull request.
 
-Firstly, update to latest upstream "master" branch, in case it may
+Firstly, update to latest upstream "main" branch, in case it may
 have changed in the meantime:
 
 .. code-block:: console
 
-   $ git checkout master
+   $ git checkout main
    $ git fetch upstream
-   $ git merge upstream/master --ff-only
+   $ git merge upstream/main --ff-only
 
 Secondly, make any required changes on your topical branch:
 
@@ -431,7 +427,7 @@ nicely organised commits:
 
 .. code-block:: console
 
-   $ git rebase master -i # squash commits here
+   $ git rebase main -i # squash commits here
 
 Finally, re-push your topical branch with a force option in order to
 update your pull request:
@@ -448,9 +444,9 @@ local sources:
 
 .. code-block:: console
 
-   $ git checkout master
+   $ git checkout main
    $ git fetch upstream
-   $ git merge upstream/master --ff-only
+   $ git merge upstream/main --ff-only
 
 You can now delete your topical branch locally:
 
@@ -462,7 +458,7 @@ and remove it from your repository as well:
 
 .. code-block:: console
 
-   $ git push origin master
+   $ git push origin main
    $ git push origin :improve-event-display-icons
 
 This would conclude your work on ``improve-event-display-icons``.
