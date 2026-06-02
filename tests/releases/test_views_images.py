@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cernopendata.modules.releases import views
+from .conftest import _raises
 
 
 @pytest.fixture
@@ -557,8 +558,7 @@ def test_upload_image_mkdir_oserror_returns_500(
 ):
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
     monkeypatch.setattr(
-        "cernopendata.modules.releases.views.Path.mkdir",
-        lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")),
+        "cernopendata.modules.releases.views.Path.mkdir", _raises(OSError("disk full"))
     )
 
     response = logged_in_client.post(
@@ -625,11 +625,7 @@ def test_delete_image_unlink_oserror_returns_500(
     (slug_dir / "a.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
-    monkeypatch.setattr(
-        type(slug_dir / "a.png"),
-        "unlink",
-        lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
-    )
+    monkeypatch.setattr(type(slug_dir / "a.png"), "unlink", _raises(OSError("locked")))
 
     response = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
 
@@ -647,9 +643,7 @@ def test_rename_image_oserror_returns_500(
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
     monkeypatch.setattr(
-        type(slug_dir / "old.png"),
-        "rename",
-        lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
+        type(slug_dir / "old.png"), "rename", _raises(OSError("locked"))
     )
 
     response = logged_in_client.put(
@@ -672,7 +666,7 @@ def test_list_images_iterdir_raising_oserror_logs_and_skips(
 
     monkeypatch.setattr(
         "cernopendata.modules.releases.views.Path.iterdir",
-        lambda *a, **k: (_ for _ in ()).throw(OSError("permission denied")),
+        _raises(OSError("permission denied")),
     )
 
     response = logged_in_client.get("/releases/cms/1/images")
@@ -691,9 +685,7 @@ def test_delete_image_unlink_file_not_found_returns_404(
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
     monkeypatch.setattr(
-        type(slug_dir / "a.png"),
-        "unlink",
-        lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("gone")),
+        type(slug_dir / "a.png"), "unlink", _raises(FileNotFoundError("gone"))
     )
 
     response = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
@@ -711,11 +703,7 @@ def test_delete_image_rmdir_oserror_still_returns_ok(
     (slug_dir / "a.png").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
-    monkeypatch.setattr(
-        type(slug_dir),
-        "rmdir",
-        lambda *a, **k: (_ for _ in ()).throw(OSError("not empty")),
-    )
+    monkeypatch.setattr(type(slug_dir), "rmdir", _raises(OSError("not empty")))
 
     response = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
 

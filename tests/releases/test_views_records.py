@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cernopendata.modules.releases import views
+from .conftest import _raises
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -77,11 +78,7 @@ def test_add_records_url_source_missing_url(mock_get_release, logged_in_client):
 @patch("cernopendata.modules.releases.views._get_release", return_value=MagicMock())
 def test_add_records_url_fetch_failure(mock_get_release, logged_in_client, monkeypatch):
     monkeypatch.setattr(
-        views.requests,
-        "get",
-        lambda *a, **k: (_ for _ in ()).throw(
-            views.requests.RequestException("refused")
-        ),
+        views.requests, "get", _raises(views.requests.RequestException("refused"))
     )
 
     response = logged_in_client.post(

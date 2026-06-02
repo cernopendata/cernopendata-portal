@@ -6,6 +6,7 @@ import pytest
 from flask import abort
 
 from cernopendata.modules.releases import views
+from .conftest import _raises
 
 
 def test_list_releases(client):
@@ -189,11 +190,7 @@ def test_release_upload_url_source_fetch_failure(
     mock_validate, mock_curator, logged_in_client, monkeypatch
 ):
     monkeypatch.setattr(
-        views.requests,
-        "get",
-        lambda *a, **k: (_ for _ in ()).throw(
-            views.requests.RequestException("refused")
-        ),
+        views.requests, "get", _raises(views.requests.RequestException("refused"))
     )
 
     response = logged_in_client.post(

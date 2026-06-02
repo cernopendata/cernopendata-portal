@@ -5,21 +5,11 @@ import pytest
 from cernopendata.modules.releases.api import Release
 
 
-def test_add_documents_triggers_validate(mocker):
+def test_add_documents_triggers_validate(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
-    metadata = MagicMock()
-    metadata.documents = []
-    metadata.num_docs = 0
-
+    metadata = mock_metadata(num_docs=0)
     r = Release(metadata)
     mock_validate = mocker.patch.object(r, "validate")
 
@@ -29,21 +19,11 @@ def test_add_documents_triggers_validate(mocker):
     mock_validate.assert_called_once_with(user)
 
 
-def test_add_documents_updates_count(mocker):
+def test_add_documents_updates_count(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
-    metadata = MagicMock()
-    metadata.documents = [{"slug": "existing-doc"}]
-    metadata.num_docs = 1
-
+    metadata = mock_metadata(documents=[{"slug": "existing-doc"}], num_docs=1)
     r = Release(metadata)
     mocker.patch.object(r, "validate")
 
@@ -53,21 +33,11 @@ def test_add_documents_updates_count(mocker):
     assert len(metadata.documents) == 3
 
 
-def test_add_documents_accepts_large_list(mocker):
+def test_add_documents_accepts_large_list(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
-    metadata = MagicMock()
-    metadata.documents = []
-    metadata.num_docs = 0
-
+    metadata = mock_metadata(num_docs=0)
     r = Release(metadata)
     mocker.patch.object(r, "validate")
 
@@ -78,20 +48,13 @@ def test_add_documents_accepts_large_list(mocker):
     assert len(metadata.documents) == 500
 
 
-def test_update_document_success(mocker):
+def test_update_document_success(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
-    metadata = MagicMock()
-    metadata.documents = [{"slug": "alice-data-2015", "title": "Old Title"}]
-
+    metadata = mock_metadata(
+        documents=[{"slug": "alice-data-2015", "title": "Old Title"}]
+    )
     r = Release(metadata)
     mocker.patch.object(r, "validate")
 
@@ -101,12 +64,10 @@ def test_update_document_success(mocker):
     assert metadata.documents[0]["title"] == "New Title"
 
 
-def test_update_document_not_found(mocker):
+def test_update_document_not_found(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.documents = [{"slug": "existing-doc"}]
-
+    metadata = mock_metadata(documents=[{"slug": "existing-doc"}])
     r = Release(metadata)
 
     with pytest.raises(ValueError, match="not found"):

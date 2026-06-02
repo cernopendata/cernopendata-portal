@@ -7,24 +7,17 @@ from cernopendata.modules.releases.api import Release, ReleaseValidation
 from cernopendata.modules.releases.models import ReleaseStatus
 
 
-def test_create_success(mocker):
+def test_create_success(mocker, mock_jsonschemas):
     """Test the creation of a release."""
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
     mock_validate = mocker.patch("cernopendata.modules.releases.api.Release.validate")
 
-    mock_metadata = MagicMock()
+    mock_release_metadata = MagicMock()
     mocker.patch(
         "cernopendata.modules.releases.api.ReleaseMetadata",
-        return_value=mock_metadata,
+        return_value=mock_release_metadata,
     )
-
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
 
     user = MagicMock()
 
@@ -43,13 +36,10 @@ def test_create_success(mocker):
     assert release
 
 
-def test_lock_success(mocker):
+def test_lock_success(mocker, mock_metadata):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.id = 1
-    metadata.status = "DRAFT"
-
+    metadata = mock_metadata(id=1, status="DRAFT")
     r = Release(metadata)
 
     mocker.patch.object(r, "is_status", return_value=True)
@@ -91,29 +81,18 @@ def test_delete(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_stage_success(mocker):
+def test_stage_success(mocker, mock_jsonschemas, mock_metadata):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
     mock_create = mocker.patch("cernopendata.modules.releases.api.create_record")
     mocker.patch("cernopendata.modules.releases.api.create_doc")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
     mock_record = MagicMock()
     mock_create.return_value = mock_record
 
-    metadata = MagicMock()
-    metadata.records = [{"recid": 1}]
-    metadata.documents = []
-    metadata.experiment = "cms"
-    metadata.id = 1
-    metadata.num_errors = 0
-
+    metadata = mock_metadata(
+        records=[{"recid": 1}], experiment="cms", id=1, num_errors=0
+    )
     r = Release(metadata)
 
     mocker.patch.object(r, "is_status", return_value=True)
@@ -133,24 +112,14 @@ def test_stage_wrong_status(mocker):
         r.stage(MagicMock())
 
 
-def test_publish(mocker):
+def test_publish(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = [{"recid": 1}]
-    metadata.documents = []
-
+    metadata = mock_metadata(records=[{"recid": 1}])
     r = Release(metadata)
 
     mocker.patch.object(r, "is_status", return_value=True)
@@ -161,15 +130,13 @@ def test_publish(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_rollback(mocker):
+def test_rollback(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.delete_record")
 
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = [{"recid": 1}]
-
+    metadata = mock_metadata(records=[{"recid": 1}])
     r = Release(metadata)
 
     mocker.patch.object(r, "is_status", return_value=True)
@@ -180,17 +147,12 @@ def test_rollback(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_create_with_documents(mocker):
+def test_create_with_documents(mocker, mock_jsonschemas):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.Release.validate")
-    mock_metadata = mocker.patch("cernopendata.modules.releases.api.ReleaseMetadata")
-
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
+    mock_release_metadata = mocker.patch(
+        "cernopendata.modules.releases.api.ReleaseMetadata"
+    )
 
     doc = {"slug": "alice-about", "body": {"content": "# About", "format": "md"}}
 
@@ -204,7 +166,7 @@ def test_create_with_documents(mocker):
     assert release
     assert doc["$schema"] == "schema-url"
     mock_session.commit.assert_called_once()
-    _, kwargs = mock_metadata.call_args
+    _, kwargs = mock_release_metadata.call_args
     assert kwargs["documents"] == [doc]
     assert kwargs["records"] == []
     assert kwargs["num_docs"] == 1
@@ -213,22 +175,22 @@ def test_create_with_documents(mocker):
 def test_create_defaults_to_empty_lists(mocker):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.Release.validate")
-    mock_metadata = mocker.patch("cernopendata.modules.releases.api.ReleaseMetadata")
+    mock_release_metadata = mocker.patch(
+        "cernopendata.modules.releases.api.ReleaseMetadata"
+    )
 
     Release.create(experiment="cms", current_user=MagicMock(), name="empty.json")
 
-    _, kwargs = mock_metadata.call_args
+    _, kwargs = mock_release_metadata.call_args
     assert kwargs["records"] == []
     assert kwargs["documents"] == []
     assert kwargs["num_docs"] == 0
 
 
-def test_stage_with_errors_reverts_to_draft(mocker):
+def test_stage_with_errors_reverts_to_draft(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.num_errors = 2
-
+    metadata = mock_metadata(num_errors=2)
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mock_change = mocker.patch.object(r, "change_status")
@@ -239,30 +201,22 @@ def test_stage_with_errors_reverts_to_draft(mocker):
     mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
 
 
-def test_stage_with_documents(mocker):
+def test_stage_with_documents(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mock_create_record = mocker.patch("cernopendata.modules.releases.api.create_record")
     mock_create_doc = mocker.patch("cernopendata.modules.releases.api.create_doc")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
     mock_create_record.return_value = MagicMock()
     mock_create_doc.return_value = MagicMock()
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [
-        {"slug": "my-doc", "_source_filename": "my-doc.json", "title": "My Doc"}
-    ]
-    metadata.experiment = "cms"
-    metadata.id = 42
-    metadata.num_errors = 0
-
+    metadata = mock_metadata(
+        documents=[
+            {"slug": "my-doc", "_source_filename": "my-doc.json", "title": "My Doc"}
+        ],
+        experiment="cms",
+        id=42,
+        num_errors=0,
+    )
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -276,7 +230,7 @@ def test_stage_with_documents(mocker):
     assert call_arg["$schema"] == "schema-url"
 
 
-def test_publish_with_documents(mocker):
+def test_publish_with_documents(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
@@ -288,17 +242,16 @@ def test_publish_with_documents(mocker):
     mock_doc = MagicMock()
     mock_update_doc.return_value = mock_doc
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [
-        {
-            "slug": "my-doc",
-            "_source_filename": "my-doc.json",
-            "prerelease": "cms/42",
-            "$schema": "schema-url",
-        }
-    ]
-
+    metadata = mock_metadata(
+        documents=[
+            {
+                "slug": "my-doc",
+                "_source_filename": "my-doc.json",
+                "prerelease": "cms/42",
+                "$schema": "schema-url",
+            }
+        ]
+    )
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -313,7 +266,7 @@ def test_publish_with_documents(mocker):
     mock_doc.commit.assert_called_once()
 
 
-def test_rollback_with_documents(mocker):
+def test_rollback_with_documents(mocker, mock_metadata):
     mock_pid_get = mocker.patch(
         "cernopendata.modules.releases.api.PersistentIdentifier.get"
     )
@@ -323,10 +276,7 @@ def test_rollback_with_documents(mocker):
     mocker.patch("cernopendata.modules.releases.api.delete_record")
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [{"slug": "my-doc"}]
-
+    metadata = mock_metadata(documents=[{"slug": "my-doc"}])
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -337,7 +287,7 @@ def test_rollback_with_documents(mocker):
     mock_delete_doc.assert_called_once()
 
 
-def test_rollback_skips_doc_without_slug(mocker):
+def test_rollback_skips_doc_without_slug(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mock_delete_doc = mocker.patch(
         "cernopendata.modules.releases.api.delete_doc_or_glossary"
@@ -345,10 +295,7 @@ def test_rollback_skips_doc_without_slug(mocker):
     mocker.patch("cernopendata.modules.releases.api.delete_record")
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [{"title": "no slug here"}]
-
+    metadata = mock_metadata(documents=[{"title": "no slug here"}])
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -383,12 +330,10 @@ def test_create_raises_when_documents_not_list(mocker):
         )
 
 
-def test_stage_with_errors_commits_draft_status(mocker):
+def test_stage_with_errors_commits_draft_status(mocker, mock_metadata):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.num_errors = 1
-
+    metadata = mock_metadata(num_errors=1)
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mock_change = mocker.patch.object(r, "change_status")
@@ -401,19 +346,18 @@ def test_stage_with_errors_commits_draft_status(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_publish_preserves_schema_on_each_record(mocker):
+def test_publish_preserves_schema_on_each_record(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = [
-        {"recid": 1, "$schema": "schema-url"},
-        {"recid": 2, "$schema": "schema-url"},
-    ]
-    metadata.documents = []
-
+    metadata = mock_metadata(
+        records=[
+            {"recid": 1, "$schema": "schema-url"},
+            {"recid": 2, "$schema": "schema-url"},
+        ]
+    )
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -423,23 +367,15 @@ def test_publish_preserves_schema_on_each_record(mocker):
     assert all(rec["$schema"] == "schema-url" for rec in metadata.records)
 
 
-def test_publish_raises_when_document_missing_slug(mocker):
+def test_publish_raises_when_document_missing_slug(
+    mocker, mock_jsonschemas, mock_metadata
+):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [{"title": "no slug here"}]
-
+    metadata = mock_metadata(documents=[{"title": "no slug here"}])
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -448,7 +384,7 @@ def test_publish_raises_when_document_missing_slug(mocker):
         r.publish(MagicMock())
 
 
-def test_publish_commits_each_document(mocker):
+def test_publish_commits_each_document(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
@@ -457,20 +393,10 @@ def test_publish_commits_each_document(mocker):
     )
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.extensions = {
-        "invenio-jsonschemas": MagicMock(
-            path_to_url=MagicMock(return_value="schema-url")
-        )
-    }
-
     docs = [MagicMock(), MagicMock()]
     mock_update_doc.side_effect = docs
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.documents = [{"slug": "doc-a"}, {"slug": "doc-b"}]
-
+    metadata = mock_metadata(documents=[{"slug": "doc-a"}, {"slug": "doc-b"}])
     r = Release(metadata)
     mocker.patch.object(r, "is_status", return_value=True)
     mocker.patch.object(r, "change_status")
@@ -481,7 +407,7 @@ def test_publish_commits_each_document(mocker):
         doc.commit.assert_called_once()
 
 
-def test_delete_removes_uploaded_images(mocker, tmp_path):
+def test_delete_removes_uploaded_images(mocker, tmp_path, mock_metadata):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
@@ -494,9 +420,7 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
     (tmp_path / "2" / "doc-a").mkdir(parents=True)
     (tmp_path / "2" / "doc-a" / "fig.png").write_bytes(b"other-release")
 
-    metadata = MagicMock()
-    metadata.id = 1
-
+    metadata = mock_metadata(id=1)
     r = Release(metadata)
     r.delete()
 
@@ -506,7 +430,9 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
     mock_session.commit.assert_called_once()
 
 
-def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
+def test_delete_release_images_oserror_logs_and_continues(
+    mocker, tmp_path, mock_metadata
+):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
@@ -517,9 +443,7 @@ def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
         "cernopendata.modules.releases.api.shutil.rmtree", side_effect=OSError("locked")
     )
 
-    metadata = MagicMock()
-    metadata.id = 1
-
+    metadata = mock_metadata(id=1)
     r = Release(metadata)
     r._delete_release_images()
 
@@ -527,18 +451,18 @@ def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
     assert release_dir.exists()
 
 
-def test_delete_release_images_no_directory_does_nothing(mocker, tmp_path):
+def test_delete_release_images_no_directory_does_nothing(
+    mocker, tmp_path, mock_metadata
+):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
-    metadata = MagicMock()
-    metadata.id = 1
-
+    metadata = mock_metadata(id=1)
     r = Release(metadata)
     r._delete_release_images()
 
 
-def test_generate_doi_mints_missing_dois(mocker):
+def test_generate_doi_mints_missing_dois(mocker, mock_metadata):
     mock_mint = mocker.patch(
         "cernopendata.modules.releases.api.mint_doi", return_value="10.1234/NEW"
     )
@@ -547,13 +471,13 @@ def test_generate_doi_mints_missing_dois(mocker):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"PIDSTORE_DATACITE_DOI_PREFIX": "10.1234"}
 
-    metadata = MagicMock()
-    metadata.experiment = "CMS"
-    metadata.records = [
-        {"recid": 1},
-        {"recid": 2, "doi": "10.1234/EXISTING"},
-    ]
-
+    metadata = mock_metadata(
+        records=[
+            {"recid": 1},
+            {"recid": 2, "doi": "10.1234/EXISTING"},
+        ],
+        experiment="CMS",
+    )
     release = Release(metadata)
     errors = release.generate_doi([1])
 
@@ -564,7 +488,7 @@ def test_generate_doi_mints_missing_dois(mocker):
     assert errors == []
 
 
-def test_generate_doi_returns_validation_errors(mocker):
+def test_generate_doi_returns_validation_errors(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.mint_doi")
     mock_validate = mocker.patch(
         "cernopendata.modules.releases.api.validate_datacite_record"
@@ -575,13 +499,10 @@ def test_generate_doi_returns_validation_errors(mocker):
 
     mock_validate.side_effect = [None, ValueError("bad field")]
 
-    metadata = MagicMock()
-    metadata.experiment = "CMS"
-    metadata.records = [
-        {"recid": 1},
-        {"recid": 2},
-    ]
-
+    metadata = mock_metadata(
+        records=[{"recid": 1}, {"recid": 2}],
+        experiment="CMS",
+    )
     release = Release(metadata)
     errors = release.generate_doi([1, 2])
 
@@ -591,7 +512,7 @@ def test_generate_doi_returns_validation_errors(mocker):
     assert "doi" not in metadata.records[1]
 
 
-def test_generate_doi_skips_records_not_in_recids(mocker):
+def test_generate_doi_skips_records_not_in_recids(mocker, mock_metadata):
     mock_mint = mocker.patch(
         "cernopendata.modules.releases.api.mint_doi", return_value="10.1234/NEW"
     )
@@ -600,13 +521,10 @@ def test_generate_doi_skips_records_not_in_recids(mocker):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"PIDSTORE_DATACITE_DOI_PREFIX": "10.1234"}
 
-    metadata = MagicMock()
-    metadata.experiment = "CMS"
-    metadata.records = [
-        {"recid": 1},
-        {"recid": 2},
-    ]
-
+    metadata = mock_metadata(
+        records=[{"recid": 1}, {"recid": 2}],
+        experiment="CMS",
+    )
     release = Release(metadata)
     errors = release.generate_doi([1])
 
@@ -616,7 +534,7 @@ def test_generate_doi_skips_records_not_in_recids(mocker):
     assert errors == []
 
 
-def test_publish_collects_datacite_errors(mocker):
+def test_publish_collects_datacite_errors(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
@@ -628,13 +546,12 @@ def test_publish_collects_datacite_errors(mocker):
 
     mock_register.side_effect = [None, RuntimeError("DataCite down")]
 
-    metadata = MagicMock()
-    metadata.records = [
-        {"recid": 1, "doi": "10.1234/A"},
-        {"recid": 2, "doi": "10.1234/B"},
-    ]
-    metadata.documents = []
-
+    metadata = mock_metadata(
+        records=[
+            {"recid": 1, "doi": "10.1234/A"},
+            {"recid": 2, "doi": "10.1234/B"},
+        ]
+    )
     release = Release(metadata)
     mocker.patch.object(release, "is_status", return_value=True)
     mocker.patch.object(release, "change_status")
@@ -647,7 +564,7 @@ def test_publish_collects_datacite_errors(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_publish_skips_registration_when_record_has_no_doi(mocker):
+def test_publish_skips_registration_when_record_has_no_doi(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
     mocker.patch("cernopendata.modules.releases.api.update_record")
@@ -656,10 +573,7 @@ def test_publish_skips_registration_when_record_has_no_doi(mocker):
     )
     mocker.patch("cernopendata.modules.releases.api.db.session")
 
-    metadata = MagicMock()
-    metadata.records = [{"recid": 1}]
-    metadata.documents = []
-
+    metadata = mock_metadata(records=[{"recid": 1}])
     release = Release(metadata)
     mocker.patch.object(release, "is_status", return_value=True)
     mocker.patch.object(release, "change_status")

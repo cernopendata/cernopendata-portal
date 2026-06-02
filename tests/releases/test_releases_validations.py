@@ -16,13 +16,14 @@ def test_validate(mocker):
     r.fix_checks(user)
 
 
-def test_validate_catches_validator_crash_and_records_synthetic_error(mocker):
+def test_validate_catches_validator_crash_and_records_synthetic_error(
+    mocker, mock_metadata
+):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
 
-    metadata = MagicMock()
-    metadata.records = []
+    metadata = mock_metadata()
 
     r = Release(metadata)
 
@@ -43,14 +44,11 @@ def test_validate_catches_validator_crash_and_records_synthetic_error(mocker):
     mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
 
 
-def test_validate_with_errors_sets_status_draft(mocker):
+def test_validate_with_errors_sets_status_draft(mocker, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
-    metadata = MagicMock()
-    metadata.records = []
-    metadata.validations = []
-
+    metadata = mock_metadata(validations=[])
     r = Release(metadata)
 
     failing_validation = MagicMock(enabled=True)

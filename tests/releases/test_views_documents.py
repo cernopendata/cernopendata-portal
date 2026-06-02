@@ -4,6 +4,7 @@ import pytest
 
 from cernopendata.modules.releases import views
 from cernopendata.modules.releases.views import _detect_payload_type, _normalise_payload
+from .conftest import _raises
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -56,11 +57,7 @@ def test_add_documents_urls_fetch_failure(
     mock_get_release, logged_in_client, monkeypatch
 ):
     monkeypatch.setattr(
-        views.requests,
-        "get",
-        lambda *a, **k: (_ for _ in ()).throw(
-            views.requests.RequestException("refused")
-        ),
+        views.requests, "get", _raises(views.requests.RequestException("refused"))
     )
 
     response = logged_in_client.post(
