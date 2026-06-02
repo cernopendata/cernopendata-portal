@@ -647,7 +647,7 @@ class Release:
         validation = ReleaseValidation.get(validation_id)
 
         if not validation.optional:
-            raise RunTimeError(f"The validation {validation.name} can't be disabled")
+            raise RuntimeError(f"The validation {validation.name} can't be disabled")
         validation._metadata.enabled = enabled
         self.validate(current_user)
         db.session.add(validation._metadata)

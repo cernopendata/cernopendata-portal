@@ -433,6 +433,7 @@ def test_delete_release_images_oserror_logs_and_continues(
 ):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+    mock_current_app.logger = MagicMock()
 
     release_dir = tmp_path / "1"
     release_dir.mkdir()
@@ -529,7 +530,8 @@ def test_publish_collects_datacite_errors(mocker, mock_metadata):
         "cernopendata.modules.releases.api.register_record_doi"
     )
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
-    mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.logger = MagicMock()
 
     mock_register.side_effect = [None, RuntimeError("DataCite down")]
 
