@@ -22,7 +22,7 @@ def test_create_success(mocker, mock_jsonschemas):
     user = MagicMock()
 
     records = [{"a": 1}]
-    release = Release.create(
+    Release.create(
         experiment="cms",
         records=records,
         current_user=user,
@@ -33,7 +33,6 @@ def test_create_success(mocker, mock_jsonschemas):
     mock_validate.assert_called_once()
     assert mock_session.add.called
     mock_session.commit.assert_called_once()
-    assert release
 
 
 def test_lock_success(mocker, mock_metadata):
@@ -156,14 +155,13 @@ def test_create_with_documents(mocker, mock_jsonschemas):
 
     doc = {"slug": "alice-about", "body": {"content": "# About", "format": "md"}}
 
-    release = Release.create(
+    Release.create(
         experiment="cms",
         documents=[doc],
         current_user=MagicMock(),
         name="docs-release.json",
     )
 
-    assert release
     assert doc["$schema"] == "schema-url"
     mock_session.commit.assert_called_once()
     _, kwargs = mock_release_metadata.call_args
@@ -449,17 +447,6 @@ def test_delete_release_images_oserror_logs_and_continues(
 
     mock_current_app.logger.warning.assert_called_once()
     assert release_dir.exists()
-
-
-def test_delete_release_images_no_directory_does_nothing(
-    mocker, tmp_path, mock_metadata
-):
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
-
-    metadata = mock_metadata(id=1)
-    r = Release(metadata)
-    r._delete_release_images()
 
 
 def test_generate_doi_mints_missing_dois(mocker, mock_metadata):

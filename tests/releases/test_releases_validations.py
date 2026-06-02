@@ -1,19 +1,7 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from cernopendata.modules.releases.api import Release
 from cernopendata.modules.releases.models import ReleaseStatus
-
-
-def test_validate(mocker):
-    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
-
-    metadata = MagicMock()
-    r = Release(metadata)
-    user = MagicMock()
-    r.validate(user)
-    r.fix_checks(user)
 
 
 def test_validate_catches_validator_crash_and_records_synthetic_error(

@@ -6,32 +6,41 @@ from cernopendata.modules.releases.api import Release, ReleaseValidation
 from cernopendata.modules.releases.models import ReleaseStatus
 
 
-# -----------------------------
-# TEST ReleaseValidation
-# -----------------------------
+class _DuplicateFilesMetadata:
+    id = 1
+    release_id = 2
+    name = "Duplicate files"
+    status = "OK"
+    enabled = True
+    release = None
 
 
 def test_release_validation():
     """Check a release validation object."""
-
-    class ReleaseValidationMetadata:
-        id = 1
-        release_id = 2
-        name = "Duplicate files"
-        status = "OK"
-        enabled = True
-        release = None
-
-    release_validation = ReleaseValidation(ReleaseValidationMetadata())
+    release_validation = ReleaseValidation(_DuplicateFilesMetadata())
 
     assert release_validation.name == "Duplicate files"
-    assert release_validation.validator
+    assert release_validation.validator is not None
     assert not release_validation.fixable
-    assert release_validation.error_message
+    assert (
+        release_validation.error_message
+        == "Some of the files of the records are already registered"
+    )
     assert release_validation.status == "OK"
+    result = release_validation.to_dict()
+    assert result["id"] == 1
+    assert result["name"] == "Duplicate files"
+    assert result["status"] == "OK"
+    assert result["release_id"] == 2
+
+
+def test_release_validation_set_status():
+    """Check that set_status mutates the status field."""
+    release_validation = ReleaseValidation(_DuplicateFilesMetadata())
+
     release_validation.set_status("FAILED")
+
     assert release_validation.status == "FAILED"
-    assert release_validation.to_dict()
 
 
 def test_release_properties(dummy_metadata):

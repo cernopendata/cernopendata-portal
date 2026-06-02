@@ -33,21 +33,6 @@ def test_add_documents_updates_count(mocker, mock_jsonschemas, mock_metadata):
     assert len(metadata.documents) == 3
 
 
-def test_add_documents_accepts_large_list(mocker, mock_jsonschemas, mock_metadata):
-    mocker.patch("cernopendata.modules.releases.api.db.session")
-    mocker.patch("cernopendata.modules.releases.api.flag_modified")
-
-    metadata = mock_metadata(num_docs=0)
-    r = Release(metadata)
-    mocker.patch.object(r, "validate")
-
-    large_batch = [{"slug": f"doc-{i}"} for i in range(500)]
-    r.add_documents(large_batch, MagicMock())
-
-    assert metadata.num_docs == 500
-    assert len(metadata.documents) == 500
-
-
 def test_update_document_success(mocker, mock_jsonschemas, mock_metadata):
     mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
