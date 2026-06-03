@@ -127,15 +127,18 @@
           </div>
         </div>
     </div>
-    {% if record._versions.index >1 %}
+    {% if record._versions.latest_index > 1 %}
     <div class="ui message">
-        There are older versions of this entry:
+        All versions of this entry:
         <ul>
-            {% for counter in range(1, record._versions.index) %}
+            {% for counter in range(1, record._versions.latest_index + 1) %}
             <li>
-                <a href="{{ record.recid }}-v{{ counter }}">
-                    Version {{ counter }}
-                </a>
+                {% if counter == record.version_index %}
+                <strong>Version {{ counter }}</strong> (this version)
+                {% else %}
+                <a href="{{ record.conceptrecid }}-v{{ counter }}">Version {{ counter }}</a>
+                {% endif %}
+                {% if counter == record._versions.latest_index %} (latest){% endif %}
             </li>
             {% endfor %}
         </ul>

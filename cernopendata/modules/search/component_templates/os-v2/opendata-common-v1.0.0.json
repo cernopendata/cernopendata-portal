@@ -9,7 +9,7 @@
           "copy_to": "facet_schema",
           "type": "text"
         },
-        "_concept_parent": {
+        "_conceptrecid": {
           "type": "keyword"
         },
         "_created": {
@@ -28,6 +28,9 @@
             },
             "is_latest": {
               "type": "boolean"
+            },
+            "latest_index": {
+              "type": "integer"
             }
           }
         },

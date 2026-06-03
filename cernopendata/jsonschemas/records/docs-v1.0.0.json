@@ -6,7 +6,7 @@
     "$schema": {
       "type": "string"
     },
-    "_concept_parent": {
+    "_conceptrecid": {
       "type": "string"
     },
     "_id_field": {
@@ -20,6 +20,9 @@
         },
         "is_latest": {
           "type": "boolean"
+        },
+        "latest_index": {
+          "type": "integer"
         }
       },
       "type": "object"

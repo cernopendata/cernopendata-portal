@@ -7,8 +7,9 @@
     <h1> {{ record.title_additional or record.title }} </h1>
     {% if not record._versions.is_latest %}
     <div class="ui warning message">
-        Please, note that this is not the latest version of this entry. An updated version can be found
-        <a href="{{record.recid}}">here</a>
+        Please, note that this is not the latest version of this entry. The latest version
+        (version {{ record._versions.latest_index }}) can be found
+        <a href="{{record.conceptrecid}}">here</a>.
     </div>
     {% endif %}
 

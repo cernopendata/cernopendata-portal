@@ -9,8 +9,9 @@
                     <h1> {{ record.anchor }} </h1>
                     {% if not record._versions.is_latest %}
                     <div class="ui warning message">
-                          Please, note that this is not the latest version of this entry. An updated version can be found
-                        <a href="{{record.anchor}}">here</a>
+                          Please, note that this is not the latest version of this entry. The latest version
+                        (version {{ record._versions.latest_index }}) can be found
+                        <a href="{{record.conceptrecid}}">here</a>.
                     </div>
                     {% endif %}
                     <br>
@@ -39,15 +40,18 @@
                         </span>
                     </div>
                     {% endif %}
-                    {% if record._versions.index >1 %}
+                    {% if record._versions.latest_index > 1 %}
                     <div class="ui message">
-                        There are older versions of this entry:
+                        All versions of this entry:
                         <ul>
-                            {% for counter in range(1, record._versions.index) %}
+                            {% for counter in range(1, record._versions.latest_index + 1) %}
                             <li>
-                                <a href="{{ record.anchor }}-v{{ counter }}">
-                                    Version {{ counter }}
-                                </a>
+                                {% if counter == record.version_index %}
+                                <strong>Version {{ counter }}</strong> (this version)
+                                {% else %}
+                                <a href="{{ record.conceptrecid }}-v{{ counter }}">Version {{ counter }}</a>
+                                {% endif %}
+                                {% if counter == record._versions.latest_index %} (latest){% endif %}
                             </li>
                             {% endfor %}
                         </ul>

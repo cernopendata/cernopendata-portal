@@ -28,6 +28,7 @@ from os.path import exists, isdir
 
 import click
 import pkg_resources
+from deepdiff import DeepDiff
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
@@ -37,8 +38,6 @@ from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm.attributes import flag_modified
-
-from deepdiff import DeepDiff
 
 from cernopendata.api import FileIndexMetadata, MultiURIFileObject, RecordFilesWithIndex
 from cernopendata.modules.records.api import OpenDataRecord
@@ -282,8 +281,10 @@ def _get_list_of_fixture_files(files, type):
     return get_jsons_from_dir(data_dir)
 
 
-def _check_or_create_new_version(create_function, data, pid_object, pid_object_concept):
-    """This function compares the current record with the provided data. If they are not the same, it creates a new version."""
+def _check_or_create_new_version(
+    create_function, data, pid_object, pid_object_concept, pid_field
+):
+    """Compare current data with the stored record, creating a new version if they differ."""
     record = OpenDataRecord.get_record(pid_object.object_uuid)
     diff = DeepDiff(
         data,
@@ -292,16 +293,31 @@ def _check_or_create_new_version(create_function, data, pid_object, pid_object_c
     )
     if not diff:
         return True, None, None
-    data["_concept_parent"] = record["_concept_parent"]
-    data["_versions"] = {"index": record["_versions"]["index"] + 1, "is_latest": True}
-    record["_versions"]["is_latest"] = False
-    record.commit()
+    old_index = record["_versions"]["index"]
+    new_index = old_index + 1
+    data["_conceptrecid"] = record["_conceptrecid"]
+    data["_versions"] = {
+        "index": new_index,
+        "is_latest": True,
+        "latest_index": new_index,
+    }
+    # Update every existing version so each one knows the new latest index and
+    # that it is no longer the latest. Collect them so the caller can reindex.
+    id_value = record[record["_id_field"]]
+    old_records = []
+    for index in range(1, old_index + 1):
+        sibling_pid = PersistentIdentifier.get(pid_field, f"{id_value}-v{index}")
+        sibling = OpenDataRecord.get_record(sibling_pid.object_uuid)
+        sibling["_versions"]["is_latest"] = False
+        sibling["_versions"]["latest_index"] = new_index
+        sibling.commit()
+        old_records.append(sibling)
     new_record = create_function(data, None)
     if not new_record:
         return False, None, None
     # And let's update the PID to point to this one
     pid_object_concept.object_uuid = new_record.id
-    return (True, new_record, record)
+    return (True, new_record, old_records)
 
 
 def _process_fixture_files(
@@ -349,7 +365,7 @@ def _process_fixture_files(
                 logger.info(f"==> Processing {entry_type} {pid}")
                 logger.debug(f"  -> Detected DOI {data.get('doi')}")
                 data["$schema"] = schema
-                old_record = None
+                old_records = []
                 try:
                     # This should be the pid of the concept
                     pid_object_concept = PersistentIdentifier.get(pid_field, pid)
@@ -371,8 +387,12 @@ def _process_fixture_files(
                         record = delete_function(pid_object, pid_field)
                         action = "deleted"
                     elif mode == "new-version-or-skip":
-                        (status, record, old_record) = _check_or_create_new_version(
-                            create_function, data, pid_object, pid_object_concept
+                        status, record, old_records = _check_or_create_new_version(
+                            create_function,
+                            data,
+                            pid_object,
+                            pid_object_concept,
+                            pid_field,
                         )
                         if not status:
                             statistics["error"] += 1
@@ -413,7 +433,7 @@ def _process_fixture_files(
                 logger.info(f"==> {entry_type.capitalize()} {pid} {action}")
                 if record:
                     indexer.index(record)
-                if old_record:
+                for old_record in old_records:
                     indexer.index(old_record)
                 db.session.expunge_all()
     return statistics
