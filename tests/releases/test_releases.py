@@ -116,7 +116,7 @@ def test_lock_success(mocker):
 
     metadata = MagicMock()
     metadata.id = 1
-    metadata.status = "DRAFT"
+    metadata.status = ReleaseStatus.DRAFT.value
 
     r = Release(metadata)
 
@@ -155,11 +155,23 @@ def test_delete(mocker):
 
     metadata = MagicMock()
     r = Release(metadata)
-
+    metadata.status = ReleaseStatus.DRAFT.value
     r.delete()
 
     mock_session.delete.assert_called_once_with(metadata)
     mock_session.commit.assert_called_once()
+
+
+def test_failed_delete(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    metadata.status = "PUBLISHED"
+    with pytest.raises(
+        RuntimeError, match="Releases can be deleted only if they are in DRAFT or READY"
+    ):
+        r.delete()
 
 
 def test_validate(mocker):
@@ -863,6 +875,7 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
 
     metadata = MagicMock()
     metadata.id = 1
+    metadata.status = ReleaseStatus.DRAFT.value
 
     r = Release(metadata)
     r.delete()

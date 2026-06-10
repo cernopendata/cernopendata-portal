@@ -31,7 +31,8 @@
                 <div>
                     <form action="/releases/{{ release._metadata.experiment }}/{{ release._metadata.id }}/delete"
                           method="POST">
-                        <button class="ui red button" type="submit">
+                        <button class="ui red button {% if release._metadata.status not in ['READY', 'DRAFT'] %}disabled{% endif %}"
+                                {% if release._metadata.status not in ['READY', 'DRAFT'] %}disabled{% endif %} type="submit">
                             Delete release definition
                         </button>
                     </form>

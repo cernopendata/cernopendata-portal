@@ -37,7 +37,7 @@
         <div class="content">
             <div class="title">
                 {{ step }}
-                {% if step == "DRAFT" and release_status != "DRAFT" %}
+                {% if step == "DRAFT" and release_status != "DRAFT" and current_step == "DRAFT" %}
                 <span>({{ release_status }})</span>
                 {% endif %}
             </div>

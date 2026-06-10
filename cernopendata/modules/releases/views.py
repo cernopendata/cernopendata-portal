@@ -292,9 +292,11 @@ def delete_release(experiment, release_id):
     """Delete a release."""
     release = _get_release(experiment, release_id)
 
-    release.delete()
-
-    flash("Release deleted successfully.", "success")
+    try:
+        release.delete()
+        flash("Release deleted successfully.", "success")
+    except RuntimeError as exc:
+        flash(f"Error deleting the release: {exc}", "error")
 
     return redirect(f"/releases/{experiment}")
 

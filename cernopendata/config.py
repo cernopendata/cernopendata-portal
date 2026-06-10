@@ -313,7 +313,7 @@ JSONSCHEMAS_REPLACE_REFS = True
 #
 # TODO: This is a hack! There is an issue with the resolver. Setting these two things make the test fail
 # If we don't set them, the curation process can't validate the json schema
-if "CERNOPENDATA_CERN_APP_CREDENTIALS" in os.environ:
+if "CERNOPENDATA_USE_RESOLVER" in os.environ:
     RECORDS_REFRESOLVER_STORE = "invenio_jsonschemas.proxies.current_refresolver_store"
     RECORDS_REFRESOLVER_CLS = "invenio_records.resolver.InvenioRefResolver"
 # Records
