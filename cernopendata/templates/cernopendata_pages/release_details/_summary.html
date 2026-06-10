@@ -28,6 +28,14 @@
                 <div class="item" id="edit-metadata-action">
                     Edit metadata
                 </div>
+                <div>
+                    <form action="/releases/{{ release._metadata.experiment }}/{{ release._metadata.id }}/delete"
+                          method="POST">
+                        <button class="ui red button" type="submit">
+                            Delete release definition
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
