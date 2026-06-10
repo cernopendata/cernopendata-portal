@@ -334,6 +334,12 @@ class Release:
 
     def delete(self):
         """Delete a release."""
+        if not self.is_status(ReleaseStatus.DRAFT) and not self.is_status(
+            ReleaseStatus.READY
+        ):
+            raise RuntimeError(
+                "Releases can be deleted only if they are in DRAFT or READY"
+            )
         self._delete_release_images()
         db.session.delete(self._metadata)
         db.session.commit()
