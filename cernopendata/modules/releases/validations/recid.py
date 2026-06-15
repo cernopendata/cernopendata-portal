@@ -20,7 +20,7 @@ class ValidRecid(PIDValidation):
     def next_recid_start(self, release):
         """Find the next available recid."""
         max_value = (
-            db.session.query(func.max(release.max_recid))
+            db.session.query(func.max(ReleaseMetadata.max_recid))
             .filter(ReleaseMetadata.experiment == release.experiment)
             .scalar()
         )
@@ -33,9 +33,8 @@ class ValidRecid(PIDValidation):
 
         for record in release.records:
             if "recid" not in record or record["recid"] in duplicates:
-                counter += 1
                 record["recid"] = f"{release.experiment}-{counter}"
+                release.max_recid = counter
+                counter += 1
 
-        if release.records:
-            release.max_recid = counter
         return []
