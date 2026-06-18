@@ -1,5 +1,10 @@
 Changes
 =======
+Version 1.0.0 (released 2026-06-18)
+----------------------------
+- feature: interface for curators to upload release metadata
+- schema: add linter for javascript and json
+
 Version 0.14.0 (released 2026-04-14)
 ----------------------------
 - ui: more improvements to accessibility
