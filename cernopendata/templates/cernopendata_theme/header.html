@@ -14,7 +14,7 @@
           <span>{{ current_user.email|truncate(31,true) }}<i class="dropdown icon"></i></span>
         </span>
         <div class="menu dropdown-items">
-          {% for exp in curator_experiments %}
+          {% for exp in curator_experiments | sort %}
           <div class="item">
             <a href="/releases/{{ exp }}">{{ exp|upper }} releases</a>
           </div>
