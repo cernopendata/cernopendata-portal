@@ -130,7 +130,7 @@ def dump_files(obj):
 class RecordSchemaV1(Schema):
     """Common record schema."""
 
-    id = fields.Integer(attribute="pid.pid_value", dump_only=True)
+    id = fields.Str(attribute="pid.pid_value", dump_only=True)
     created = fields.Str(dump_only=True)
     updated = fields.Str(dump_only=True)
     metadata = fields.Method("dump_metadata")

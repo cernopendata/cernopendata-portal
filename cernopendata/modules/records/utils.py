@@ -385,6 +385,9 @@ def export_json_view(pid, record, template=None, **kwargs):
             data = serializer.serialize(pid, record)
             data = json.loads(data)
         except Exception:
+            current_app.logger.exception(
+                "JSON export failed for record {}.".format(str(record.id))
+            )
             data = {}
 
         return jsonify(data)
