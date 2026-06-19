@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Table, Loader, Icon } from "semantic-ui-react";
 
+const statusToStep = {
+  EDITING: "DRAFT",
+  READY: "DRAFT",
+  STAGING: "DRAFT",
+};
 export default function ReleasesTable({ experiment }) {
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,31 +35,29 @@ export default function ReleasesTable({ experiment }) {
   if (loading) {
     return <Loader active inline="centered" />;
   }
-
   return (
-    <Table celled>
+    <Table celled selectable striped>
       <Table.Header>
         <Table.Row>
           <Table.HeaderCell className="no-glossary">ID</Table.HeaderCell>
           <Table.HeaderCell>Name</Table.HeaderCell>
-          <Table.HeaderCell>Status</Table.HeaderCell>
+          <Table.HeaderCell>Step</Table.HeaderCell>
           <Table.HeaderCell>Last update</Table.HeaderCell>
           <Table.HeaderCell>Records</Table.HeaderCell>
           <Table.HeaderCell>Documents</Table.HeaderCell>
-          <Table.HeaderCell>Number of errors</Table.HeaderCell>
           <Table.HeaderCell>Discussion</Table.HeaderCell>
         </Table.Row>
       </Table.Header>
       <Table.Body>
         {error ? (
           <Table.Row>
-            <Table.Cell colSpan="8" textAlign="center">
+            <Table.Cell colSpan="7" textAlign="center">
               <Icon name="warning circle" /> Could not load releases.
             </Table.Cell>
           </Table.Row>
         ) : releases.length === 0 ? (
           <Table.Row>
-            <Table.Cell colSpan="8" textAlign="center">
+            <Table.Cell colSpan="7" textAlign="center">
               No releases found.
             </Table.Cell>
           </Table.Row>
@@ -70,13 +73,36 @@ export default function ReleasesTable({ experiment }) {
             >
               <Table.Cell>{r.id}</Table.Cell>
               <Table.Cell>{r.name}</Table.Cell>
-              <Table.Cell>{r.last_update.status}</Table.Cell>
+              <Table.Cell>
+                {statusToStep[r.last_update.status] || r.last_update.status}
+                {r.num_errors > 0 && (
+                  <Icon
+                    name="warning circle"
+                    color="red"
+                    title={`${r.num_errors} error${r.num_errors !== 1 ? "s" : ""}`}
+                    style={{ marginLeft: "0.5em" }}
+                  />
+                )}
+                {r.last_update.status === "PUBLISHED" && (
+                  <Icon
+                    name="check circle outline"
+                    color="green"
+                    style={{ marginLeft: "0.5em" }}
+                  />
+                )}
+                {r.last_update.status === "STAGED" && (
+                  <Icon
+                    name="clock outline"
+                    color="blue"
+                    style={{ marginLeft: "0.5em" }}
+                  />
+                )}
+              </Table.Cell>
               <Table.Cell>
                 {formatDate(r.last_update.timestamp)} by {r.last_update.user}
               </Table.Cell>
               <Table.Cell>{r.num_records}</Table.Cell>
               <Table.Cell>{r.num_docs}</Table.Cell>
-              <Table.Cell>{r.num_errors}</Table.Cell>
               <Table.Cell>{r.discussion}</Table.Cell>
             </Table.Row>
           ))

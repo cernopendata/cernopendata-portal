@@ -23,7 +23,7 @@
                 </div>
                 <a class="item"
                    href="/releases/api/{{ release._metadata.experiment }}/{{ release._metadata.id }}">
-                    Download release definition
+                    Download release
                 </a>
                 <div class="item" id="edit-metadata-action">
                     Edit metadata
@@ -33,7 +33,7 @@
                           method="POST">
                         <button class="ui red button {% if release._metadata.status not in ['READY', 'DRAFT'] %}disabled{% endif %}"
                                 {% if release._metadata.status not in ['READY', 'DRAFT'] %}disabled{% endif %} type="submit">
-                            Delete release definition
+                            Delete release
                         </button>
                     </form>
                 </div>
