@@ -815,7 +815,7 @@ OAUTHCLIENT_REMOTE_APPS = {
     cern_remote_app_name: cern_keycloak.remote_app,
 }
 CERN_APP_CREDENTIALS = {
-    "consumer_key": "opendata-dev",
+    "consumer_key": os.environ.get("CERNOPENDATA_CERN_APP_NAME", "opendata-dev"),
     "consumer_secret": os.environ.get(
         "CERNOPENDATA_CERN_APP_CREDENTIALS", "<CHANGEME>"
     ),
