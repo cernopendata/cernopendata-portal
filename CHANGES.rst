@@ -1,5 +1,9 @@
 Changes
 =======
+Version 1.0.2 (releaesd 2026-06-22)
+----------------------------
+- fix(oidc): Get the name of the OIDC from an environmental variable
+
 Version 1.0.1 (released 2026-06-22)
 ----------------------------
 - fix(ui): Remove the column of error of the releases. Add icons to distinguish between draft/staged/published. Adding margins to elements.
