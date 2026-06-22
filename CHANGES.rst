@@ -1,5 +1,11 @@
 Changes
 =======
+Version 1.0.1 (released 2026-06-22)
+----------------------------
+- fix(ui): Remove the column of error of the releases. Add icons to distinguish between draft/staged/published. Adding margins to elements.
+- fix(releases): add validator to ensure files are provided
+- fix(releases): ensure json export works for records in a release
+
 Version 1.0.0 (released 2026-06-18)
 ----------------------------
 - feature: interface for curators to upload release metadata
