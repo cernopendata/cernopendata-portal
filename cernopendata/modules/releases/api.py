@@ -644,10 +644,15 @@ class Release:
     def fix_checks(self, current_user):
         """Fix all the validations that can be fixed automatically."""
         errors = []
+        current_app.logger.info("Fixing the validations")
         for validation in self.validations:
             if not validation.status:
                 if validation.enabled and validation.fixable:
+                    current_app.logger.info(
+                        f"Ready to fix the validation of {validation.name}"
+                    )
                     errors.extend(validation.fix())
+        current_app.logger.info("Validations have been done")
 
         if errors:
             self._metadata.errors = errors
