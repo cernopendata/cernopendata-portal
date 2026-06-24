@@ -9,6 +9,9 @@
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> The release is being staged. If this message persists, something may have gone wrong.</p>
 </div>
+<script>
+    setTimeout(function () { window.location.reload(); }, 5000);
+</script>
 {% elif release_status == 'PUBLISHED' %}
 <div class="ui positive message release-status-message">
     <p><i class="check circle icon"></i> This release is published and locked.</p>

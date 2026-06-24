@@ -442,26 +442,20 @@ def test_update_document_missing_body(logged_in_client):
     assert resp.status_code == 400
 
 
+@patch("cernopendata.modules.releases.views.stage_release_task")
+@patch("cernopendata.modules.releases.views.db")
 @patch("cernopendata.modules.releases.views._get_release")
-def test_stage_release_calls_stage(mock_get_release, logged_in_client):
+def test_stage_release_dispatches_task(
+    mock_get_release, mock_db, mock_stage_release_task, logged_in_client
+):
     mock_release = MagicMock()
     mock_get_release.return_value = mock_release
 
     resp = logged_in_client.post("/releases/cms/1/stage")
 
     assert resp.status_code == 302
-    mock_release.stage.assert_called_once()
-
-
-@patch("cernopendata.modules.releases.views._get_release")
-def test_stage_release_swallows_exception(mock_get_release, logged_in_client):
-    mock_release = MagicMock()
-    mock_release.stage.side_effect = RuntimeError("boom")
-    mock_get_release.return_value = mock_release
-
-    resp = logged_in_client.post("/releases/cms/1/stage")
-
-    assert resp.status_code == 302
+    mock_stage_release_task.delay.assert_called_once()
+    mock_release.stage.assert_not_called()
 
 
 @patch("cernopendata.modules.releases.views._get_release", return_value=MagicMock())

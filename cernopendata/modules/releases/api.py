@@ -488,6 +488,15 @@ class Release:
         db.session.add(self._metadata)
         db.session.commit()
 
+    def mark_staging_failed(self, message, current_user):
+        """Record a staging failure and revert the release to READY."""
+        self._metadata.errors = [f"Staging failed: {message}"]
+        self._metadata.num_errors = 1
+        flag_modified(self._metadata, "errors")
+        self.change_status(ReleaseStatus.READY, current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
     def publish(self, current_user):
         """Publish a release."""
         if not self.is_status(ReleaseStatus.STAGED):
