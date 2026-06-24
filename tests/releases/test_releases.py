@@ -730,6 +730,23 @@ def test_stage_with_errors_commits_draft_status(mocker):
     mock_session.commit.assert_called_once()
 
 
+def test_mark_staging_failed_records_error_and_reverts_to_ready(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    mock_change = mocker.patch.object(r, "change_status")
+
+    user = MagicMock()
+    r.mark_staging_failed("Broken release", user)
+
+    assert metadata.errors == ["Staging failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.READY, user)
+    mock_session.commit.assert_called_once()
+
+
 def test_publish_preserves_schema_on_each_record(mocker):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")

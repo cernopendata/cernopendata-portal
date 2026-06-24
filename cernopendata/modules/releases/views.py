@@ -47,6 +47,7 @@ from werkzeug.utils import secure_filename
 
 from .api import Release
 from .models import ReleaseStatus
+from .tasks import stage_release as stage_release_task
 from .utils import curator_experiments
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
@@ -335,12 +336,14 @@ def stage_release(experiment, release_id):
     release = _get_release(
         experiment, release_id, status=ReleaseStatus.READY, lock=ReleaseStatus.STAGING
     )
-    try:
-        release.stage(current_user)
-        flash("Release staged successfully.", "success")
 
-    except Exception as e:
-        flash(f" :( Error staging the release {e}", "error")
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    stage_release_task.delay(experiment, release_id, current_user.id)
+    flash("Staging started. This may take a while for large releases.", "info")
 
     return redirect(f"/releases/{experiment}/{release_id}")
 
