@@ -56,7 +56,12 @@
 
     {% if record.date_created and record.date_published %}
     <small>
-        Data recorded in {{ record.date_created[0] }} and published in {{ record.date_published }}
+        Data recorded in
+          {% set dates = record.date_created %}
+          {% if dates|length == 1 %} {{ dates[0] }}.
+          {% else %} {{ dates[:-1]|join(', ') }} and {{ dates[-1] }}.
+          {% endif %}
+        Published in {{ record.date_published }}.
     </small>
     {% endif %}
 
