@@ -16,6 +16,7 @@ export default function RecordsTable({
   releaseStatus = null,
 }) {
   const [editingRecord, setEditingRecord] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [editAllMode, setEditAllMode] = useState(false);
 
   const tableRef = useRef(null);
@@ -77,6 +78,7 @@ export default function RecordsTable({
 
   const closeEditModal = () => {
     setEditingRecord(null);
+    setEditingIndex(null);
     setEditAllMode(false);
   };
 
@@ -183,7 +185,10 @@ export default function RecordsTable({
                     <Table.Cell>{record.title || "—"}</Table.Cell>
                     <Table.Cell collapsing>
                       <RowActions
-                        onEdit={() => setEditingRecord(record)}
+                        onEdit={() => {
+                          setEditingRecord(record);
+                          setEditingIndex(records.indexOf(record));
+                        }}
                         editDisabled={editDisabled}
                         viewDisabled={viewDisabled}
                         viewHref={`/record/${record.recid}`}
@@ -209,6 +214,7 @@ export default function RecordsTable({
       <EditRecordModal
         editingRecord={editingRecord}
         setEditingRecord={setEditingRecord}
+        editingIndex={editingIndex}
         editAllMode={editAllMode}
         records={records}
         setRecords={setRecords}

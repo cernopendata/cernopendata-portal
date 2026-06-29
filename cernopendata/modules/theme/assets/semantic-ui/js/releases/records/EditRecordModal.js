@@ -8,6 +8,7 @@ import createBridge from "./schema";
 export default function EditRecordModal({
   editingRecord,
   setEditingRecord,
+  editingIndex,
   editAllMode,
   records,
   setRecords,
@@ -139,15 +140,16 @@ export default function EditRecordModal({
     const updatedRecords = editAllMode
       ? records
       : (() => {
-          const idx = records.findIndex(
-            (r) => String(r.recid) === String(editingRecord.recid),
-          );
-          if (idx === -1) {
+          if (
+            editingIndex == null ||
+            editingIndex < 0 ||
+            editingIndex >= records.length
+          ) {
             alert("Record not found");
             return records;
           }
           const copy = [...records];
-          copy[idx] = editingRecord;
+          copy[editingIndex] = editingRecord;
           return copy;
         })();
 
