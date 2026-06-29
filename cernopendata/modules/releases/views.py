@@ -103,19 +103,28 @@ def _normalise_payload(payload):
     return payload
 
 
-def _detect_payload_type(items):
-    """Return 'documents' if items look like docs, 'records' otherwise."""
-    if not items:
-        return "records"
-    sample = items[0]
-    if (
-        isinstance(sample, dict)
-        and ("slug" in sample or "body" in sample)
-        and "recid" not in sample
-        and "files" not in sample
+def _split_payload(payload, source_filename):
+    """Return (records, documents) from an uploaded payload."""
+    if isinstance(payload, dict) and (
+        isinstance(payload.get("records"), list)
+        or isinstance(payload.get("documents"), list)
     ):
-        return "documents"
-    return "records"
+        records = payload.get("records") or []
+        documents = payload.get("documents") or []
+    else:
+        items = _normalise_payload(payload)
+        sample = items[0] if items else None
+        is_documents = (
+            isinstance(sample, dict)
+            and ("slug" in sample or "body" in sample)
+            and "recid" not in sample
+            and "files" not in sample
+        )
+        records, documents = ([], items) if is_documents else (items, [])
+
+    for doc in documents:
+        doc.setdefault("_source_filename", source_filename)
+    return records, documents
 
 
 def _check_experiment(experiment):
@@ -205,20 +214,14 @@ def release_upload(experiment):
     else:
         abort(400, "Invalid source")
 
-    payload = _normalise_payload(payload)
-    payload_type = _detect_payload_type(payload)
-    if payload_type == "records":
-        create_dict = {"records": payload}
-    else:
-        for doc in payload:
-            doc.setdefault("_source_filename", release_name)
-        create_dict = {"documents": payload}
+    records, documents = _split_payload(payload, release_name)
 
     release = Release.create(
         experiment=experiment,
         current_user=current_user,
         name=release_name,
-        **create_dict,
+        records=records,
+        documents=documents,
     )
 
     flash(f"Release {release._metadata.id} created.", "success")
@@ -255,8 +258,12 @@ def update_release(experiment, release_id):
 def release_json(experiment, release_id):
     """Get the release in json."""
     release = _get_release(experiment, release_id)
+    body = {
+        "records": release._metadata.records,
+        "documents": release._metadata.documents or [],
+    }
     return Response(
-        json.dumps({"records": release._metadata.records}, indent=2),
+        json.dumps(body, indent=2),
         mimetype="application/json",
         headers={
             "Content-Disposition": f"attachment; filename=release-{release_id}.json"

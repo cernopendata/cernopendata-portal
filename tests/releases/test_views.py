@@ -3,12 +3,10 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, abort
+from flask import abort
 
 from cernopendata.modules.releases import views
-from cernopendata.modules.releases.api import Release
-from cernopendata.modules.releases.models import ReleaseStatus
-from cernopendata.modules.releases.views import _detect_payload_type, _normalise_payload
+from cernopendata.modules.releases.views import _normalise_payload, _split_payload
 
 
 @pytest.fixture
@@ -484,70 +482,61 @@ def test_update_document_slug_not_found(mock_get_release, logged_in_client):
     assert "not found" in resp.get_json()["error"]
 
 
-def test_detect_payload_kind_empty():
-    assert _detect_payload_type([]) == "records"
-
-
-def test_detect_payload_kind_record():
-    assert (
-        _detect_payload_type([{"recid": 1, "files": [], "experiment": "CMS"}])
-        == "records"
-    )
-
-
-def test_detect_payload_kind_document_with_slug():
-    assert (
-        _detect_payload_type(
-            [{"slug": "test-document", "body": {"content": "# Hi", "format": "md"}}]
-        )
-        == "documents"
-    )
-
-
-def test_detect_payload_kind_document_with_body_only():
-    assert (
-        _detect_payload_type(
-            [{"title": "X", "body": {"content": "text", "format": "md"}}]
-        )
-        == "documents"
-    )
-
-
-def test_detect_payload_kind_slug_plus_recid_is_records():
-    assert _detect_payload_type([{"slug": "x", "recid": 1}]) == "records"
-
-
-@patch("cernopendata.modules.releases.views.Release.create")
-@patch("cernopendata.modules.releases.views.curator_experiments")
-@patch("cernopendata.modules.releases.views.Release.validate_experiment")
-def test_upload_file_documents_payload_routes_to_create_documents(
-    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
-):
-    mock_validate_exp.return_value = True
-    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
-    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
-
-    doc = {"slug": "test-document", "body": {"content": "# About", "format": "md"}}
-    resp = logged_in_client.post(
-        "/releases/cms",
-        data={
-            "source": "file",
-            "file": (BytesIO(json.dumps(doc).encode()), "test-document.json"),
-        },
-        content_type="multipart/form-data",
-    )
-
-    assert resp.status_code == 200
-    _, kwargs = mock_create.call_args
-    assert kwargs.get("documents")[0]["slug"] == "test-document"
-    assert kwargs.get("documents")[0]["_source_filename"] == "test-document.json"
-    assert "records" not in kwargs
+@pytest.mark.parametrize(
+    "payload, expected_records, expected_documents",
+    [
+        ([], [], []),
+        ([{"recid": 1, "files": []}], [{"recid": 1, "files": []}], []),
+        ([{"slug": "x", "recid": 1}], [{"slug": "x", "recid": 1}], []),
+        (
+            [{"slug": "doc-1", "body": {"content": "hi", "format": "md"}}],
+            [],
+            [
+                {
+                    "slug": "doc-1",
+                    "body": {"content": "hi", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        (
+            [{"title": "X", "body": {"content": "text", "format": "md"}}],
+            [],
+            [
+                {
+                    "title": "X",
+                    "body": {"content": "text", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        (
+            {
+                "records": [{"recid": 1, "files": []}],
+                "documents": [
+                    {"slug": "doc-1", "body": {"content": "hi", "format": "md"}}
+                ],
+            },
+            [{"recid": 1, "files": []}],
+            [
+                {
+                    "slug": "doc-1",
+                    "body": {"content": "hi", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        ({"records": [{"recid": 1, "files": []}]}, [{"recid": 1, "files": []}], []),
+    ],
+)
+def test_split_payload(payload, expected_records, expected_documents):
+    assert _split_payload(payload, "f.json") == (expected_records, expected_documents)
 
 
 @patch("cernopendata.modules.releases.views.Release.create")
 @patch("cernopendata.modules.releases.views.curator_experiments")
 @patch("cernopendata.modules.releases.views.Release.validate_experiment")
-def test_upload_file_records_payload_routes_to_create_records(
+def test_upload_file_creates_release_with_records_and_documents(
     mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
 ):
     mock_validate_exp.return_value = True
@@ -555,11 +544,13 @@ def test_upload_file_records_payload_routes_to_create_records(
     mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
 
     records = [{"recid": 1, "experiment": "CMS", "files": []}]
+    docs = [{"slug": "test-document", "body": {"content": "# About", "format": "md"}}]
+    payload = {"records": records, "documents": docs}
     resp = logged_in_client.post(
         "/releases/cms",
         data={
             "source": "file",
-            "file": (BytesIO(json.dumps(records).encode()), "cms-release.json"),
+            "file": (BytesIO(json.dumps(payload).encode()), "release-1.json"),
         },
         content_type="multipart/form-data",
     )
@@ -567,7 +558,24 @@ def test_upload_file_records_payload_routes_to_create_records(
     assert resp.status_code == 200
     _, kwargs = mock_create.call_args
     assert kwargs.get("records") == records
-    assert "documents" not in kwargs
+    assert kwargs.get("documents")[0]["slug"] == "test-document"
+    assert kwargs.get("documents")[0]["_source_filename"] == "release-1.json"
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_download_release_includes_records_and_documents(mock_get_release, client):
+    records = [{"recid": 1, "experiment": "CMS"}]
+    docs = [{"slug": "doc-1", "body": {"content": "hi", "format": "md"}}]
+    mock_get_release.return_value = MagicMock(
+        _metadata=MagicMock(records=records, documents=docs)
+    )
+
+    resp = client.get("/releases/api/cms/1")
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["records"] == records
+    assert body["documents"] == docs
 
 
 @pytest.fixture
