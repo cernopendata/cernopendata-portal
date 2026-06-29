@@ -16,7 +16,9 @@ class ValidRecid(PIDValidation):
 
     abstract = False
     name = "Valid recid"
-    error_message = "The records should have record id that do not exist."
+    error_message = (
+        "Each record must have a unique, unregistered recid in the correct format."
+    )
     items_attr = "records"
     id_field = "recid"
     pid_type = "recid"
