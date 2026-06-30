@@ -163,7 +163,7 @@ services:
 
   mq:
     restart: "always"
-    image: docker.io/library/rabbitmq:3.12
+    image: docker.io/library/rabbitmq:3.13
     depends_on:
       - cache
     ports:
