@@ -1,21 +1,38 @@
 
 {% set release_status = release.status.value %}
 
+{% macro render_release_errors(release) %}
+{% if release._metadata.errors %}
+<div class="ui negative message">
+    <div class="header">Showing {{ release._metadata.errors|length if release._metadata.errors|length < 100 else 100 }} of {{ release._metadata.num_errors }} errors</div>
+    <ul class="list">
+        {% for item in release._metadata.errors[:100] %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endmacro %}
+
 {% if release_status == 'EDITING' %}
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> Changes are currently being applied. If this message persists, something may have gone wrong.</p>
 </div>
-{% elif release_status == 'STAGING' %}
+{% elif release_status in ['STAGING', 'PUBLISHING'] %}
+{% set progress_verb = 'staged' if release_status == 'STAGING' else 'published' %}
 <div class="ui warning message release-status-message">
-    <p><i class="clock icon"></i> The release is being staged. If this message persists, something may have gone wrong.</p>
+    <p><i class="clock icon"></i> The release is being {{ progress_verb }}. If this message persists, something may have gone wrong.</p>
 </div>
 <script>
     setTimeout(function () { window.location.reload(); }, 5000);
 </script>
+{% elif release_status == 'STAGED' %}
+{{ render_release_errors(release) }}
 {% elif release_status == 'PUBLISHED' %}
 <div class="ui positive message release-status-message">
     <p><i class="check circle icon"></i> This release is published and locked.</p>
 </div>
+{{ render_release_errors(release) }}
 {% endif %}
 
 {% if release_status in ['DRAFT', 'READY', 'EDITING'] %}
@@ -98,16 +115,7 @@
 </div>
 {% endif %}
 
-{% if release._metadata.errors %}
-<div class="ui negative message">
-    <div class="header">Showing {{ release._metadata.errors|length if release._metadata.errors|length < 100 else 100 }} of {{ release._metadata.num_errors }} errors</div>
-    <ul class="list">
-        {% for item in release._metadata.errors[:100] %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
+{{ render_release_errors(release) }}
 
 {% endif %}
 

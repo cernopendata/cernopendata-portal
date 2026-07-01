@@ -47,7 +47,7 @@ from werkzeug.utils import secure_filename
 
 from .api import Release
 from .models import ReleaseStatus
-from .tasks import stage_release as stage_release_task
+from .tasks import publish_release, stage_release
 from .utils import curator_experiments
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
@@ -338,7 +338,7 @@ def update_records(experiment, release_id):
     methods=["POST"],
 )
 @login_required
-def stage_release(experiment, release_id):
+def stage(experiment, release_id):
     """Insert the objects defined in the release in the current system."""
     release = _get_release(
         experiment, release_id, status=ReleaseStatus.READY, lock=ReleaseStatus.STAGING
@@ -349,7 +349,7 @@ def stage_release(experiment, release_id):
     db.session.add(release._metadata)
     db.session.commit()
 
-    stage_release_task.delay(experiment, release_id, current_user.id)
+    stage_release.delay(experiment, release_id, current_user.id)
     flash("Staging started. This may take a while for large releases.", "info")
 
     return redirect(f"/releases/{experiment}/{release_id}")
@@ -386,16 +386,21 @@ def rollback(experiment, release_id):
 @login_required
 def publish(experiment, release_id):
     """Publish the records: put them in the search, and remove the box saying that they were work in progress."""
-    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    release = _get_release(
+        experiment,
+        release_id,
+        status=ReleaseStatus.STAGED,
+        lock=ReleaseStatus.PUBLISHING,
+    )
 
-    errors = release.publish(current_user)
-    if errors:
-        preview = ", ".join(str(error["recid"]) for error in errors[:5])
-        summary = f"DataCite registration failed for recids: {preview}"
-        if len(errors) > 5:
-            summary += f" (+{len(errors) - 5} more)"
-        flash(summary, "error")
-    flash("Release published!")
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    publish_release.delay(experiment, release_id, current_user.id)
+    flash("Publishing started. This may take a while for large releases.", "info")
+
     return redirect(f"/releases/{experiment}/{release_id}")
 
 

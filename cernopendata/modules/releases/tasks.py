@@ -20,3 +20,17 @@ def stage_release(experiment, release_id, user_id):
         db.session.rollback()
         release = Release.get(experiment, release_id)
         release.mark_staging_failed(str(exc), user)
+
+
+@shared_task
+def publish_release(experiment, release_id, user_id):
+    """Publish a release."""
+    release = Release.get(experiment, release_id)
+    user = User.query.get(user_id)
+    try:
+        release.publish(user)
+    except Exception as exc:
+        current_app.logger.exception("Publishing release %s failed", release_id)
+        db.session.rollback()
+        release = Release.get(experiment, release_id)
+        release.mark_publishing_failed(str(exc), user)
