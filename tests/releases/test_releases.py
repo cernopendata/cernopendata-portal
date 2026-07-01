@@ -271,13 +271,16 @@ def test_stage_success(mocker):
     mock_record.commit.assert_called()
 
 
-def test_stage_wrong_status(mocker):
+def test_stage_or_publish_wrong_status(mocker):
     r = Release(MagicMock())
 
     mocker.patch.object(r, "is_status", return_value=False)
 
     with pytest.raises(RuntimeError):
         r.stage(MagicMock())
+
+    with pytest.raises(RuntimeError):
+        r.publish(MagicMock())
 
 
 def test_publish(mocker):
@@ -747,6 +750,23 @@ def test_mark_staging_failed_records_error_and_reverts_to_ready(mocker):
     mock_session.commit.assert_called_once()
 
 
+def test_mark_publishing_failed_records_error_and_reverts_to_staged(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    mock_change = mocker.patch.object(r, "change_status")
+
+    user = MagicMock()
+    r.mark_publishing_failed("Broken release", user)
+
+    assert metadata.errors == ["Publishing failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.STAGED, user)
+    mock_session.commit.assert_called_once()
+
+
 def test_publish_preserves_schema_on_each_record(mocker):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
@@ -1110,7 +1130,7 @@ def test_publish_collects_datacite_errors(mocker):
     errors = release.publish(MagicMock())
 
     assert len(errors) == 1
-    assert errors[0]["recid"] == 2
-    assert "DataCite down" in errors[0]["error"]
+    assert "recid 2" in errors[0]
+    assert "DataCite down" in errors[0]
     assert mock_register.call_count == 2
     mock_session.commit.assert_called_once()

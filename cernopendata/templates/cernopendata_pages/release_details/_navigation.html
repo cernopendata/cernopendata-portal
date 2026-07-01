@@ -6,6 +6,7 @@
 'READY': 'DRAFT',
 'STAGING': 'DRAFT',
 'STAGED': 'STAGED',
+'PUBLISHING': 'STAGED',
 'PUBLISHED': 'PUBLISHED'
 } %}
 
@@ -23,7 +24,8 @@
 'DRAFT': 'This release has unresolved issues.',
 'STAGED': 'You are about to publish this release publicly. Please review carefully before proceeding.',
 'EDITING': 'The release is being edited at the moment.',
-'STAGING': 'The release is being staged.'
+'STAGING': 'The release is being staged.',
+'PUBLISHING': 'The release is being published.'
 }[release_status] %}
 
 <div class="ui fluid top attached ordered steps">
@@ -66,7 +68,7 @@
         {% endif %}
 
         <div class="release-navigation-actions-button"
-             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING'] %}
+             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING', 'PUBLISHING'] %}
              data-tooltip="{{ next_tooltip }}"
              data-position="top center"
              {% endif %}>

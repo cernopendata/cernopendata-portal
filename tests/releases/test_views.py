@@ -440,11 +440,11 @@ def test_update_document_missing_body(logged_in_client):
     assert resp.status_code == 400
 
 
-@patch("cernopendata.modules.releases.views.stage_release_task")
+@patch("cernopendata.modules.releases.views.stage_release")
 @patch("cernopendata.modules.releases.views.db")
 @patch("cernopendata.modules.releases.views._get_release")
 def test_stage_release_dispatches_task(
-    mock_get_release, mock_db, mock_stage_release_task, logged_in_client
+    mock_get_release, mock_db, mock_stage_release, logged_in_client
 ):
     mock_release = MagicMock()
     mock_get_release.return_value = mock_release
@@ -452,7 +452,7 @@ def test_stage_release_dispatches_task(
     resp = logged_in_client.post("/releases/cms/1/stage")
 
     assert resp.status_code == 302
-    mock_stage_release_task.delay.assert_called_once()
+    mock_stage_release.delay.assert_called_once()
     mock_release.stage.assert_not_called()
 
 
@@ -1499,37 +1499,17 @@ def test_generate_doi_endpoint_rejects_non_staged(logged_in_client):
     assert response.status_code == 409
 
 
-@patch("cernopendata.modules.releases.views.flash")
+@patch("cernopendata.modules.releases.views.publish_release")
+@patch("cernopendata.modules.releases.views.db")
 @patch("cernopendata.modules.releases.views._get_release")
-def test_publish_flashes_datacite_error_summary(
-    mock_get_release, mock_flash, logged_in_client
+def test_publish_dispatches_task(
+    mock_get_release, mock_db, mock_publish_release, logged_in_client
 ):
     mock_release = MagicMock()
-    errors = [{"recid": recid, "error": "fail"} for recid in range(1, 8)]
-    mock_release.publish.return_value = errors
     mock_get_release.return_value = mock_release
 
-    logged_in_client.post("/releases/cms/1/publish")
+    resp = logged_in_client.post("/releases/cms/1/publish")
 
-    all_calls = mock_flash.call_args_list
-    error_calls = [args[0] for args, _ in all_calls if args[1:] == ("error",)]
-    assert len(error_calls) == 1
-    assert "1, 2, 3, 4, 5" in error_calls[0]
-    assert "(+2 more)" in error_calls[0]
-    assert any("published" in args[0] for args, _ in all_calls)
-
-
-@patch("cernopendata.modules.releases.views.flash")
-@patch("cernopendata.modules.releases.views._get_release")
-def test_publish_no_errors_only_flashes_success(
-    mock_get_release, mock_flash, logged_in_client
-):
-    mock_release = MagicMock()
-    mock_release.publish.return_value = []
-    mock_get_release.return_value = mock_release
-
-    logged_in_client.post("/releases/cms/1/publish")
-
-    all_calls = mock_flash.call_args_list
-    assert not any(args[1:] == ("error",) for args, _ in all_calls)
-    assert any("published" in args[0] for args, _ in all_calls)
+    assert resp.status_code == 302
+    mock_publish_release.delay.assert_called_once()
+    mock_release.publish.assert_not_called()

@@ -39,9 +39,9 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from cernopendata.modules.datacite.utils import generate_doi as mint_doi
+from cernopendata.modules.datacite.utils import register_record_doi
 from cernopendata.modules.datacite.utils import (
-    generate_doi as mint_doi,
-    register_record_doi,
     validate_record as validate_datacite_record,
 )
 from cernopendata.modules.fixtures.cli import (
@@ -488,19 +488,27 @@ class Release:
         db.session.add(self._metadata)
         db.session.commit()
 
-    def mark_staging_failed(self, message, current_user):
-        """Record a staging failure and revert the release to READY."""
-        self._metadata.errors = [f"Staging failed: {message}"]
+    def _mark_failed(self, action, message, revert_status, current_user):
+        """Record a failed transition and revert the release to a prior status."""
+        self._metadata.errors = [f"{action} failed: {message}"]
         self._metadata.num_errors = 1
         flag_modified(self._metadata, "errors")
-        self.change_status(ReleaseStatus.READY, current_user)
+        self.change_status(revert_status, current_user)
         db.session.add(self._metadata)
         db.session.commit()
 
+    def mark_staging_failed(self, message, current_user):
+        """Record a staging failure and revert the release to READY."""
+        self._mark_failed("Staging", message, ReleaseStatus.READY, current_user)
+
+    def mark_publishing_failed(self, message, current_user):
+        """Record a publishing failure and revert the release to STAGED."""
+        self._mark_failed("Publishing", message, ReleaseStatus.STAGED, current_user)
+
     def publish(self, current_user):
         """Publish a release."""
-        if not self.is_status(ReleaseStatus.STAGED):
-            raise RuntimeError("Release is not STAGED")
+        if not self.is_status(ReleaseStatus.PUBLISHING):
+            raise RuntimeError("Release is not PUBLISHING")
 
         indexer = RecordIndexer()
         errors = []
@@ -514,7 +522,10 @@ class Release:
                     register_record_doi(record_data)
                 except Exception as error:
                     current_app.logger.exception("DataCite registration failed")
-                    errors.append({"recid": record_data["recid"], "error": str(error)})
+                    errors.append(
+                        f"DataCite registration failed for recid "
+                        f"{record_data['recid']}: {error}"
+                    )
 
         for i, doc_data in enumerate(self._metadata.documents or []):
             slug = doc_data.get("slug")
@@ -528,6 +539,9 @@ class Release:
             doc.commit()
             indexer.index(doc)
 
+        self._metadata.errors = errors
+        self._metadata.num_errors = len(errors)
+        flag_modified(self._metadata, "errors")
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
