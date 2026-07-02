@@ -1,5 +1,17 @@
 Changes
 =======
+Version 1.1.0 (released 2006-07-02)
+----------------------------
+- feat(datacite): Add more fields to the datacite exporter: keywords, usage, methodology and language
+- build: bump rabbitmq version
+- fix(releases): ensure recid can be edited via the edit record modal
+- fix(releases): ensure exported releases can be imported
+- fix(releases): Add margin to the button. Add information messages to the validation.
+- fix(record): Print all the date_created of a record
+- fix(releases): move staging a release into a celery task
+- feat(releases): ensure backwards compability for new format of recids
+- feat(releases): add DOI validation
+
 Version 1.0.2 (releaesd 2026-06-22)
 ----------------------------
 - fix(oidc): Get the name of the OIDC from an environmental variable
