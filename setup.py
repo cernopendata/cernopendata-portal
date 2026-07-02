@@ -59,7 +59,6 @@ tests_require = [
     "pytest-cache>=1.0",
     "pytest-cov==4.1.0",
     "pytest==7.4.4",
-    "beautifulsoup4==4.12.3",
     "aiosmtpd>=1.4.6",
     "email-validator>=2.3.0,<3.0.0",
 ]
@@ -76,6 +75,7 @@ for reqs in extras_require.values():
     extras_require["all"].extend(reqs)
 
 install_requires = [
+    "beautifulsoup4==4.12.3",
     "counter-robots>=2025.2",
     # General Invenio dependencies
     "invenio-app>=2.0.0,<3.0.0",
