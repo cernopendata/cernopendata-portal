@@ -398,6 +398,9 @@
           },
           "version_id": {
             "type": "string"
+          },
+          "filename": {
+            "type": "string"
           }
         }
       }
