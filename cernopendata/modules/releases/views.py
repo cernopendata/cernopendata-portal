@@ -198,7 +198,7 @@ def release_upload(experiment):
             payload = json.load(file)
         except Exception as e:
             return jsonify({"error": "Invalid JSON", "details": str(e)}), 400
-        release_name = file.filename.rsplit("/", 1)[-1]
+        source_filename = file.filename.rsplit("/", 1)[-1]
 
     elif source == "url":
         url = request.form.get("url")
@@ -209,17 +209,20 @@ def release_upload(experiment):
             payload = _fetch_json(url)
         except URLFetchError as e:
             return jsonify({"error": str(e)}), 400
-        release_name = url.rsplit("/", 1)[-1]
+        source_filename = url.rsplit("/", 1)[-1]
 
     else:
         abort(400, "Invalid source")
 
-    records, documents = _split_payload(payload, release_name)
+    records, documents = _split_payload(payload, source_filename)
 
+    release_metadata = payload if isinstance(payload, dict) else {}
     release = Release.create(
         experiment=experiment,
         current_user=current_user,
-        name=release_name,
+        name=release_metadata.get("name") or source_filename,
+        description=release_metadata.get("description"),
+        discussion_url=release_metadata.get("discussion_url"),
         records=records,
         documents=documents,
     )
@@ -254,20 +257,31 @@ def update_release(experiment, release_id):
     return jsonify(updated)
 
 
+def _release_download_filename(name, release_id):
+    """Build a safe download filename from the release name."""
+    base = secure_filename(name or "")
+    if base.lower().endswith(".json"):
+        base = base[: -len(".json")]
+    return f"{base or f'release-{release_id}'}.json"
+
+
 @blueprint.route("/releases/api/<experiment>/<int:release_id>")
 def release_json(experiment, release_id):
     """Get the release in json."""
     release = _get_release(experiment, release_id)
+    metadata = release._metadata
     body = {
-        "records": release._metadata.records,
-        "documents": release._metadata.documents or [],
+        "name": metadata.name,
+        "description": metadata.description,
+        "discussion_url": metadata.discussion_url,
+        "records": metadata.records or [],
+        "documents": metadata.documents or [],
     }
+    filename = _release_download_filename(metadata.name, release_id)
     return Response(
         json.dumps(body, indent=2),
         mimetype="application/json",
-        headers={
-            "Content-Disposition": f"attachment; filename=release-{release_id}.json"
-        },
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

@@ -187,7 +187,7 @@ class Release:
     @property
     def records(self):
         """Records of the release."""
-        return self._metadata.records
+        return self._metadata.records or []
 
     @property
     def documents(self):
@@ -208,6 +208,7 @@ class Release:
         records=None,
         documents=None,
         name=None,
+        description=None,
         discussion_url=None,
     ):
         """Create a new draft release."""
@@ -225,6 +226,7 @@ class Release:
                 doc["$schema"] = doc_schema
         release = ReleaseMetadata(
             name=name,
+            description=description,
             discussion_url=discussion_url,
             experiment=experiment,
             records=records,
