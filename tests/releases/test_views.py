@@ -545,7 +545,13 @@ def test_upload_file_creates_release_with_records_and_documents(
 
     records = [{"recid": 1, "experiment": "CMS", "files": []}]
     docs = [{"slug": "test-document", "body": {"content": "# About", "format": "md"}}]
-    payload = {"records": records, "documents": docs}
+    payload = {
+        "name": "CMS 2016 collision data",
+        "description": "Primary datasets",
+        "discussion_url": "https://example.com/discussion",
+        "records": records,
+        "documents": docs,
+    }
     resp = logged_in_client.post(
         "/releases/cms",
         data={
@@ -560,22 +566,62 @@ def test_upload_file_creates_release_with_records_and_documents(
     assert kwargs.get("records") == records
     assert kwargs.get("documents")[0]["slug"] == "test-document"
     assert kwargs.get("documents")[0]["_source_filename"] == "release-1.json"
+    assert kwargs.get("name") == "CMS 2016 collision data"
+    assert kwargs.get("description") == "Primary datasets"
+    assert kwargs.get("discussion_url") == "https://example.com/discussion"
+
+
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.curator_experiments")
+@patch("cernopendata.modules.releases.views.Release.validate_experiment")
+def test_upload_file_without_name_falls_back_to_filename(
+    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
+):
+    mock_validate_exp.return_value = True
+    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
+    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
+
+    payload = {"records": [{"recid": 1, "experiment": "CMS", "files": []}]}
+    resp = logged_in_client.post(
+        "/releases/cms",
+        data={
+            "source": "file",
+            "file": (BytesIO(json.dumps(payload).encode()), "release-1.json"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 200
+    _, kwargs = mock_create.call_args
+    assert kwargs.get("name") == "release-1.json"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_download_release_includes_records_and_documents(mock_get_release, client):
     records = [{"recid": 1, "experiment": "CMS"}]
     docs = [{"slug": "doc-1", "body": {"content": "hi", "format": "md"}}]
-    mock_get_release.return_value = MagicMock(
-        _metadata=MagicMock(records=records, documents=docs)
+    metadata = MagicMock(
+        description="Primary datasets",
+        discussion_url="https://example.com/discussion",
+        records=records,
+        documents=docs,
     )
+    metadata.name = "CMS 2016 collision data"
+    mock_get_release.return_value = MagicMock(_metadata=metadata)
 
     resp = client.get("/releases/api/cms/1")
 
     assert resp.status_code == 200
     body = resp.get_json()
+    assert body["name"] == "CMS 2016 collision data"
+    assert body["description"] == "Primary datasets"
+    assert body["discussion_url"] == "https://example.com/discussion"
     assert body["records"] == records
     assert body["documents"] == docs
+    assert (
+        resp.headers["Content-Disposition"]
+        == "attachment; filename=CMS_2016_collision_data.json"
+    )
 
 
 @pytest.fixture
