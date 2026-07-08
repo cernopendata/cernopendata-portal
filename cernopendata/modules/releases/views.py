@@ -91,16 +91,40 @@ blueprint = Blueprint(
 )
 
 
+def _merge_index_files(record):
+    """Merge exported index_files into files."""
+    files = record.get("files") or []
+    for index_file in record.pop("index_files"):
+        uri = index_file.get("uri", "")
+        extension = uri.rsplit(".", 1)[-1] if "." in uri else "json"
+        index_file["type"] = f"index.{extension}"
+        files.append(index_file)
+    record["files"] = files
+
+
+def _normalise_record(record):
+    """Normalise a single exported record for release import."""
+    if not isinstance(record, dict):
+        return record
+    # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
+    if "metadata" in record:
+        record = record["metadata"]
+        for field in ("_files", "_bucket", "bucket", "_file_indices"):
+            record.pop(field, None)
+    if "index_files" in record:
+        _merge_index_files(record)
+    return record
+
+
 def _normalise_payload(payload):
     """Normalise an uploaded JSON payload into a list of items."""
     if isinstance(payload, dict):
-        # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
-        if "metadata" in payload:
-            for field in ("_files", "_bucket", "bucket", "_file_indices"):
-                payload["metadata"].pop(field, None)
-            return [payload["metadata"]]
-        return [payload]
-    return payload
+        items = [payload]
+    elif isinstance(payload, list):
+        items = payload
+    else:
+        return payload
+    return [_normalise_record(item) for item in items]
 
 
 def _split_payload(payload, source_filename):

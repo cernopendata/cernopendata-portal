@@ -24,7 +24,7 @@
 
 """Cernopendata JSON serializer for records."""
 
-from flask import current_app, json
+from flask import json
 from invenio_records_rest.serializers.json import JSONSerializer
 from marshmallow import Schema, fields
 
@@ -103,7 +103,6 @@ def dump_files(obj):
     _files = []
     _index_files = []
 
-    recid = obj.get("pid").pid_value
     files = obj.get("metadata", {}).get("files", [])
 
     for file in files:
@@ -111,12 +110,7 @@ def dump_files(obj):
             "checksum": file.get("checksum", ""),
             "size": file.get("size", ""),
             "filename": file.get("key", ""),
-            "uri_http": "{}/record/{}/files/{}".format(
-                current_app.config.get("HOST_URI", "http://opendata.cern.ch"),
-                recid,
-                file.get("key", ""),
-            ),
-            "uri_root": file.get("uri", ""),
+            "uri": file.get("uri", ""),
         }
 
         if "index" in file.get("type", ""):
