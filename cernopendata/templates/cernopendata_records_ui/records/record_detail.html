@@ -5,6 +5,12 @@
     <div class="ui warning message release-warning">WARNING: This record is part of a <a href="/releases/{{record.prerelease}}">release</a> that has not been published yet. Only authorized people can see the record.</div>
     {% endif %}
     <h1> {{ record.title_additional or record.title }} </h1>
+    {% if not record._versions.is_latest %}
+    <div class="ui warning message">
+        Please, note that this is not the latest version of this entry. An updated version can be found
+        <a href="{{record.recid}}">here</a>
+    </div>
+    {% endif %}
 
     <p>
         {% if record.title_additional %} <span>{{ record.title }}, </span> {% endif %}

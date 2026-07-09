@@ -15,6 +15,7 @@ from invenio_files_rest.models import (
 from invenio_records_files.api import FileObject, FilesIterator
 
 from cernopendata.cold_storage.api import ColdRecord, FileAvailability
+from cernopendata.modules.records.api import OpenDataRecord
 
 
 class FileIndexIterator(object):
@@ -68,7 +69,7 @@ class FileIndexIterator(object):
         return indices
 
 
-class RecordFilesWithIndex(ColdRecord):
+class RecordFilesWithIndex(ColdRecord, OpenDataRecord):
     """Class for a Record with File Indices."""
 
     def __init__(self, *args, **kwargs):
@@ -223,7 +224,7 @@ class MultiURIFileObject(FileObject):
     """
 
     @classmethod
-    def create_version(self, bucket, filename, file_id):
+    def create(self, bucket, filename, file_id):
         """Create a MultiURIFileObject."""
         return ObjectVersion.create(bucket, filename, file_id)
 
