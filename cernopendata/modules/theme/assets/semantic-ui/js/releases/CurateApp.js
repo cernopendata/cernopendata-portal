@@ -12,7 +12,7 @@ if (container) {
   const experiment = container.dataset.experiment || null;
   ReactDOM.render(<ReleasesTable experiment={experiment} />, container);
 
-  $(".ui.checkbox").checkbox();
+  $("#create-release-modal .ui.checkbox").checkbox();
 
   $("#open-create-release").on("click", () => {
     $("#create-release-modal").modal("show");

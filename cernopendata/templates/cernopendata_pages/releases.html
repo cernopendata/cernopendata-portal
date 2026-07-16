@@ -7,95 +7,82 @@
 
 
 {%- block page_body %}
-<div class="ui container releases-div">
-    <div class="ui center aligned segment">
+<div class="ui container releases-page">
 
-        <h2 class="ui header">
-            Welcome to the {{ experiment|upper }} releases
+    <div class="releases-page-header">
+        <h2 class="ui center aligned header">
+            {{ experiment|upper }} releases
+            <div class="sub header">
+                Register new records and documents for {{ experiment|upper }}
+            </div>
         </h2>
+    </div>
 
-        <div class="ui divider"></div>
-            <p>
-                This page allows you to register new records or documents in the repository.
-                <br>
-                You will only be able to register them for
-                <strong>{{ experiment }}</strong>.
-            </p>
+    <div class="releases-table-actions">
+        <button id="open-create-release" class="ui primary button">
+            <i class="plus icon"></i>
+            Create new release
+        </button>
+    </div>
 
-        <div class="ui container">
-            <div class="ui container">
-                <div class="ui grid">
-                    <div class="twelve wide column">
+    <div id="releases-react-root" data-experiment="{{ experiment }}"></div>
+
+    <div id="create-release-modal" class="ui modal">
+        <i class="close icon"></i>
+
+        <div class="header">
+            Create a new release
+        </div>
+
+        <div class="content">
+            <form
+                    id="create-release-form"
+                    class="ui form no-glossary"
+                    method="post"
+                    enctype="multipart/form-data"
+            >
+
+                <div class="grouped fields">
+                    <label>Release source</label>
+
+                    <div class="field">
+                        <div class="ui radio checkbox">
+                            <input type="radio" name="source" value="file" checked>
+                            <label>Upload JSON file</label>
+                        </div>
                     </div>
-                    <div class="four wide column right aligned">
-                        <button id="open-create-release"
-                                class="ui primary button create-release-btn">
-                            <i class="plus icon"></i>
-                            Create new release
-                        </button>
+
+                    <div class="field">
+                        <div class="ui radio checkbox">
+                            <input type="radio" name="source" value="url">
+                            <label>Load from URL</label>
+                        </div>
                     </div>
                 </div>
 
-                <div id="releases-react-root" data-experiment="{{ experiment }}"></div>
-            </div>
-        </div>
-        <div id="create-release-modal" class="ui modal">
-            <i class="close icon"></i>
+                <div class="field" id="file-source">
+                    <label>Release JSON file</label>
+                    <input type="file"
+                           name="file"
+                           accept=".json">
+                </div>
 
-            <div class="header">
-                Create a new release
-            </div>
+                <div class="field" id="url-source" style="display:none">
+                    <label>Release JSON URL</label>
+                    <input type="url"
+                           name="url"
+                           placeholder="https://raw.githubusercontent.com/...">
+                </div>
 
-            <div class="content">
-                <form
-                        id="create-release-form"
-                        class="ui form no-glossary"
-                        method="post"
-                        enctype="multipart/form-data"
-                >
+                <div id="create-release-error" class="ui error message" style="display:none"></div>
 
-                    <div class="grouped fields">
-                        <label>Release source</label>
-
-                        <div class="field">
-                            <div class="ui radio checkbox">
-                                <input type="radio" name="source" value="file" checked>
-                                <label>Upload JSON file</label>
-                            </div>
-                        </div>
-
-                        <div class="field">
-                            <div class="ui radio checkbox">
-                                <input type="radio" name="source" value="url">
-                                <label>Load from URL</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="field" id="file-source">
-                        <label>Release JSON file</label>
-                        <input type="file"
-                               name="file"
-                               accept=".json">
-                    </div>
-
-                    <div class="field" id="url-source" style="display:none">
-                        <label>Release JSON URL</label>
-                        <input type="url"
-                               name="url"
-                               placeholder="https://raw.githubusercontent.com/...">
-                    </div>
-
-                    <div id="create-release-error" class="ui error message" style="display:none"></div>
-
-                    <button
-                            id="uploadButton"
-                            class="ui primary button disabled"
-                            type="submit">
-                        Create release
-                    </button>
-                </form>
-            </div>
+                <button
+                        id="uploadButton"
+                        class="ui primary button disabled"
+                        type="submit">
+                    Create release
+                </button>
+            </form>
         </div>
     </div>
 </div>

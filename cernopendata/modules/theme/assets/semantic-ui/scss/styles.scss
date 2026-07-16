@@ -557,6 +557,16 @@ a {
   min-width: 150px !important;
 }
 
+.hoverable-row-table .ui.dropdown > .default.text {
+  font-weight: normal;
+}
+
+.hoverable-row-table .ui.multiple.selection.dropdown > .label {
+  margin: 0 0.35em 0 0;
+  padding: 0.3em 0.6em;
+  font-size: 0.85em;
+}
+
 // Release view
 
 .release-page-header-title-row {
@@ -576,15 +586,6 @@ a {
     font-weight: 700;
     margin: 0;
     line-height: 1.3;
-
-    a {
-        color: inherit;
-        text-decoration: none;
-
-        &:hover {
-            text-decoration: underline;
-        }
-    }
 }
 
 .release-summary-segment {
@@ -753,11 +754,64 @@ a {
     gap: 0.75em;
 }
 
-.ui.button.create-release-btn {
-   margin: 10px;
+.releases-page {
+    padding-top: 3.5em;
+    padding-bottom: 3em;
 }
 
-.releases-div {
-   margin-top: 10px;
-   margin-bottom: 16px;
+.releases-page-header {
+    margin-bottom: 1.5em;
+
+    .sub.header {
+        margin-top: 0.4em;
+    }
+}
+
+.releases-table-actions {
+    margin-bottom: 0.75em;
+    text-align: right;
+
+    .ui.button {
+        margin-right: 0;
+    }
+}
+
+.releases-table {
+    table-layout: fixed;
+
+    .release-step {
+        display: flex;
+        align-items: center;
+
+        .release-step-icon {
+            flex: 0 0 1.75em;
+        }
+
+        .ui.label {
+            margin-left: auto;
+            margin-right: 0;
+        }
+    }
+
+    .releases-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .show-published-filter {
+        font-weight: normal;
+    }
+
+    th.col-count {
+        width: 8em;
+    }
+
+    .discussion-column {
+        width: 12em;
+
+        a:hover {
+            text-decoration: underline;
+        }
+    }
 }
