@@ -597,7 +597,7 @@
                     }
                   }
                 },
-                "type": "object"
+                "type": ["string", "object"]
               },
               "output_dataset": {
                 "description": "Output for production",
