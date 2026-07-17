@@ -246,9 +246,12 @@ class Release:
     def create_validations(self):
         """Initializes the validations for a release."""
         for validation in VALIDATIONS:
+            allowed_experiments = validation.experiment
+            if isinstance(allowed_experiments, str):
+                allowed_experiments = {allowed_experiments}
             if (
-                validation.experiment
-                and validation.experiment != self._metadata.experiment
+                allowed_experiments
+                and self._metadata.experiment not in allowed_experiments
             ):
                 continue
             new_validation = ReleaseValidationMetadata(
