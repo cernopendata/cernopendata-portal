@@ -6,15 +6,16 @@
             Back to releases
         </a>
         <h1 class="release-page-title">
-            {% if release._metadata.discussion_url %}
-            <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url" rel="noopener noreferrer" target="_blank">
-                <span id="release-name">{{ release._metadata.name }}</span>
-            </a>
-            {% else %}
             <span id="release-name">{{ release._metadata.name }}</span>
-            {% endif %}
             <span class="ui small blue label">{{ experiment|upper }}</span>
         </h1>
+        {% if release._metadata.discussion_url %}
+        <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url"
+           rel="noopener noreferrer" target="_blank"
+           class="ui small basic button">
+            <i class="linkify icon"></i> Open discussion
+        </a>
+        {% endif %}
         <div class="ui dropdown icon button">
             <i class="ellipsis vertical icon"></i>
             <div class="menu">
