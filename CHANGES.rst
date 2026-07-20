@@ -1,6 +1,10 @@
 Changes
 =======
-Version 1.1.0 (released 2006-07-02)
+Version 1.1.1 (released 2026-07-20)
+----------------------------
+- fix(schema): allow methodology step note to be a string
+
+Version 1.1.0 (released 2026-07-02)
 ----------------------------
 - feat(datacite): Add more fields to the datacite exporter: keywords, usage, methodology and language
 - fix(releases): ensure export json feature works for creating release
