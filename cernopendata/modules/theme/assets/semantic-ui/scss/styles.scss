@@ -588,6 +588,10 @@ a {
     line-height: 1.3;
 }
 
+.ui.dropdown .menu > .release-delete-item:not(.disabled) {
+    color: #db2828 !important;
+}
+
 .release-summary-segment {
     padding: 1.5em 2em;
 
