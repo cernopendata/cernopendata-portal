@@ -201,7 +201,7 @@ export default function EditRecordModal({
       <Modal.Actions>
         <Button onClick={onClose}>Cancel</Button>
         <Button primary onClick={handleSave}>
-          Save
+          <Icon name="save" /> Save
         </Button>
       </Modal.Actions>
     </Modal>

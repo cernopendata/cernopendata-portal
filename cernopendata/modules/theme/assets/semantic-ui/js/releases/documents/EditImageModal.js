@@ -55,7 +55,7 @@ export default function EditImageModal({
 
   return (
     <Modal open={!!image} onClose={onClose} closeIcon size="small">
-      <Modal.Header>Edit Image</Modal.Header>
+      <Modal.Header>Edit image</Modal.Header>
       <Modal.Content>
         {error && (
           <Message negative>
