@@ -83,7 +83,9 @@ export default function EditDocumentModal({
 
   return (
     <Modal open={!!doc} onClose={onClose} closeIcon size="large">
-      <Modal.Header>Edit Document</Modal.Header>
+      <Modal.Header>
+        {doc?.slug ? `Edit document ${doc.slug}` : "Edit document"}
+      </Modal.Header>
       <Modal.Content scrolling>
         {error && (
           <Message negative>
