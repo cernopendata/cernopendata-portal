@@ -115,6 +115,10 @@ $(document).on("click", "#history-button", function () {
   $("#history-modal").modal("show");
 });
 
+$("#delete-release-action").on("click", function () {
+  $("#delete-release-form").submit();
+});
+
 $("#edit-metadata-action").on("click", function () {
   $("#meta-name").val($("#release-name").text() || "");
   $("#meta-link").val($("#release-discussion-url").attr("href") || "");
