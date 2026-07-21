@@ -25,7 +25,7 @@
  */
 
 
-a:hover {
+a:hover:not(.icon, :has(> img), :has(> .icon)) {
     border-bottom: 1px solid currentColor;
 }
 
