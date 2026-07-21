@@ -5,7 +5,7 @@ import EditDocumentModal from "./EditDocumentModal";
 import UploadImagesModal from "./UploadImagesModal";
 import EditImageModal from "./EditImageModal";
 import PreviewImageModal from "./PreviewImageModal";
-import usePagination from "../shared/usePagination";
+import { usePagination } from "../shared/utils";
 import RowActions from "../shared/RowActions";
 
 export default function DocumentsTable({
