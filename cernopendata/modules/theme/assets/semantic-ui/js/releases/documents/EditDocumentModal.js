@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, TextArea, Tab, Button, Icon } from "semantic-ui-react";
+import {
+  Modal,
+  Form,
+  TextArea,
+  Tab,
+  Button,
+  Icon,
+  Message,
+} from "semantic-ui-react";
 import PreviewTab from "../shared/PreviewTab";
+import { fetchJson } from "../shared/utils";
 
 export default function EditDocumentModal({
   doc,
@@ -11,6 +20,7 @@ export default function EditDocumentModal({
 }) {
   const [metaDataBuffer, setMetaDataBuffer] = useState("");
   const [bodyBuffer, setBodyBuffer] = useState("");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!doc) return;
@@ -22,14 +32,17 @@ export default function EditDocumentModal({
     }
     setMetaDataBuffer(JSON.stringify(metaData, null, 2));
     setBodyBuffer(body?.content || "");
+    setError(null);
   }, [doc]);
 
   const handleSave = async () => {
+    setError(null);
+
     let updated;
     try {
       updated = JSON.parse(metaDataBuffer);
     } catch (e) {
-      alert("Invalid JSON: " + e.message);
+      setError("Invalid JSON: " + e.message);
       return;
     }
     updated.body = {
@@ -39,7 +52,7 @@ export default function EditDocumentModal({
     };
 
     try {
-      const response = await fetch(
+      await fetchJson(
         `/releases/${experiment}/${releaseId}/documents/${doc.slug}`,
         {
           method: "PUT",
@@ -47,13 +60,8 @@ export default function EditDocumentModal({
           body: JSON.stringify({ document: updated }),
         },
       );
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        alert("Failed to save: " + (err.error || response.statusText));
-        return;
-      }
     } catch (e) {
-      alert("Failed to save: " + e.message);
+      setError(e.message);
       return;
     }
 
@@ -77,6 +85,11 @@ export default function EditDocumentModal({
     <Modal open={!!doc} onClose={onClose} closeIcon size="large">
       <Modal.Header>Edit Document</Modal.Header>
       <Modal.Content scrolling>
+        {error && (
+          <Message negative>
+            <Icon name="warning circle" /> {error}
+          </Message>
+        )}
         <Form>
           <Tab
             panes={[

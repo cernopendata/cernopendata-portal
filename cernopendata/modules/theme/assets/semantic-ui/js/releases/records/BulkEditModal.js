@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Table, Button, Icon } from "semantic-ui-react";
+import { Modal, Form, Table, Button, Icon, Message } from "semantic-ui-react";
+import { fetchJson } from "../shared/utils";
 
 function DiffObject({ diff }) {
   return (
@@ -67,12 +68,14 @@ export default function BulkEditModal({
   const [bulkActions, setBulkActions] = useState([]);
   const [bulkPreview, setBulkPreview] = useState([]);
   const [bulkPreviewDone, setBulkPreviewDone] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!open) return;
     setBulkActions([]);
     setBulkPreview([]);
     setBulkPreviewDone(false);
+    setError(null);
   }, [open]);
 
   function addBulkRow() {
@@ -120,68 +123,68 @@ export default function BulkEditModal({
 
   async function previewBulk() {
     if (bulkActions.length === 0) return;
+    setError(null);
 
     let updates;
     try {
       updates = collectBulkOperations();
     } catch (e) {
-      alert(e.message);
+      setError(e.message);
       return;
     }
 
-    const res = await fetch(
-      `/releases/${experiment}/${releaseId}/bulk_records/preview`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
-      },
-    );
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      alert(json.error || "Preview failed");
-      return;
+    try {
+      const data = await fetchJson(
+        `/releases/${experiment}/${releaseId}/bulk_records/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates }),
+        },
+      );
+      setBulkPreview(data.diffs || []);
+      setBulkPreviewDone(true);
+    } catch (e) {
+      setError(e.message);
     }
-
-    const data = await res.json();
-    setBulkPreview(data.diffs || []);
-    setBulkPreviewDone(true);
   }
 
   async function applyBulk() {
     if (!bulkPreviewDone) return;
+    setError(null);
 
     let updates;
     try {
       updates = collectBulkOperations();
     } catch (e) {
-      alert(e.message);
+      setError(e.message);
       return;
     }
 
-    const res = await fetch(
-      `/releases/${experiment}/${releaseId}/bulk_records/apply`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates }),
-      },
-    );
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      alert(json.error || "Apply failed");
-      return;
+    try {
+      await fetchJson(
+        `/releases/${experiment}/${releaseId}/bulk_records/apply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates }),
+        },
+      );
+      window.location.reload();
+    } catch (e) {
+      setError(e.message);
     }
-
-    window.location.reload();
   }
 
   return (
     <Modal open={open} onClose={onClose} closeIcon size="fullscreen">
       <Modal.Header>Bulk edit records</Modal.Header>
       <Modal.Content>
+        {error && (
+          <Message negative>
+            <Icon name="warning circle" /> {error}
+          </Message>
+        )}
         <Form>
           <Table celled compact size="small">
             <thead>

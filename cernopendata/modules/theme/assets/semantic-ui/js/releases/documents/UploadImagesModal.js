@@ -7,6 +7,7 @@ import {
   Button,
   Icon,
 } from "semantic-ui-react";
+import { fetchJson } from "../shared/utils";
 
 export default function UploadImagesModal({
   open,
@@ -52,17 +53,10 @@ export default function UploadImagesModal({
         formData.append("images", file);
       }
 
-      const response = await fetch(
+      const result = await fetchJson(
         `/releases/${experiment}/${releaseId}/upload_image`,
         { method: "POST", body: formData },
       );
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to upload images");
-      }
-
-      const result = await response.json();
       onUploaded(result.images || []);
       onClose();
     } catch (e) {
@@ -112,7 +106,11 @@ export default function UploadImagesModal({
               }
             />
           </Form.Field>
-          {error && <Message negative>{error}</Message>}
+          {error && (
+            <Message negative>
+              <Icon name="warning circle" /> {error}
+            </Message>
+          )}
         </Form>
       </Modal.Content>
       <Modal.Actions>

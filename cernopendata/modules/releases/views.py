@@ -227,7 +227,7 @@ def release_upload(experiment):
     elif source == "url":
         url = request.form.get("url")
         if not url:
-            abort(400, "Missing URL")
+            return jsonify({"error": "Missing URL"}), 400
 
         try:
             payload = _fetch_json(url)
@@ -236,7 +236,7 @@ def release_upload(experiment):
         source_filename = url.rsplit("/", 1)[-1]
 
     else:
-        abort(400, "Invalid source")
+        return jsonify({"error": "Invalid source"}), 400
 
     records, documents = _split_payload(payload, source_filename)
 
@@ -356,19 +356,18 @@ def update_records(experiment, release_id):
     """Update the records of a release."""
     # Get JSON string from form
 
-    data = request.get_json(silent=True)
-    if not data["records"]:
-        flash("No records provided", "error")
-        abort(400, "No records provided")
+    data = request.get_json(silent=True) or {}
+    records = data.get("records")
+    if not records:
+        return jsonify({"error": "No records provided"}), 400
 
-    if not isinstance(data["records"], list):
-        flash("Records must be a list", "error")
-        abort(400, "Records must be a list")
+    if not isinstance(records, list):
+        return jsonify({"error": "Records must be a list"}), 400
+
     release = _get_release(experiment, release_id, lock=ReleaseStatus.EDITING)
-    release.update_records(data["records"], current_user)
+    release.update_records(records, current_user)
 
-    flash("Records updated successfully.", "success")
-    return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify({"status": "ok"})
 
 
 @blueprint.route(
@@ -451,7 +450,7 @@ def add_documents(experiment, release_id):
     """Add documents to a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
 
     release = _get_release(experiment, release_id)
     source = data.get("source", "json")
@@ -459,7 +458,7 @@ def add_documents(experiment, release_id):
     if source == "urls":
         urls = data.get("urls", [])
         if not urls:
-            abort(400, "Missing URLs")
+            return jsonify({"error": "Missing URLs"}), 400
         json_docs = []
         for url in urls:
             clean_url = url.split("?")[0]
@@ -485,7 +484,7 @@ def add_documents(experiment, release_id):
     else:
         docs = data.get("documents")
         if not docs or not isinstance(docs, list):
-            abort(400, "Missing or invalid documents")
+            return jsonify({"error": "Missing or invalid documents"}), 400
 
     for doc in docs:
         content = doc.get("body", {}).get("content", "")
@@ -516,7 +515,7 @@ def add_records(experiment, release_id):
     """Add records to a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
 
     release = _get_release(experiment, release_id)
     source = data.get("source", "json")
@@ -524,7 +523,7 @@ def add_records(experiment, release_id):
     if source == "url":
         url = data.get("url")
         if not url:
-            abort(400, "Missing URL")
+            return jsonify({"error": "Missing URL"}), 400
         try:
             payload = _fetch_json(url)
         except URLFetchError as e:
@@ -532,11 +531,11 @@ def add_records(experiment, release_id):
     else:
         payload = data.get("records")
         if payload is None:
-            abort(400, "Missing records")
+            return jsonify({"error": "Missing records"}), 400
 
     records = _normalise_payload(payload)
     if not isinstance(records, list):
-        abort(400, "Records must be a list")
+        return jsonify({"error": "Records must be a list"}), 400
 
     release.add_records(records, current_user)
 
@@ -558,13 +557,13 @@ def upload_image(experiment, release_id):
     """Upload one or more images attached to a parent document."""
     parent_slug = request.form.get("parent_slug")
     if not parent_slug:
-        abort(400, "Missing parent_slug")
+        return jsonify({"error": "Missing parent_slug"}), 400
 
     files = [
         image for image in request.files.getlist("images") if image and image.filename
     ]
     if not files:
-        abort(400, "No image files provided")
+        return jsonify({"error": "No image files provided"}), 400
 
     release = _get_release(experiment, release_id)
 
@@ -573,7 +572,10 @@ def upload_image(experiment, release_id):
         None,
     )
     if not parent:
-        abort(400, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            400,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
     release_dir = (images_root / str(release_id)).resolve()
@@ -581,7 +583,7 @@ def upload_image(experiment, release_id):
     try:
         target_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
+        return jsonify({"error": "Invalid parent_slug"}), 400
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
         already_existing = {p.name for p in target_dir.iterdir()}
@@ -592,7 +594,7 @@ def upload_image(experiment, release_id):
     for file in files:
         filename = secure_filename(file.filename or "").lower()
         if not filename:
-            abort(400, "Invalid filename")
+            return jsonify({"error": "Invalid filename"}), 400
         extension = Path(filename).suffix.lower()
         if extension not in ALLOWED_IMAGE_EXTENSIONS:
             return (
@@ -618,7 +620,7 @@ def upload_image(experiment, release_id):
         try:
             target_path.relative_to(target_dir)
         except ValueError:
-            abort(400, "Invalid filename")
+            return jsonify({"error": "Invalid filename"}), 400
 
         if filename in already_existing:
             return (
@@ -702,7 +704,10 @@ def delete_image(experiment, release_id, parent_slug, filename):
         None,
     )
     if not parent:
-        abort(404, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            404,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
     release_dir = (images_root / str(release_id)).resolve()
@@ -710,19 +715,19 @@ def delete_image(experiment, release_id, parent_slug, filename):
     try:
         slug_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
+        return jsonify({"error": "Invalid parent_slug"}), 400
 
     safe_filename = secure_filename(filename)
     if not safe_filename:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
     target_path = (slug_dir / safe_filename).resolve()
     try:
         target_path.relative_to(slug_dir)
     except ValueError:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     if not target_path.is_file():
-        abort(404, "Image not found")
+        return jsonify({"error": "Image not found"}), 404
 
     try:
         target_path.unlink()
@@ -750,7 +755,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
     data = request.get_json(silent=True) or {}
     new_filename = data.get("filename")
     if not new_filename:
-        abort(400, "Missing filename")
+        return jsonify({"error": "Missing filename"}), 400
 
     release = _get_release(experiment, release_id)
 
@@ -759,7 +764,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
         None,
     )
     if not parent:
-        abort(404, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            404,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
     release_dir = (images_root / str(release_id)).resolve()
@@ -767,12 +775,12 @@ def rename_image(experiment, release_id, parent_slug, filename):
     try:
         slug_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
+        return jsonify({"error": "Invalid parent_slug"}), 400
 
     safe_old = secure_filename(filename).lower()
     safe_new = secure_filename(new_filename).lower()
     if not safe_old or not safe_new:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     new_extension = Path(safe_new).suffix.lower()
     if new_extension not in ALLOWED_IMAGE_EXTENSIONS:
@@ -787,10 +795,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
         source_path.relative_to(slug_dir)
         target_path.relative_to(slug_dir)
     except ValueError:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     if not source_path.is_file():
-        abort(404, "Image not found")
+        return jsonify({"error": "Image not found"}), 404
 
     if target_path == source_path:
         return jsonify(
@@ -841,10 +849,10 @@ def update_document(experiment, release_id, slug):
     """Update a document in a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
     updated_doc = data.get("document")
     if not updated_doc:
-        abort(400, "Missing document data")
+        return jsonify({"error": "Missing document data"}), 400
 
     release = _get_release(experiment, release_id)
     try:
@@ -890,10 +898,10 @@ def bulk_edit_records_apply(experiment, release_id):
         try:
             updates = json.loads(request.form["updates"])
         except ValueError:
-            abort(400, "Invalid JSON in upload")
+            return jsonify({"error": "Invalid JSON in upload"}), 400
 
     if not updates:
-        abort(400, "Missing updates")
+        return jsonify({"error": "Missing updates"}), 400
 
     release = _get_release(experiment, release_id, lock=ReleaseStatus.EDITING)
     diff = release.bulk_update(updates, current_user)
@@ -952,7 +960,7 @@ def preview_record():
     """Preview a record."""
     data = request.json
     if not data or not isinstance(data, dict):
-        abort(400, description="Invalid JSON payload")
+        return jsonify({"error": "Invalid JSON payload"}), 400
     return {
         "html": render_template(
             [
@@ -971,7 +979,7 @@ def preview_document():
     """Preview a document."""
     data = request.json
     if not data or not isinstance(data, dict):
-        abort(400, description="Invalid JSON payload")
+        return jsonify({"error": "Invalid JSON payload"}), 400
     return {
         "html": render_template(
             ["cernopendata_records_ui/docs/detail.html"],

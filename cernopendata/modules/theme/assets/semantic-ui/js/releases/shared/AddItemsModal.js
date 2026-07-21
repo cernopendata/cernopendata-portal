@@ -12,6 +12,7 @@ import {
   rewriteDocLinks,
   slugFromFilename,
 } from "../documents/rewriteDocLinks";
+import { fetchJson } from "./utils";
 
 const CONFIG = {
   documents: {
@@ -132,7 +133,7 @@ export default function AddItemsModal({
     setLoading(true);
     try {
       const requestBody = await buildRequestBody();
-      const response = await fetch(
+      const result = await fetchJson(
         `/releases/${experiment}/${releaseId}/${endpoint}`,
         {
           method: "POST",
@@ -140,11 +141,6 @@ export default function AddItemsModal({
           body: JSON.stringify(requestBody),
         },
       );
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || `Failed to save ${collection}`);
-      }
-      const result = await response.json();
       onAdded(result[collection] || []);
       onClose();
     } catch (e) {
@@ -279,7 +275,11 @@ export default function AddItemsModal({
             </Form.Field>
           )}
 
-          {error && <Message negative>{error}</Message>}
+          {error && (
+            <Message negative>
+              <Icon name="warning circle" /> {error}
+            </Message>
+          )}
         </Form>
       </Modal.Content>
       <Modal.Actions>

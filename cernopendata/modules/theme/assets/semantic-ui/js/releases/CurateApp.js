@@ -15,6 +15,9 @@ if (container) {
   $("#create-release-modal .ui.checkbox").checkbox();
 
   $("#open-create-release").on("click", () => {
+    $("#create-release-form")[0].reset();
+    $("#create-release-error").hide().text("");
+    updateSource();
     $("#create-release-modal").modal("show");
   });
 
