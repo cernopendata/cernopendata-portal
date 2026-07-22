@@ -15,7 +15,7 @@ export function isVisible({
   const isObject = schema.type === "object" && schema.properties;
   const isArray = schema.type === "array" && schema.items;
 
-  if (path.startsWith("_")) return false;
+  if (path.startsWith("_") || path.startsWith("$")) return false;
 
   if (visibilityMode === "all") {
     return true;

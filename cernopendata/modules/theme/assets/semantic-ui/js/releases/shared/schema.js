@@ -12,6 +12,7 @@ function stripUnsupported(schema) {
 
   const result = { ...schema };
 
+  delete result.$schema;
   delete result.additionalProperties;
   delete result.uniqueItems;
 
