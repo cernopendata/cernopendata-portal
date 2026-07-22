@@ -26,9 +26,10 @@ export default function SchemaNode({
   selectedSet,
   label = null,
 }) {
+  const [open, setOpen] = useState(name === "");
+
   if (!schema) return null;
 
-  const [open, setOpen] = useState(name === "");
   const isObject = schema.type === "object" && schema.properties;
   const isArray = schema.type === "array" && schema.items;
 
@@ -79,7 +80,7 @@ export default function SchemaNode({
       <Accordion fluid>
         <Accordion.Title active={open} onClick={() => setOpen(!open)}>
           <Icon name="dropdown" />
-          {name}
+          {label}
         </Accordion.Title>
         <Accordion.Content active={open}>
           <div style={{ paddingLeft: 20 }}>

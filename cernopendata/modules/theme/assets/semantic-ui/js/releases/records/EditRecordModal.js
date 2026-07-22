@@ -10,8 +10,8 @@ import {
 } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
-import SchemaNode from "./SchemaNode";
-import createBridge from "./schema";
+import SchemaNode from "../shared/SchemaNode";
+import createBridge from "../shared/schema";
 import { fetchJson } from "../shared/utils";
 
 export default function EditRecordModal({
