@@ -69,87 +69,84 @@ export default function EditRecordModal({
     setJsonText(JSON.stringify(data, null, 2));
   }, [editAllMode, records, editingRecord]);
 
-  const panes = [
-    {
-      menuItem: "Form",
-      render: () => (
-        <Tab.Pane>
-          {schemaError ? (
-            <Message negative>
-              Could not load the record schema. Use the Raw editor tab to make
-              changes.
-            </Message>
-          ) : bridge ? (
-            <AutoForm
-              schema={bridge}
-              model={editingRecord}
-              onChangeModel={(m) => setEditingRecord(m)}
-            >
-              <div style={{ marginBottom: 10 }}>
-                <select
-                  value={visibilityMode}
-                  onChange={(e) => setVisibilityMode(e.target.value)}
-                >
-                  <option value="all">Show all fields</option>
-                  <option value="nonEmpty">Show only fields with values</option>
-                  <option value="selected">Show only selected fields</option>
-                </select>
+  const formPane = {
+    menuItem: "Form",
+    render: () => (
+      <Tab.Pane>
+        {schemaError ? (
+          <Message negative>
+            Could not load the record schema. Use the Raw editor tab to make
+            changes.
+          </Message>
+        ) : bridge ? (
+          <AutoForm
+            schema={bridge}
+            model={editingRecord}
+            onChangeModel={(m) => setEditingRecord(m)}
+          >
+            <div style={{ marginBottom: 10 }}>
+              <select
+                value={visibilityMode}
+                onChange={(e) => setVisibilityMode(e.target.value)}
+              >
+                <option value="all">Show all fields</option>
+                <option value="nonEmpty">Show only fields with values</option>
+                <option value="selected">Show only selected fields</option>
+              </select>
 
-                {visibilityMode === "selected" && (
-                  <input
-                    type="text"
-                    placeholder="e.g. doi, files.checksum"
-                    value={selectedFields}
-                    onChange={(e) => setSelectedFields(e.target.value)}
-                    style={{ marginLeft: 10, width: 300 }}
-                  />
-                )}
-              </div>
-              <SchemaNode
-                schema={origSchema}
-                model={editingRecord}
-                visibilityMode={visibilityMode}
-                selectedSet={selectedSet}
-              />
-            </AutoForm>
-          ) : null}
-        </Tab.Pane>
-      ),
-    },
-    {
-      menuItem: "Raw editor",
-      render: () => (
-        <Tab.Pane>
-          <Form>
-            <TextArea
-              value={jsonText}
-              onChange={(e) => {
-                const text = e.target.value;
-                setJsonText(text);
-                try {
-                  const parsed = JSON.parse(text);
-                  editAllMode ? setRecords(parsed) : setEditingRecord(parsed);
-                } catch {}
-              }}
-              rows={20}
-              style={{ width: "100%" }}
+              {visibilityMode === "selected" && (
+                <input
+                  type="text"
+                  placeholder="e.g. doi, files.checksum"
+                  value={selectedFields}
+                  onChange={(e) => setSelectedFields(e.target.value)}
+                  style={{ marginLeft: 10, width: 300 }}
+                />
+              )}
+            </div>
+            <SchemaNode
+              schema={origSchema}
+              model={editingRecord}
+              visibilityMode={visibilityMode}
+              selectedSet={selectedSet}
             />
-          </Form>
-        </Tab.Pane>
-      ),
-    },
-    {
-      menuItem: "Preview",
-      render: () => (
-        <Tab.Pane>
-          <PreviewTab
-            endpoint="/releases/preview_record"
-            data={editAllMode ? records : editingRecord}
-          />
-        </Tab.Pane>
-      ),
-    },
-  ];
+          </AutoForm>
+        ) : null}
+      </Tab.Pane>
+    ),
+  };
+
+  const rawEditor = (
+    <Form>
+      <TextArea
+        value={jsonText}
+        onChange={(e) => {
+          const text = e.target.value;
+          setJsonText(text);
+          try {
+            const parsed = JSON.parse(text);
+            editAllMode ? setRecords(parsed) : setEditingRecord(parsed);
+          } catch {}
+        }}
+        rows={20}
+        style={{ width: "100%" }}
+      />
+    </Form>
+  );
+
+  const rawEditorPane = {
+    menuItem: "Raw editor",
+    render: () => <Tab.Pane>{rawEditor}</Tab.Pane>,
+  };
+
+  const previewPane = {
+    menuItem: "Preview",
+    render: () => (
+      <Tab.Pane>
+        <PreviewTab endpoint="/releases/preview_record" data={editingRecord} />
+      </Tab.Pane>
+    ),
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -196,7 +193,11 @@ export default function EditRecordModal({
             <Icon name="warning circle" /> {error}
           </Message>
         )}
-        <Tab panes={panes} />
+        {editAllMode ? (
+          rawEditor
+        ) : (
+          <Tab panes={[formPane, rawEditorPane, previewPane]} />
+        )}
       </Modal.Content>
       <Modal.Actions>
         <Button onClick={onClose}>Cancel</Button>
