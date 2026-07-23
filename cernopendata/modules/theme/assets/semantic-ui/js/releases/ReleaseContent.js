@@ -17,6 +17,9 @@ export default function ReleaseContent({
   const showDoiWarning =
     releaseStatus === "STAGED" && records.some((record) => !record.doi);
 
+  const defaultActiveIndex =
+    initialRecords.length === 0 && initialDocuments.length > 0 ? 1 : 0;
+
   const panes = [
     {
       menuItem: { key: "records", icon: "database", content: "Records" },
@@ -65,7 +68,7 @@ export default function ReleaseContent({
           </p>
         </div>
       )}
-      <Tab panes={panes} />
+      <Tab panes={panes} defaultActiveIndex={defaultActiveIndex} />
     </div>
   );
 }

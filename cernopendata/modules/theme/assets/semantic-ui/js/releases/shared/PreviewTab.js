@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Loader, Message } from "semantic-ui-react";
+import { Loader, Message, Icon } from "semantic-ui-react";
 
 export default function PreviewTab({ endpoint, data }) {
   const [html, setHtml] = useState("");
@@ -52,7 +52,11 @@ export default function PreviewTab({ endpoint, data }) {
   return (
     <div>
       {loading && <Loader active inline="centered" />}
-      {error && <Message negative>{error}</Message>}
+      {error && (
+        <Message negative>
+          <Icon name="warning circle" /> {error}
+        </Message>
+      )}
       <div
         style={{ marginTop: 10 }}
         dangerouslySetInnerHTML={{ __html: html }}

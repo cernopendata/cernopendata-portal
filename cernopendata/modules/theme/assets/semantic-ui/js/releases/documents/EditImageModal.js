@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Input, Button, Icon } from "semantic-ui-react";
+import { Modal, Form, Input, Button, Icon, Message } from "semantic-ui-react";
+import { fetchJson } from "../shared/utils";
 
 export default function EditImageModal({
   image,
@@ -10,35 +11,34 @@ export default function EditImageModal({
   onDeleted,
 }) {
   const [name, setName] = useState("");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (image) setName(image.filename);
+    setError(null);
   }, [image]);
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete ${image.filename}?`)) return;
+    setError(null);
     try {
-      const response = await fetch(
+      await fetchJson(
         `/releases/${experiment}/${releaseId}/images/${image.parent_slug}/${image.filename}`,
         { method: "DELETE" },
       );
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        alert("Failed to delete: " + (err.error || response.statusText));
-        return;
-      }
       onDeleted(image);
       onClose();
     } catch (e) {
-      alert("Failed to delete: " + e.message);
+      setError(e.message);
     }
   };
 
   const handleRename = async () => {
     const newName = name.trim();
     if (!newName || newName === image.filename) return;
+    setError(null);
     try {
-      const response = await fetch(
+      const result = await fetchJson(
         `/releases/${experiment}/${releaseId}/images/${image.parent_slug}/${image.filename}`,
         {
           method: "PUT",
@@ -46,23 +46,22 @@ export default function EditImageModal({
           body: JSON.stringify({ filename: newName }),
         },
       );
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        alert("Failed to rename: " + (err.error || response.statusText));
-        return;
-      }
-      const result = await response.json();
       onRenamed(image, result.image);
       onClose();
     } catch (e) {
-      alert("Failed to rename: " + e.message);
+      setError(e.message);
     }
   };
 
   return (
     <Modal open={!!image} onClose={onClose} closeIcon size="small">
-      <Modal.Header>Edit Image</Modal.Header>
+      <Modal.Header>Edit image</Modal.Header>
       <Modal.Content>
+        {error && (
+          <Message negative>
+            <Icon name="warning circle" /> {error}
+          </Message>
+        )}
         <Form>
           <Form.Field>
             <label htmlFor="image-edit-name">Filename</label>

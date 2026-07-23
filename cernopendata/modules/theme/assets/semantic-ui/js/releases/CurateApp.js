@@ -15,6 +15,9 @@ if (container) {
   $("#create-release-modal .ui.checkbox").checkbox();
 
   $("#open-create-release").on("click", () => {
+    $("#create-release-form")[0].reset();
+    $("#create-release-error").hide().text("");
+    updateSource();
     $("#create-release-modal").modal("show");
   });
 
@@ -110,6 +113,10 @@ document.querySelectorAll(".validation-toggle-root").forEach((el) => {
 
 $(document).on("click", "#history-button", function () {
   $("#history-modal").modal("show");
+});
+
+$("#delete-release-action").on("click", function () {
+  $("#delete-release-form").submit();
 });
 
 $("#edit-metadata-action").on("click", function () {

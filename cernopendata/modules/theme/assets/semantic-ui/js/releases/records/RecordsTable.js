@@ -1,10 +1,17 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Table, Button, Icon, Pagination, Popup } from "semantic-ui-react";
+import {
+  Table,
+  Button,
+  Icon,
+  Pagination,
+  Popup,
+  Message,
+} from "semantic-ui-react";
 import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
 import AddItemsModal from "../shared/AddItemsModal";
-import usePagination from "../shared/usePagination";
 import RowActions from "../shared/RowActions";
+import { fetchJson, usePagination } from "../shared/utils";
 
 export default function RecordsTable({
   experiment,
@@ -30,17 +37,19 @@ export default function RecordsTable({
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [doiLoading, setDoiLoading] = useState(false);
   const [doiErrors, setDoiErrors] = useState([]);
+  const [error, setError] = useState(null);
 
   const allHaveDoi =
     records.length > 0 && records.every((record) => record.doi);
 
   async function handleGenerateDoi() {
     setDoiLoading(true);
+    setError(null);
     const recidsWithoutDoi = records
       .filter((record) => !record.doi)
       .map((record) => record.recid);
     try {
-      const response = await fetch(
+      const data = await fetchJson(
         `/releases/${experiment}/${releaseId}/generate_doi`,
         {
           method: "POST",
@@ -48,15 +57,10 @@ export default function RecordsTable({
           body: JSON.stringify({ recids: recidsWithoutDoi }),
         },
       );
-      if (!response.ok) {
-        const json = await response.json().catch(() => ({}));
-        throw new Error(json.error || "Request failed");
-      }
-      const data = await response.json();
       setRecords(data.records);
       setDoiErrors(data.errors || []);
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setDoiLoading(false);
     }
@@ -84,6 +88,11 @@ export default function RecordsTable({
 
   return (
     <>
+      {error && (
+        <Message negative>
+          <Icon name="warning circle" /> {error}
+        </Message>
+      )}
       {doiErrors.length > 0 && (
         <div className="ui segment validation-segment">
           <div className="validation-header">
@@ -94,9 +103,9 @@ export default function RecordsTable({
               <span className="ui red label">{doiErrors.length} failed</span>
             </div>
           </div>
-          {doiErrors.map((error, index) => (
+          {doiErrors.map((validationError, index) => (
             <div
-              key={error.recid}
+              key={validationError.recid}
               className={`validation-row${index < doiErrors.length - 1 ? " validation-row-bordered" : ""}`}
             >
               <div className="validation-row-icon">
@@ -104,7 +113,7 @@ export default function RecordsTable({
               </div>
               <div className="validation-row-body">
                 <b>
-                  recid {error.recid}: {error.error}
+                  recid {validationError.recid}: {validationError.error}
                 </b>
               </div>
             </div>

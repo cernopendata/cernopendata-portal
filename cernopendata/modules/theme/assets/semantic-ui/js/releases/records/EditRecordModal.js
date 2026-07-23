@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Modal, Form, TextArea, Tab, Button, Message } from "semantic-ui-react";
+import {
+  Modal,
+  Form,
+  TextArea,
+  Tab,
+  Button,
+  Message,
+  Icon,
+} from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
 import SchemaNode from "./SchemaNode";
 import createBridge from "./schema";
+import { fetchJson } from "../shared/utils";
 
 export default function EditRecordModal({
   editingRecord,
@@ -19,6 +28,12 @@ export default function EditRecordModal({
   const [bridge, setBridge] = useState(null);
   const [origSchema, setOrigSchema] = useState(null);
   const [schemaError, setSchemaError] = useState(false);
+  const [error, setError] = useState(null);
+
+  const open = !!editingRecord || editAllMode;
+  useEffect(() => {
+    if (open) setError(null);
+  }, [open]);
 
   useEffect(() => {
     fetch("/schema/records/record-v1.0.0.json")
@@ -136,58 +151,57 @@ export default function EditRecordModal({
     },
   ];
 
-  const handleSave = () => {
-    const updatedRecords = editAllMode
-      ? records
-      : (() => {
-          if (
-            editingIndex == null ||
-            editingIndex < 0 ||
-            editingIndex >= records.length
-          ) {
-            alert("Record not found");
-            return records;
-          }
-          const copy = [...records];
-          copy[editingIndex] = editingRecord;
-          return copy;
-        })();
+  const handleSave = async () => {
+    setError(null);
 
-    fetch(`/releases/${experiment}/${releaseId}/update_records`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ records: updatedRecords }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const json = await response.json().catch(() => ({}));
-          throw new Error(json.error || "Save failed");
-        }
-        setRecords(updatedRecords);
-        onClose();
-      })
-      .catch((err) => alert(err.message));
+    let updatedRecords;
+    if (editAllMode) {
+      updatedRecords = records;
+    } else {
+      if (
+        editingIndex == null ||
+        editingIndex < 0 ||
+        editingIndex >= records.length
+      ) {
+        setError("Record not found.");
+        return;
+      }
+      updatedRecords = [...records];
+      updatedRecords[editingIndex] = editingRecord;
+    }
+
+    try {
+      await fetchJson(`/releases/${experiment}/${releaseId}/update_records`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records: updatedRecords }),
+      });
+      setRecords(updatedRecords);
+      onClose();
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   return (
-    <Modal
-      open={!!editingRecord || editAllMode}
-      onClose={onClose}
-      closeIcon
-      size="fullscreen"
-    >
+    <Modal open={open} onClose={onClose} closeIcon size="fullscreen">
       <Modal.Header>
         {editAllMode
           ? "Edit all records"
           : `Edit record ${editingRecord?.recid}`}
       </Modal.Header>
       <Modal.Content>
+        {error && (
+          <Message negative>
+            <Icon name="warning circle" /> {error}
+          </Message>
+        )}
         <Tab panes={panes} />
       </Modal.Content>
       <Modal.Actions>
         <Button onClick={onClose}>Cancel</Button>
         <Button primary onClick={handleSave}>
-          Save
+          <Icon name="save" /> Save
         </Button>
       </Modal.Actions>
     </Modal>
