@@ -51,22 +51,35 @@ def test_invalid_experiment(client):
     assert resp.status_code in (403, 404)
 
 
-def test_upload_url(client, monkeypatch):
-    class FakeResp:
-        def json(self):
-            return {"x": 1}
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.curator_experiments")
+@patch("cernopendata.modules.releases.views.Release.validate_experiment")
+def test_upload_url(
+    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client, monkeypatch
+):
+    mock_validate_exp.return_value = True
+    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
+    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
 
-        def raise_for_status(self):
-            return None
+    records = [{"recid": 1, "experiment": "CMS", "files": []}]
+    monkeypatch.setattr(
+        views.requests,
+        "get",
+        lambda *a, **k: MagicMock(
+            json=lambda: {"records": records},
+            raise_for_status=lambda: None,
+        ),
+    )
 
-    monkeypatch.setattr(views.requests, "get", lambda *a, **k: FakeResp())
-
-    resp = client.post(
+    resp = logged_in_client.post(
         "/releases/cms",
         data={"source": "url", "url": "http://example.com/file.json"},
     )
 
-    assert resp.status_code == 302
+    assert resp.status_code == 200
+    _, kwargs = mock_create.call_args
+    assert kwargs.get("records") == records
+    assert kwargs.get("name") == "file.json"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -454,6 +467,38 @@ def test_stage_release_dispatches_task(
     assert resp.status_code == 302
     mock_stage_release.delay.assert_called_once()
     mock_release.stage.assert_not_called()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_update_records_success(mock_get_release, logged_in_client):
+    mock_release = MagicMock()
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post(
+        "/releases/cms/1/update_records",
+        json={"records": [{"recid": 1}, {"recid": 2}]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "ok"
+    mock_release.update_records.assert_called_once()
+    updated = mock_release.update_records.call_args[0][0]
+    assert updated == [{"recid": 1}, {"recid": 2}]
+
+
+def test_update_records_missing_records(logged_in_client):
+    resp = logged_in_client.post("/releases/cms/1/update_records", json={})
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "No records provided"
+
+
+def test_update_records_rejects_non_list(logged_in_client):
+    resp = logged_in_client.post(
+        "/releases/cms/1/update_records",
+        json={"records": {"recid": 1}},
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "Records must be a list"
 
 
 @patch("cernopendata.modules.releases.views._get_release", return_value=MagicMock())
@@ -1449,6 +1494,20 @@ def test_release_upload_url_source_fetch_failure(
     assert "Could not reach the URL" in response.get_json()["error"]
 
 
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+@patch(
+    "cernopendata.modules.releases.views.Release.validate_experiment",
+    return_value=True,
+)
+def test_release_upload_invalid_source(mock_validate, mock_curator, logged_in_client):
+    response = logged_in_client.post("/releases/cms", data={"source": "bogus"})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid source"
+
+
 @patch("cernopendata.modules.releases.views._get_release")
 def test_list_images_iterdir_raising_oserror_logs_and_skips(
     mock_get_release, logged_in_client, images_path, monkeypatch
@@ -1559,3 +1618,38 @@ def test_publish_dispatches_task(
     assert resp.status_code == 302
     mock_publish_release.delay.assert_called_once()
     mock_release.publish.assert_not_called()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_bulk_edit_apply_form_source(mock_get_release, logged_in_client):
+    mock_release = MagicMock()
+    mock_release.bulk_update.return_value = 3
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post(
+        "/releases/cms/1/bulk_records/apply",
+        data={"updates": json.dumps({"experiment": "CMS"})},
+    )
+
+    assert resp.status_code == 302
+    mock_release.bulk_update.assert_called_once()
+    updates = mock_release.bulk_update.call_args[0][0]
+    assert updates == {"experiment": "CMS"}
+
+
+def test_bulk_edit_apply_form_source_invalid_json(logged_in_client):
+    resp = logged_in_client.post(
+        "/releases/cms/1/bulk_records/apply",
+        data={"updates": "{not valid json"},
+    )
+    assert resp.status_code == 400
+    assert "Invalid JSON" in resp.get_json()["error"]
+
+
+def test_bulk_edit_apply_missing_updates(logged_in_client):
+    resp = logged_in_client.post(
+        "/releases/cms/1/bulk_records/apply",
+        json={},
+    )
+    assert resp.status_code == 400
+    assert "Missing updates" in resp.get_json()["error"]
