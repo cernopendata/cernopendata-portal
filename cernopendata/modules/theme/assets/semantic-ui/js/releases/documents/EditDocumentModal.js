@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -10,7 +10,7 @@ import {
 } from "semantic-ui-react";
 import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
-import SchemaNode from "../shared/SchemaNode";
+import SchemaForm from "../shared/SchemaForm";
 import createBridge from "../shared/schema";
 import { fetchJson } from "../shared/utils";
 
@@ -29,17 +29,6 @@ export default function EditDocumentModal({
   const [bridge, setBridge] = useState(null);
   const [origSchema, setOrigSchema] = useState(null);
   const [schemaError, setSchemaError] = useState(false);
-
-  const [visibilityMode, setVisibilityMode] = useState("nonEmpty");
-  const [selectedFields, setSelectedFields] = useState("");
-  const selectedSet = useMemo(() => {
-    return new Set(
-      selectedFields
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    );
-  }, [selectedFields]);
 
   useEffect(() => {
     fetch("/schema/records/docs-v1.0.0.json")
@@ -161,35 +150,10 @@ export default function EditDocumentModal({
                         setMetaDataBuffer(JSON.stringify(m, null, 2));
                       }}
                     >
-                      <div style={{ marginBottom: 10 }}>
-                        <select
-                          value={visibilityMode}
-                          onChange={(e) => setVisibilityMode(e.target.value)}
-                        >
-                          <option value="all">Show all fields</option>
-                          <option value="nonEmpty">
-                            Show only fields with values
-                          </option>
-                          <option value="selected">
-                            Show only selected fields
-                          </option>
-                        </select>
-
-                        {visibilityMode === "selected" && (
-                          <input
-                            type="text"
-                            placeholder="e.g. title, type.primary"
-                            value={selectedFields}
-                            onChange={(e) => setSelectedFields(e.target.value)}
-                            style={{ marginLeft: 10, width: 300 }}
-                          />
-                        )}
-                      </div>
-                      <SchemaNode
+                      <SchemaForm
                         schema={origSchema}
                         model={metaData}
-                        visibilityMode={visibilityMode}
-                        selectedSet={selectedSet}
+                        filterPlaceholder="e.g. title, type.primary"
                       />
                     </AutoForm>
                   ) : null}
