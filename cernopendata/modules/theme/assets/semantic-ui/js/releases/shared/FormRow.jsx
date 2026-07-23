@@ -1,21 +1,15 @@
 import React from "react";
-import { Form, Grid } from "semantic-ui-react";
+import { Form } from "semantic-ui-react";
 import { AutoField } from "uniforms-semantic";
 
-export default function FormRow({ label, name }) {
+export default function FormRow({ label, name, required = false }) {
   return (
-    <Form.Field>
-      <Grid verticalAlign="middle">
-        <Grid.Row>
-          <Grid.Column width={2}>
-            <label>{label}</label>
-          </Grid.Column>
-
-          <Grid.Column width={14}>
-            <AutoField name={name} label={false} />
-          </Grid.Column>
-        </Grid.Row>
-      </Grid>
+    <Form.Field className="schema-form-row">
+      <label htmlFor={name}>
+        {label}
+        {required && <span className="schema-form-required">*</span>}
+      </label>
+      <AutoField id={name} name={name} label={false} />
     </Form.Field>
   );
 }

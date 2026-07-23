@@ -5,6 +5,20 @@ function isEmpty(value) {
   return false;
 }
 
+function matchesSelection(path, selectedSet) {
+  const normalised = path
+    .split(".")
+    .filter((segment) => !/^\d+$/.test(segment))
+    .join(".");
+
+  return [...selectedSet].some(
+    (field) =>
+      normalised === field ||
+      normalised.startsWith(`${field}.`) ||
+      field.startsWith(`${normalised}.`),
+  );
+}
+
 export function isVisible({
   schema,
   model,
@@ -21,14 +35,15 @@ export function isVisible({
     return true;
   }
 
-  if (visibilityMode === "selected") {
-    // match exact or parent path
+  const selecting = visibilityMode === "selected";
+
+  if (selecting) {
     if (!path || selectedSet.size === 0) return true;
-    return [...selectedSet].some((field) => path.includes(field));
+    if (matchesSelection(path, selectedSet)) return true;
   }
 
   if (!isObject && !isArray) {
-    return !isEmpty(model);
+    return selecting ? false : !isEmpty(model);
   }
 
   if (isObject) {
