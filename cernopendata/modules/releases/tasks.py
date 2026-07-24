@@ -34,3 +34,17 @@ def publish_release(experiment, release_id, user_id):
         db.session.rollback()
         release = Release.get(experiment, release_id)
         release.mark_publishing_failed(str(exc), user)
+
+
+@shared_task
+def rollback_release(experiment, release_id, user_id):
+    """Roll back a release."""
+    release = Release.get(experiment, release_id)
+    user = User.query.get(user_id)
+    try:
+        release.rollback(user)
+    except Exception as exc:
+        current_app.logger.exception("Rolling back release %s failed", release_id)
+        db.session.rollback()
+        release = Release.get(experiment, release_id)
+        release.mark_rollback_failed(str(exc), user)

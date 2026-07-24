@@ -507,6 +507,10 @@ class Release:
         """Record a publishing failure and revert the release to STAGED."""
         self._mark_failed("Publishing", message, ReleaseStatus.STAGED, current_user)
 
+    def mark_rollback_failed(self, message, current_user):
+        """Record a rollback failure and revert the release to STAGED."""
+        self._mark_failed("Rollback", message, ReleaseStatus.STAGED, current_user)
+
     def publish(self, current_user):
         """Publish a release."""
         if not self.is_status(ReleaseStatus.PUBLISHING):
@@ -551,8 +555,8 @@ class Release:
 
     def rollback(self, current_user):
         """Remove the STAGED entries of a release."""
-        if not self.is_status(ReleaseStatus.STAGED):
-            raise RuntimeError("Release is not STAGED")
+        if not self.is_status(ReleaseStatus.ROLLINGBACK):
+            raise RuntimeError("Release is not ROLLINGBACK")
 
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])

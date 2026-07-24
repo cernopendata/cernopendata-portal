@@ -14,6 +14,7 @@ const statusToStep = {
   EDITING: "DRAFT",
   READY: "DRAFT",
   STAGING: "DRAFT",
+  ROLLINGBACK: "STAGED",
   PUBLISHING: "STAGED",
 };
 
