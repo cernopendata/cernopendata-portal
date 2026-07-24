@@ -6,6 +6,7 @@
 'READY': 'DRAFT',
 'STAGING': 'DRAFT',
 'STAGED': 'STAGED',
+'ROLLINGBACK': 'STAGED',
 'PUBLISHING': 'STAGED',
 'PUBLISHED': 'PUBLISHED'
 } %}
@@ -25,6 +26,7 @@
 'STAGED': 'You are about to publish this release publicly. Please review carefully before proceeding.',
 'EDITING': 'The release is being edited at the moment.',
 'STAGING': 'The release is being staged.',
+'ROLLINGBACK': 'The release is being returned to draft.',
 'PUBLISHING': 'The release is being published.'
 }[release_status] %}
 
@@ -68,7 +70,7 @@
         {% endif %}
 
         <div class="release-navigation-actions-button"
-             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING', 'PUBLISHING'] %}
+             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING', 'ROLLINGBACK', 'PUBLISHING'] %}
              data-tooltip="{{ next_tooltip }}"
              data-position="top center"
              {% endif %}>

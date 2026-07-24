@@ -1559,3 +1559,19 @@ def test_publish_dispatches_task(
     assert resp.status_code == 302
     mock_publish_release.delay.assert_called_once()
     mock_release.publish.assert_not_called()
+
+
+@patch("cernopendata.modules.releases.views.rollback_release")
+@patch("cernopendata.modules.releases.views.db")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_rollback_dispatches_task(
+    mock_get_release, mock_db, mock_rollback_release, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/rollback")
+
+    assert resp.status_code == 302
+    mock_rollback_release.delay.assert_called_once()
+    mock_release.rollback.assert_not_called()
