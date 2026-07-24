@@ -5,6 +5,8 @@ const statusToStep = {
   EDITING: "DRAFT",
   READY: "DRAFT",
   STAGING: "DRAFT",
+  ROLLINGBACK: "STAGED",
+  PUBLISHING: "STAGED",
 };
 export default function ReleasesTable({ experiment }) {
   const [releases, setReleases] = useState([]);

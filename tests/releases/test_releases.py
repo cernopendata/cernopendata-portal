@@ -271,7 +271,7 @@ def test_stage_success(mocker):
     mock_record.commit.assert_called()
 
 
-def test_stage_or_publish_wrong_status(mocker):
+def test_stage_publish_or_rollback_wrong_status(mocker):
     r = Release(MagicMock())
 
     mocker.patch.object(r, "is_status", return_value=False)
@@ -281,6 +281,9 @@ def test_stage_or_publish_wrong_status(mocker):
 
     with pytest.raises(RuntimeError):
         r.publish(MagicMock())
+
+    with pytest.raises(RuntimeError):
+        r.rollback(MagicMock())
 
 
 def test_publish(mocker):
@@ -750,7 +753,7 @@ def test_mark_staging_failed_records_error_and_reverts_to_ready(mocker):
     mock_session.commit.assert_called_once()
 
 
-def test_mark_publishing_failed_records_error_and_reverts_to_staged(mocker):
+def test_mark_publishing_or_rollback_failed_records_error_and_reverts_to_staged(mocker):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
     mocker.patch("cernopendata.modules.releases.api.flag_modified")
 
@@ -762,6 +765,16 @@ def test_mark_publishing_failed_records_error_and_reverts_to_staged(mocker):
     r.mark_publishing_failed("Broken release", user)
 
     assert metadata.errors == ["Publishing failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.STAGED, user)
+    mock_session.commit.assert_called_once()
+
+    mock_change.reset_mock()
+    mock_session.reset_mock()
+
+    r.mark_rollback_failed("Broken release", user)
+
+    assert metadata.errors == ["Rollback failed: Broken release"]
     assert metadata.num_errors == 1
     mock_change.assert_called_once_with(ReleaseStatus.STAGED, user)
     mock_session.commit.assert_called_once()

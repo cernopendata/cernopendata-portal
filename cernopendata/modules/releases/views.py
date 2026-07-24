@@ -47,7 +47,7 @@ from werkzeug.utils import secure_filename
 
 from .api import Release
 from .models import ReleaseStatus
-from .tasks import publish_release, stage_release
+from .tasks import publish_release, rollback_release, stage_release
 from .utils import curator_experiments
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
@@ -413,9 +413,20 @@ def _get_release(experiment, release_id, lock=False, status=None):
 @login_required
 def rollback(experiment, release_id):
     """Remove the records from the instance."""
-    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    release = _get_release(
+        experiment,
+        release_id,
+        status=ReleaseStatus.STAGED,
+        lock=ReleaseStatus.ROLLINGBACK,
+    )
 
-    release.rollback(current_user)
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    rollback_release.delay(experiment, release_id, current_user.id)
+    flash("Rollback started. This may take a while for large releases.", "info")
 
     return redirect(f"/releases/{experiment}/{release_id}")
 
