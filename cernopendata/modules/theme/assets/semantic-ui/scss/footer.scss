@@ -22,31 +22,38 @@
 
 $footer-height: 138px;
 
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.footer-wrap {
+  flex: 1 0 auto;
+}
+
 .footer {
+  flex-shrink: 0;
+  min-height: $footer-height;
   background-color: white;
   border-top: 2px solid #eee;
 
-  .ui.list:first-child.logos {
-    margin-top: 20px
+  .footer-inner {
+    grid-template-columns: 1fr auto 1fr;
+    padding: 0 1rem;
+    height: 100%;
   }
 
-  .ui.list:first-child.copyright {
-    text-align: center;
+  .footer-meta {
+    justify-self: end;
+  }
+
+  .ui.list.logos {
+    margin-top: 20px;
   }
 
   .ui.horizontal.list .item {
     font-size: 1.15rem;
     margin-left: 0.5em;
   }
-}
-
-/* Wrapper for page content to push down footer */
-.footer-wrap {
-  /* Negative indent footer by it's height */
-  margin-bottom: -$footer-height;
-}
-
-.footer-push, .footer {
-  /* Set the fixed height of the footer here */
-  height: $footer-height;
 }
