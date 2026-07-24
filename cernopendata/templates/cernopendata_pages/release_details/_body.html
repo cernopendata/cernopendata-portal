@@ -18,8 +18,8 @@
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> Changes are currently being applied. If this message persists, something may have gone wrong.</p>
 </div>
-{% elif release_status in ['STAGING', 'PUBLISHING'] %}
-{% set progress_verb = 'staged' if release_status == 'STAGING' else 'published' %}
+{% elif release_status in ['STAGING', 'PUBLISHING', 'ROLLINGBACK'] %}
+{% set progress_verb = {'STAGING': 'staged', 'PUBLISHING': 'published', 'ROLLINGBACK': 'rolled back'}[release_status] %}
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> The release is being {{ progress_verb }}. If this message persists, something may have gone wrong.</p>
 </div>
