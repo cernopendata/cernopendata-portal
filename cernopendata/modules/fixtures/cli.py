@@ -196,11 +196,10 @@ def delete_record(pid, pid_field, logger=None):
         FileIndexMetadata.delete_by_record(record=record)
         record.delete()
     except NoResultFound:
-        if logger:
-            logger.warning(
-                f"No record found for {pid_field} '{pid.pid_value}'; "
-                "removing the orphaned PID."
-            )
+        logger.warning(
+            f"No record found for {pid_field} '{pid.pid_value}'; "
+            "removing the orphaned PID."
+        )
 
     pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
     db.session.delete(pid)
