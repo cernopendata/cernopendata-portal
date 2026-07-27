@@ -23,14 +23,21 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 from invenio_files_rest.models import Location
 from invenio_indexer.api import RecordIndexer
+from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
 
 from cernopendata.api import FileIndexMetadata, RecordFilesWithIndex
-from cernopendata.modules.fixtures.cli import create_record, update_record
+from cernopendata.modules.fixtures.cli import (
+    create_record,
+    delete_record,
+    update_record,
+)
 from cernopendata.modules.records.utils import record_file_page
 
 
@@ -112,3 +119,46 @@ def test_file(app, database, search):
     # was removing the bucket
     record = update_record(pid, data3, False)
     record.commit()
+
+    delete_record(pid, "recid")
+    database.session.commit()
+
+    with pytest.raises(PIDDoesNotExistError):
+        PersistentIdentifier.get("recid", data["recid"])
+    with pytest.raises(PIDDoesNotExistError):
+        PersistentIdentifier.get("oai", f"oai:cernopendata.cern:{data['recid']}")
+
+
+@pytest.mark.parametrize("recid,use_logger", [("1115", False), ("1116", True)])
+def test_delete_record_already_gone(app, database, recid, use_logger):
+    """Deleting a record whose record and OAI PID are already gone."""
+    data = {
+        "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
+            "records/record-v1.0.0.json"
+        ),
+        "recid": recid,
+        "date_published": "2024",
+        "experiment": ["ALICE"],
+        "publisher": "CERN Open Data Portal",
+        "title": "Dummy file",
+        "type": {
+            "primary": "Dataset",
+            "secondary": ["Derived"],
+        },
+    }
+    create_record(data, True)
+    pid = PersistentIdentifier.get("recid", data["recid"])
+    RecordMetadata.query.filter_by(id=pid.object_uuid).delete()
+    database.session.delete(
+        PersistentIdentifier.get("oai", f"oai:cernopendata.cern:{data['recid']}")
+    )
+    database.session.commit()
+
+    logger = MagicMock() if use_logger else None
+    delete_record(pid, "recid", logger=logger)
+    database.session.commit()
+
+    if use_logger:
+        assert logger.warning.call_count == 2
+    with pytest.raises(PIDDoesNotExistError):
+        PersistentIdentifier.get("recid", data["recid"])
