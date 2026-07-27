@@ -560,13 +560,13 @@ class Release:
 
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
-            delete_record(pid_object, "recid")
+            delete_record(pid_object, "recid", logger=current_app.logger)
 
         for doc_data in self._metadata.documents or []:
             slug = doc_data.get("slug")
             if slug:
                 pid_object = PersistentIdentifier.get("docid", slug)
-                delete_doc_or_glossary(pid_object, "docid")
+                delete_doc_or_glossary(pid_object, "docid", logger=current_app.logger)
 
         self.change_status(ReleaseStatus.READY, current_user)
         db.session.add(self._metadata)

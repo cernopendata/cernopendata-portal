@@ -192,14 +192,24 @@ def delete_record(pid, pid_field, logger=None):
         FileIndexMetadata.delete_by_record(record=record)
         record.delete()
     except NoResultFound:
-        logger.error(
-            "The record does not exist (even if the pid does!). Removing the pid"
-        )
+        if logger:
+            logger.warning(
+                f"No record found for {pid_field} '{pid.pid_value}'; "
+                "removing the orphaned PID."
+            )
 
     pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
     db.session.delete(pid)
-    pid2 = PersistentIdentifier.get("oai", f"oai:cernopendata.cern:{pid.pid_value}")
-    db.session.delete(pid2)
+    try:
+        oai_pid = PersistentIdentifier.get(
+            "oai", f"oai:cernopendata.cern:{pid.pid_value}"
+        )
+        db.session.delete(oai_pid)
+    except PIDDoesNotExistError:
+        if logger:
+            logger.warning(
+                f"No OAI PID found for {pid_field} '{pid.pid_value}'; nothing to remove."
+            )
     return None
 
 
@@ -224,8 +234,16 @@ def update_doc_or_glossary(pid, data, skip_files, logger=None):
 
 def delete_doc_or_glossary(pid, pid_field, logger=None):
     """Deletes a document or a glossary term."""
-    record = Record.get_record(pid.object_uuid)
-    record.delete()
+    try:
+        record = Record.get_record(pid.object_uuid)
+        record.delete()
+    except NoResultFound:
+        if logger:
+            logger.warning(
+                f"No record found for {pid_field} '{pid.pid_value}'; "
+                "removing the orphaned PID."
+            )
+
     pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
     db.session.delete(pid)
 
