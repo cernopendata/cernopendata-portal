@@ -1147,3 +1147,18 @@ def test_publish_collects_datacite_errors(mocker):
     assert "DataCite down" in errors[0]
     assert mock_register.call_count == 2
     mock_session.commit.assert_called_once()
+
+
+def test_get_release(mocker):
+    metadata = MagicMock()
+    mock_query = mocker.patch("cernopendata.modules.releases.api.ReleaseMetadata.query")
+    mock_query.filter_by.return_value.first.return_value = metadata
+
+    release = Release.get("cms", 1)
+
+    assert release._metadata is metadata
+    mock_query.filter_by.assert_called_once_with(id=1, experiment="cms")
+
+    mock_query.filter_by.return_value.first.return_value = None
+
+    assert Release.get("cms", 999999) is None
