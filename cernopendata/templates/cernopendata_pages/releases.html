@@ -1,6 +1,12 @@
 {%- extends config.BASE_TEMPLATE %}
 
 
+{%- block css %}
+{{ super() }}
+{{ webpack['cernopendata_curate_css.css'] }}
+{%- endblock css %}
+
+
 {%- block page_header %}
 {% include 'cernopendata_theme/header_index.html' %}
 {%- endblock page_header %}
