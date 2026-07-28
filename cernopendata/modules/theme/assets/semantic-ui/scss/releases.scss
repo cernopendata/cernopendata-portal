@@ -1,0 +1,259 @@
+.release-page-header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-bottom: 0.4em;
+
+    > .ui.button {
+        flex-shrink: 0;
+    }
+}
+
+.release-page-title {
+    flex: 1;
+    font-size: 1.5em;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.ui.dropdown .menu > .release-delete-item:not(.disabled) {
+    color: #db2828 !important;
+}
+
+.release-summary-segment {
+    padding: 1.5em 2em;
+
+    .ui.statistics {
+        margin: 0;
+    }
+
+    .ui.divider {
+        margin: 1.2em 0 1em;
+    }
+}
+
+
+.ui.steps.top.attached {
+    border-bottom: none;
+}
+
+.release-navigation-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    position: relative;
+
+    .release-navigation-rollback-btn {
+        margin-right: auto;
+    }
+
+    .release-navigation-status-text {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    #primary-action-btn > .icon {
+        margin: 0 0.5em 0 0;
+    }
+}
+
+.release-status-message {
+    text-align: center;
+}
+
+#release-content-root {
+    margin-top: 1em;
+}
+
+.records-table-toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75em;
+
+    .records-table-toolbar-buttons {
+        display: flex;
+        gap: 0.5em;
+        margin-left: auto;
+    }
+}
+
+.records-table-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.75em;
+}
+
+.doc-textarea {
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
+.image-row-url {
+    font-family: monospace;
+    font-size: 0.85em;
+}
+
+.ui.button.image-row-copy-btn {
+    margin-left: 0.4em;
+    vertical-align: middle;
+    box-shadow: none !important;
+}
+
+.image-snippet-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    margin-top: 0.4em;
+
+    > .ui.button {
+        flex-shrink: 0;
+    }
+}
+
+.image-snippet-code {
+    flex: 1;
+    margin: 0;
+    padding: 0.6em 0.8em;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.9em;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.validation-segment {
+    padding: 0;
+    margin-top: 1em;
+}
+
+.validation-header {
+    padding: 1em 1.5em;
+    border-bottom: 1px solid rgba(34, 36, 38, .1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.validation-header-labels {
+    display: flex;
+    gap: 0.4em;
+    flex-wrap: wrap;
+}
+
+.validation-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.8em 1.5em;
+
+    &.validation-row-bordered {
+        border-bottom: 1px solid rgba(34, 36, 38, .06);
+    }
+}
+
+.validation-row-icon {
+    flex-shrink: 0;
+    width: 1.4em;
+    padding-top: 0.15em;
+}
+
+.validation-row-body {
+    flex: 1;
+    min-width: 0;
+    padding: 0 1em;
+}
+
+.validation-row-actions {
+    flex-shrink: 0;
+    display: grid;
+    column-gap: 1.5em;
+}
+
+.validation-segment:has(.validation-row-actions > .ui.label) {
+    .validation-row-actions {
+        grid-template-columns: 7.5em 7em;
+
+        > .ui.label {
+            grid-column: 2;
+        }
+    }
+}
+
+.validation-autofix-message {
+    margin-top: 0.75em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75em;
+}
+
+.releases-page {
+    padding-top: 3.5em;
+    padding-bottom: 3em;
+}
+
+.releases-page-header {
+    margin-bottom: 1.5em;
+
+    .sub.header {
+        margin-top: 0.4em;
+    }
+}
+
+.releases-table-actions {
+    margin-bottom: 0.75em;
+    text-align: right;
+
+    .ui.button {
+        margin-right: 0;
+    }
+}
+
+.releases-table {
+    table-layout: fixed;
+
+    .release-step {
+        display: flex;
+        align-items: center;
+
+        .release-step-icon {
+            flex: 0 0 1.75em;
+        }
+
+        .ui.label {
+            margin-left: auto;
+            margin-right: 0;
+        }
+    }
+
+    .releases-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .show-published-filter {
+        font-weight: normal;
+    }
+
+    th.col-count {
+        width: 8em;
+    }
+
+    .discussion-column {
+        width: 12em;
+
+        a:hover {
+            text-decoration: underline;
+        }
+    }
+}
