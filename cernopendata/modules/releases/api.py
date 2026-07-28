@@ -287,7 +287,7 @@ class Release:
             id=release_id, experiment=experiment
         ).first()
 
-        return cls(metadata)
+        return cls(metadata) if metadata else None
 
     def is_status(self, status):
         """Check if the release is in a particular status."""

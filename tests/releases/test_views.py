@@ -1653,3 +1653,25 @@ def test_bulk_edit_apply_missing_updates(logged_in_client):
     )
     assert resp.status_code == 400
     assert "Missing updates" in resp.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views.Release.get", return_value=None)
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+def test_release_detail_not_found(mock_curator_experiments, mock_get, logged_in_client):
+    resp = logged_in_client.get("/releases/cms/999999")
+
+    assert resp.status_code == 404
+
+
+@patch("cernopendata.modules.releases.views.Release.get", return_value=None)
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+def test_release_stage_not_found(mock_curator_experiments, mock_get, logged_in_client):
+    resp = logged_in_client.post("/releases/cms/999999/stage")
+
+    assert resp.status_code == 404
