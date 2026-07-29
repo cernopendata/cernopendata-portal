@@ -64,6 +64,7 @@ export default function BulkEditModal({
   onClose,
   experiment,
   releaseId,
+  onApplied,
 }) {
   const [bulkActions, setBulkActions] = useState([]);
   const [bulkPreview, setBulkPreview] = useState([]);
@@ -162,7 +163,7 @@ export default function BulkEditModal({
     }
 
     try {
-      await fetchJson(
+      const data = await fetchJson(
         `/releases/${experiment}/${releaseId}/bulk_records/apply`,
         {
           method: "POST",
@@ -170,7 +171,8 @@ export default function BulkEditModal({
           body: JSON.stringify({ updates }),
         },
       );
-      window.location.reload();
+      onApplied(data);
+      onClose();
     } catch (e) {
       setError(e.message);
     }

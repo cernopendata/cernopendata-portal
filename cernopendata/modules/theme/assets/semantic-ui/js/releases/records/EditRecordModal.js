@@ -24,6 +24,7 @@ export default function EditRecordModal({
   onClose,
   experiment,
   releaseId,
+  onSaved,
 }) {
   const [bridge, setBridge] = useState(null);
   const [origSchema, setOrigSchema] = useState(null);
@@ -142,6 +143,7 @@ export default function EditRecordModal({
         body: JSON.stringify({ records: updatedRecords }),
       });
       setRecords(updatedRecords);
+      onSaved();
       onClose();
     } catch (e) {
       setError(e.message);

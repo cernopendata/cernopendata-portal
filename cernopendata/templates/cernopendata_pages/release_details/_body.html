@@ -1,19 +1,6 @@
 
 {% set release_status = release.status.value %}
 
-{% macro render_release_errors(release) %}
-{% if release._metadata.errors %}
-<div class="ui negative message">
-    <div class="header">Showing {{ release._metadata.errors|length if release._metadata.errors|length < 100 else 100 }} of {{ release._metadata.num_errors }} errors</div>
-    <ul class="list">
-        {% for item in release._metadata.errors[:100] %}
-        <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-{% endmacro %}
-
 {% if release_status == 'EDITING' %}
 <div class="ui warning message release-status-message">
     <p><i class="clock icon"></i> Changes are currently being applied. If this message persists, something may have gone wrong.</p>
@@ -26,97 +13,10 @@
 <script>
     setTimeout(function () { window.location.reload(); }, 5000);
 </script>
-{% elif release_status == 'STAGED' %}
-{{ render_release_errors(release) }}
 {% elif release_status == 'PUBLISHED' %}
 <div class="ui positive message release-status-message">
     <p><i class="check circle icon"></i> This release is published and locked.</p>
 </div>
-{{ render_release_errors(release) }}
-{% endif %}
-
-{% if release_status in ['DRAFT', 'READY', 'EDITING'] %}
-
-{% set ns = namespace(automatic_fix=False) %}
-
-{% set visible_validations = release.validations %}
-{% if not release.documents %}
-{% set visible_validations = visible_validations | rejectattr('is_document_validation') | list %}
-{% endif %}
-{% if not release.records %}
-{% set visible_validations = visible_validations | rejectattr('is_record_validation') | list %}
-{% endif %}
-
-{% set failed = visible_validations | selectattr('enabled') | rejectattr('status') | sort(attribute='name') | list %}
-{% set optional = visible_validations | selectattr('optional') | rejectattr('enabled') | sort(attribute='name') | list %}
-{% set success = visible_validations | selectattr('enabled') | selectattr('status') | sort(attribute='name') | list %}
-
-<div class="ui segment validation-segment">
-
-    <div class="validation-header">
-        <strong>
-            <i class="tasks icon"></i>Validations
-        </strong>
-        <div class="validation-header-labels">
-            {% if failed  %}<span class="ui red label">{{ failed|length }} failed</span>{% endif %}
-            {% if success %}<span class="ui green label">{{ success|length }} passed</span>{% endif %}
-            {% if optional%}<span class="ui grey label">{{ optional|length }} optional</span>{% endif %}
-        </div>
-    </div>
-
-    {% for validation in failed + optional + success %}
-    <div class="validation-row{% if not loop.last %} validation-row-bordered{% endif %}">
-
-        <div class="validation-row-icon">
-            {% if validation.enabled %}
-            <i class="{{ 'check circle green' if validation.status else 'times circle red' }} icon"></i>
-            {% else %}
-            <i class="pause grey icon"></i>
-            {% endif %}
-        </div>
-
-        <div class="validation-row-body">
-            {% if validation.enabled and not validation.status %}
-            <b>{{ validation.name }}</b>
-            {% else %}
-            <span class="validation-name-ok">{{ validation.name }}</span>
-            {% endif %}
-            {% if validation.enabled and not validation.status and validation.error_message %}
-            <div class="validation-error-message">{{ validation.error_message }}</div>
-            {% endif %}
-        </div>
-
-        <div class="validation-row-actions">
-            {% if validation.optional %}
-            <div class="validation-toggle-root" data-validation='{{ validation.to_dict() | tojson }}'></div>
-            {% endif %}
-            {% if validation.enabled and validation.fixable and not validation.status %}
-            {% set ns.automatic_fix = True %}
-            <span class="ui tiny blue label" data-tooltip="Can be fixed automatically" data-position="top center">
-                <i class="magic icon"></i> Auto-fixable
-            </span>
-            {% endif %}
-        </div>
-
-    </div>
-    {% endfor %}
-
-</div>
-
-{% if ns.automatic_fix %}
-<div class="ui info message validation-autofix-message">
-    <div>
-        <strong><i class="magic icon"></i> Automatic fixes available</strong>
-        <div>Some issues above can be resolved automatically.</div>
-    </div>
-    <form method="post" action="/releases/{{ experiment }}/{{ release._metadata.id }}/fix_checks">
-        <button class="ui primary button"><i class="magic icon"></i> Fix automatically</button>
-    </form>
-</div>
-{% endif %}
-
-{{ render_release_errors(release) }}
-
 {% endif %}
 
 {% set edit_disabled = release_status not in ['DRAFT', 'READY'] %}
@@ -131,4 +31,5 @@
     data-edit-disabled="{{ edit_disabled | lower }}"
     data-view-disabled="{{ view_disabled | lower }}"
     data-release-status="{{ release.status.value }}"
+    data-release-state='{{ release_state | tojson }}'
 ></div>

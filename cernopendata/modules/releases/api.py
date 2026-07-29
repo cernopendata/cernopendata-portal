@@ -117,15 +117,6 @@ class ReleaseValidation:
         """Return if the validation is enabled for this particular release."""
         return self._metadata.enabled
 
-    @classmethod
-    def get(cls, release_id, name):
-        """Get a particular validation from the release and validation name."""
-        metadata = ReleaseValidationMetadata.query.filter_by(
-            id=release_id, name=name
-        ).first()
-
-        return cls(metadata)
-
     def validate(self):
         """Run the validation."""
         if not self.validator:
@@ -146,6 +137,9 @@ class ReleaseValidation:
             "status": self.status,
             "error_message": self.error_message,
             "release_id": self._metadata.release_id,
+            "fixable": self.fixable,
+            "is_document_validation": self.is_document_validation,
+            "is_record_validation": self.is_record_validation,
         }
 
     @classmethod
@@ -661,9 +655,19 @@ class Release:
 
         return errors
 
+    def failing_validations(self):
+        """Names of the enabled validations that are currently failing."""
+        return [
+            validation.name
+            for validation in self.validations
+            if validation.enabled and not validation.status
+        ]
+
     def fix_checks(self, current_user):
         """Fix all the validations that can be fixed automatically."""
         errors = []
+        failing_before = self.failing_validations()
+        recids_before = [record.get("recid") for record in self.records]
         current_app.logger.info("Fixing the validations")
         for validation in self.validations:
             if not validation.status:
@@ -676,20 +680,33 @@ class Release:
 
         if errors:
             self._metadata.errors = errors
+            self._metadata.num_errors = len(errors)
             self.change_status(ReleaseStatus.DRAFT, current_user)
+            failing_after = failing_before
         else:
             self.validate(current_user)
+            failing_after = self.failing_validations()
         flag_modified(self._metadata, "records")
         flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
+
+        return {
+            "fixed": [name for name in failing_before if name not in failing_after],
+            "remaining": failing_after,
+            "assigned_recids": [
+                record.get("recid")
+                for record, previous in zip(self.records, recids_before)
+                if record.get("recid") != previous
+            ],
+        }
 
     def enable_validation(self, validation_id, enabled, current_user):
         """Enables or disables a partircular validation."""
         validation = ReleaseValidation.get(validation_id)
 
         if not validation.optional:
-            raise RunTimeError(f"The validation {validation.name} can't be disabled")
+            raise RuntimeError(f"The validation {validation.name} can't be disabled")
         validation._metadata.enabled = enabled
         self.validate(current_user)
         db.session.add(validation._metadata)

@@ -11,11 +11,12 @@ import RowActions from "../shared/RowActions";
 export default function DocumentsTable({
   experiment,
   releaseId,
-  initialDocuments = [],
+  documents,
+  setDocuments,
   editDisabled = false,
   viewDisabled = false,
+  onContentChanged,
 }) {
-  const [documents, setDocuments] = useState(initialDocuments);
   const [editingDoc, setEditingDoc] = useState(null);
 
   const pageSize = 5;
@@ -171,7 +172,10 @@ export default function DocumentsTable({
         experiment={experiment}
         releaseId={releaseId}
         existingItems={documents}
-        onAdded={(newDocs) => setDocuments((prev) => [...prev, ...newDocs])}
+        onAdded={(newDocs) => {
+          setDocuments((prev) => [...prev, ...newDocs]);
+          onContentChanged();
+        }}
       />
 
       <EditDocumentModal
@@ -179,15 +183,16 @@ export default function DocumentsTable({
         onClose={() => setEditingDoc(null)}
         experiment={experiment}
         releaseId={releaseId}
-        onSaved={(updated) =>
+        onSaved={(updated) => {
           setDocuments((prev) => {
             const idx = prev.indexOf(editingDoc);
             if (idx === -1) return prev;
             const next = [...prev];
             next[idx] = updated;
             return next;
-          })
-        }
+          });
+          onContentChanged();
+        }}
       />
 
       <UploadImagesModal
@@ -196,7 +201,10 @@ export default function DocumentsTable({
         experiment={experiment}
         releaseId={releaseId}
         documents={documents}
-        onUploaded={(newImages) => setImages((prev) => [...prev, ...newImages])}
+        onUploaded={(newImages) => {
+          setImages((prev) => [...prev, ...newImages]);
+          onContentChanged();
+        }}
       />
 
       <PreviewImageModal
@@ -209,7 +217,7 @@ export default function DocumentsTable({
         onClose={() => setEditingImage(null)}
         experiment={experiment}
         releaseId={releaseId}
-        onRenamed={(oldImage, newImage) =>
+        onRenamed={(oldImage, newImage) => {
           setImages((prev) =>
             prev.map((img) =>
               img.parent_slug === oldImage.parent_slug &&
@@ -217,9 +225,10 @@ export default function DocumentsTable({
                 ? newImage
                 : img,
             ),
-          )
-        }
-        onDeleted={(image) =>
+          );
+          onContentChanged();
+        }}
+        onDeleted={(image) => {
           setImages((prev) =>
             prev.filter(
               (img) =>
@@ -228,8 +237,9 @@ export default function DocumentsTable({
                   img.filename === image.filename
                 ),
             ),
-          )
-        }
+          );
+          onContentChanged();
+        }}
       />
     </>
   );

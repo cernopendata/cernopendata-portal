@@ -258,6 +258,22 @@ def release_upload(experiment):
     )
 
 
+def _release_state_payload(release):
+    """Validation results, errors and counters of a release."""
+    metadata = release._metadata
+    return {
+        "validations": [validation.to_dict() for validation in release.validations],
+        "errors": (metadata.errors or [])[:100],
+        "num_errors": metadata.num_errors or 0,
+        "counts": {
+            "num_records": metadata.num_records,
+            "num_file_indices": metadata.num_file_indices,
+            "num_files": metadata.num_files,
+            "num_docs": metadata.num_docs,
+        },
+    }
+
+
 @blueprint.route("/releases/<experiment>/<int:release_id>")
 def release_detail(experiment, release_id):
     """Get the details of a release."""
@@ -266,8 +282,17 @@ def release_detail(experiment, release_id):
         "cernopendata_pages/release_details.html",
         release=release,
         experiment=experiment,
+        release_state=_release_state_payload(release),
         current_year=datetime.utcnow().year,
     )
+
+
+@blueprint.route("/releases/<experiment>/<int:release_id>/state")
+@login_required
+def release_state(experiment, release_id):
+    """Get the validation state and counters of a release."""
+    release = _get_release(experiment, release_id)
+    return jsonify(_release_state_payload(release))
 
 
 @blueprint.route("/releases/<experiment>/<int:release_id>", methods=["PUT"])
@@ -900,16 +925,8 @@ def bulk_edit_records_preview(experiment, release_id):
 @login_required
 def bulk_edit_records_apply(experiment, release_id):
     """Perform a bulk update on all the records."""
-    updates = None
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        if "updates" in data:
-            updates = data["updates"]
-    elif "updates" in request.form:
-        try:
-            updates = json.loads(request.form["updates"])
-        except ValueError:
-            return jsonify({"error": "Invalid JSON in upload"}), 400
+    data = request.get_json(silent=True) or {}
+    updates = data.get("updates")
 
     if not updates:
         return jsonify({"error": "Missing updates"}), 400
@@ -917,14 +934,7 @@ def bulk_edit_records_apply(experiment, release_id):
     release = _get_release(experiment, release_id, lock=ReleaseStatus.EDITING)
     diff = release.bulk_update(updates, current_user)
 
-    flash(
-        f"Bulk edit applied to " f"{diff} records.",
-        "success",
-    )
-    if request.is_json:
-        return jsonify({"status": "ok"})
-    else:
-        return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify({"status": "ok", "updated": diff, "records": release.records})
 
 
 @blueprint.route(
@@ -940,9 +950,16 @@ def fix_checks(experiment, release_id):
         status=[ReleaseStatus.DRAFT, ReleaseStatus.READY],
         lock=ReleaseStatus.EDITING,
     )
-    release.fix_checks(current_user)
+    summary = release.fix_checks(current_user)
 
-    return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify(
+        {
+            "status": "ok",
+            **summary,
+            "records": release.records,
+            "documents": release.documents,
+        }
+    )
 
 
 @blueprint.route(
