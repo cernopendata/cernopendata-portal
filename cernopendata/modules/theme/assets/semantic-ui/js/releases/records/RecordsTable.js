@@ -18,9 +18,11 @@ export default function RecordsTable({
   releaseId,
   records,
   setRecords,
+  assignedRecids,
   editDisabled = false,
   viewDisabled = false,
   releaseStatus = null,
+  onContentChanged,
 }) {
   const [editingRecord, setEditingRecord] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -38,6 +40,7 @@ export default function RecordsTable({
   const [doiLoading, setDoiLoading] = useState(false);
   const [doiErrors, setDoiErrors] = useState([]);
   const [error, setError] = useState(null);
+  const [bulkMessage, setBulkMessage] = useState(null);
 
   const allHaveDoi =
     records.length > 0 && records.every((record) => record.doi);
@@ -91,6 +94,11 @@ export default function RecordsTable({
       {error && (
         <Message negative>
           <Icon name="warning circle" /> {error}
+        </Message>
+      )}
+      {bulkMessage && (
+        <Message positive onDismiss={() => setBulkMessage(null)}>
+          <Icon name="check circle" /> {bulkMessage}
         </Message>
       )}
       {doiErrors.length > 0 && (
@@ -183,28 +191,37 @@ export default function RecordsTable({
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                visible.map((record) => (
-                  <Table.Row key={record.recid}>
-                    <Table.Cell className="no-glossary">
-                      {record.recid}
-                    </Table.Cell>
-                    <Table.Cell className="no-glossary">
-                      {record.doi}
-                    </Table.Cell>
-                    <Table.Cell>{record.title || "—"}</Table.Cell>
-                    <Table.Cell collapsing>
-                      <RowActions
-                        onEdit={() => {
-                          setEditingRecord(record);
-                          setEditingIndex(records.indexOf(record));
-                        }}
-                        editDisabled={editDisabled}
-                        viewDisabled={viewDisabled}
-                        viewHref={`/record/${record.recid}`}
-                      />
-                    </Table.Cell>
-                  </Table.Row>
-                ))
+                visible.map((record, i) => {
+                  const assigned = assignedRecids.has(record.recid);
+                  return (
+                    <Table.Row key={`record-${record.recid || i}`}>
+                      <Table.Cell
+                        className={`no-glossary${assigned ? " recid-assigned" : ""}`}
+                        data-tooltip={
+                          assigned ? "Assigned automatically" : undefined
+                        }
+                        data-position={assigned ? "top left" : undefined}
+                      >
+                        {record.recid}
+                      </Table.Cell>
+                      <Table.Cell className="no-glossary">
+                        {record.doi}
+                      </Table.Cell>
+                      <Table.Cell>{record.title || "—"}</Table.Cell>
+                      <Table.Cell collapsing>
+                        <RowActions
+                          onEdit={() => {
+                            setEditingRecord(record);
+                            setEditingIndex(records.indexOf(record));
+                          }}
+                          editDisabled={editDisabled}
+                          viewDisabled={viewDisabled}
+                          viewHref={`/record/${record.recid}`}
+                        />
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })
               )}
             </Table.Body>
           </Table>
@@ -230,6 +247,7 @@ export default function RecordsTable({
         onClose={closeEditModal}
         experiment={experiment}
         releaseId={releaseId}
+        onSaved={onContentChanged}
       />
 
       <AddItemsModal
@@ -238,7 +256,10 @@ export default function RecordsTable({
         onClose={() => setAddModalOpen(false)}
         experiment={experiment}
         releaseId={releaseId}
-        onAdded={(newRecords) => setRecords((prev) => [...prev, ...newRecords])}
+        onAdded={(newRecords) => {
+          setRecords((prev) => [...prev, ...newRecords]);
+          onContentChanged();
+        }}
       />
 
       <BulkEditModal
@@ -246,6 +267,15 @@ export default function RecordsTable({
         onClose={() => setBulkModalOpen(false)}
         experiment={experiment}
         releaseId={releaseId}
+        onApplied={(data) => {
+          setRecords(data.records);
+          setBulkMessage(
+            `Bulk edit applied to ${data.updated} ${
+              data.updated === 1 ? "record" : "records"
+            }.`,
+          );
+          onContentChanged();
+        }}
       />
     </>
   );

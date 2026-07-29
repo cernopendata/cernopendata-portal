@@ -41,23 +41,8 @@
     <div id="release-description">{{ release._metadata.description or '' }}</div>
 </div>
 
-{% set stats = [
-{"label": "Records", "value": release._metadata.num_records},
-{"label": "File indices", "value": release._metadata.num_file_indices},
-{"label": "Files", "value": release._metadata.num_files},
-{"label": "Documents", "value": release._metadata.num_docs},
-] %}
-
 <div class="ui segment release-summary-segment">
-    <div class="ui four statistics">
-        {% for stat in stats %}
-        <div class="statistic">
-            <div class="value">{{ stat.value }}</div>
-            <div class="label">{{ stat.label }}</div>
-        </div>
-        {% endfor %}
-    </div>
-
+    <div id="release-stats-root" data-counts='{{ release_state.counts | tojson }}'></div>
 </div>
 
 <div class="ui modal" id="history-modal">

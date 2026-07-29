@@ -852,6 +852,103 @@ def test_validate_with_errors_sets_status_draft(mocker):
     mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
 
 
+def _failing_validation(name, fixable=True):
+    """Build a validation mock that is enabled and currently failing."""
+    validation = MagicMock(enabled=True, status=False, fixable=fixable)
+    validation.name = name
+    validation.fix.return_value = []
+    return validation
+
+
+def test_fix_checks_summarises_what_changed(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": None}, {"recid": "cms-7"}]
+
+    release = Release(metadata)
+
+    recid_validation = _failing_validation("Valid recid")
+    files_validation = _failing_validation("File metadata", fixable=False)
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [recid_validation, files_validation]
+
+    def fake_validate(current_user):
+        metadata.records[0]["recid"] = "cms-1"
+        recid_validation.status = True
+
+    mocker.patch.object(release, "validate", side_effect=fake_validate)
+
+    summary = release.fix_checks(MagicMock())
+
+    assert summary["fixed"] == ["Valid recid"]
+    assert summary["remaining"] == ["File metadata"]
+    assert summary["assigned_recids"] == ["cms-1"]
+    recid_validation.fix.assert_called_once()
+    files_validation.fix.assert_not_called()
+
+
+def test_fix_checks_reports_errors_raised_by_a_fix(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": None}]
+
+    release = Release(metadata)
+
+    slug_validation = _failing_validation("Valid slug")
+    slug_validation.fix.return_value = ["Entry 1: Cannot auto-fix slug"]
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [slug_validation]
+
+    mock_validate = mocker.patch.object(release, "validate")
+    mocker.patch.object(release, "change_status")
+
+    summary = release.fix_checks(MagicMock())
+
+    mock_validate.assert_not_called()
+    assert metadata.errors == ["Entry 1: Cannot auto-fix slug"]
+    assert metadata.num_errors == 1
+    assert summary["fixed"] == []
+    assert summary["remaining"] == ["Valid slug"]
+    assert summary["assigned_recids"] == []
+
+
+def test_enable_validation(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    optional_validation = MagicMock(optional=True)
+    mocker.patch.object(ReleaseValidation, "get", return_value=optional_validation)
+
+    release = Release(MagicMock())
+    mock_validate = mocker.patch.object(release, "validate")
+
+    release.enable_validation(1, True, MagicMock())
+
+    assert optional_validation._metadata.enabled is True
+    mock_validate.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+def test_enable_validation_rejects_mandatory_validation(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    mandatory_validation = MagicMock(optional=False)
+    mandatory_validation.name = "Valid recid"
+    mocker.patch.object(ReleaseValidation, "get", return_value=mandatory_validation)
+
+    release = Release(MagicMock())
+
+    with pytest.raises(RuntimeError, match="can't be disabled"):
+        release.enable_validation(1, False, MagicMock())
+
+
 def test_publish_raises_when_document_missing_slug(mocker):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")

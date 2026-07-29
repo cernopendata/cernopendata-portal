@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 
 import ReleasesTable from "./ReleasesTable";
 import ReleaseContent from "./ReleaseContent";
-import ValidationToggle from "./ValidationToggle";
+import ReleaseStats from "./ReleaseStats";
 
 const container = document.getElementById("releases-react-root");
 
@@ -83,6 +83,17 @@ if (container) {
     }
   });
 }
+
+const releaseStats = document.getElementById("release-stats-root");
+
+function renderStats(counts) {
+  ReactDOM.render(<ReleaseStats counts={counts} />, releaseStats);
+}
+
+if (releaseStats) {
+  renderStats(JSON.parse(releaseStats.dataset.counts));
+}
+
 const releaseContent = document.getElementById("release-content-root");
 if (releaseContent) {
   ReactDOM.render(
@@ -91,25 +102,15 @@ if (releaseContent) {
       releaseId={releaseContent.dataset.releaseId}
       initialRecords={JSON.parse(releaseContent.dataset.records)}
       initialDocuments={JSON.parse(releaseContent.dataset.documents || "[]")}
+      initialState={JSON.parse(releaseContent.dataset.releaseState)}
       editDisabled={releaseContent.dataset.editDisabled === "true"}
       viewDisabled={releaseContent.dataset.viewDisabled === "true"}
       releaseStatus={releaseContent.dataset.releaseStatus}
+      onCountsChanged={renderStats}
     />,
     releaseContent,
   );
 }
-
-document.querySelectorAll(".validation-toggle-root").forEach((el) => {
-  const validation = JSON.parse(el.dataset.validation);
-
-  ReactDOM.render(
-    <ValidationToggle
-      validation={validation}
-      onToggle={(id, enabled) => window.location.reload()}
-    />,
-    el,
-  );
-});
 
 $(document).on("click", "#history-button", function () {
   $("#history-modal").modal("show");

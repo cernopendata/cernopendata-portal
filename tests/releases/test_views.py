@@ -1637,29 +1637,23 @@ def test_rollback_dispatches_task(
 
 
 @patch("cernopendata.modules.releases.views._get_release")
-def test_bulk_edit_apply_form_source(mock_get_release, logged_in_client):
+def test_bulk_edit_apply(mock_get_release, logged_in_client):
     mock_release = MagicMock()
-    mock_release.bulk_update.return_value = 3
+    mock_release.bulk_update.return_value = 2
+    mock_release.records = [{"recid": "cms-1"}, {"recid": "cms-2"}]
     mock_get_release.return_value = mock_release
 
     resp = logged_in_client.post(
         "/releases/cms/1/bulk_records/apply",
-        data={"updates": json.dumps({"experiment": "CMS"})},
+        json={"updates": {"set": {"experiment": "CMS"}}},
     )
 
-    assert resp.status_code == 302
-    mock_release.bulk_update.assert_called_once()
-    updates = mock_release.bulk_update.call_args[0][0]
-    assert updates == {"experiment": "CMS"}
-
-
-def test_bulk_edit_apply_form_source_invalid_json(logged_in_client):
-    resp = logged_in_client.post(
-        "/releases/cms/1/bulk_records/apply",
-        data={"updates": "{not valid json"},
-    )
-    assert resp.status_code == 400
-    assert "Invalid JSON" in resp.get_json()["error"]
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "ok"
+    assert data["updated"] == 2
+    assert data["records"] == [{"recid": "cms-1"}, {"recid": "cms-2"}]
+    assert mock_release.bulk_update.call_args[0][0] == {"set": {"experiment": "CMS"}}
 
 
 def test_bulk_edit_apply_missing_updates(logged_in_client):
@@ -1691,3 +1685,63 @@ def test_release_stage_not_found(mock_curator_experiments, mock_get, logged_in_c
     resp = logged_in_client.post("/releases/cms/999999/stage")
 
     assert resp.status_code == 404
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_release_state(mock_get_release, logged_in_client):
+    validation = MagicMock()
+    validation.to_dict.return_value = {"name": "Valid recid", "status": False}
+
+    mock_get_release.return_value = MagicMock(
+        validations=[validation],
+        _metadata=MagicMock(
+            errors=["Entry 1: missing recid"],
+            num_errors=1,
+            num_records=4,
+            num_file_indices=1,
+            num_files=12,
+            num_docs=2,
+        ),
+    )
+
+    resp = logged_in_client.get("/releases/cms/1/state")
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {
+        "validations": [{"name": "Valid recid", "status": False}],
+        "errors": ["Entry 1: missing recid"],
+        "num_errors": 1,
+        "counts": {
+            "num_records": 4,
+            "num_file_indices": 1,
+            "num_files": 12,
+            "num_docs": 2,
+        },
+    }
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_fix_checks_returns_summary(mock_get_release, logged_in_client):
+    mock_release = MagicMock(
+        records=[{"recid": "cms-1"}],
+        documents=[{"slug": "cms-doc"}],
+    )
+    mock_release.fix_checks.return_value = {
+        "fixed": ["Valid recid"],
+        "remaining": ["File metadata"],
+        "assigned_recids": ["cms-1"],
+    }
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/fix_checks")
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {
+        "status": "ok",
+        "fixed": ["Valid recid"],
+        "remaining": ["File metadata"],
+        "assigned_recids": ["cms-1"],
+        "records": [{"recid": "cms-1"}],
+        "documents": [{"slug": "cms-doc"}],
+    }
+    mock_release.fix_checks.assert_called_once()

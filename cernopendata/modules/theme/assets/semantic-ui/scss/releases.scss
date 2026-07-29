@@ -83,6 +83,11 @@
     }
 }
 
+.ui.table td.recid-assigned {
+    background-color: #e6f1fb;
+    font-weight: bold;
+}
+
 .records-table-pagination {
     display: flex;
     justify-content: center;
