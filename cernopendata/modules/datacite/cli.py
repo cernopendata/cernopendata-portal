@@ -23,8 +23,6 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Command line interface for DataCite related commands."""
 
-import os
-
 import click
 from click import ClickException
 from flask import current_app
@@ -36,7 +34,12 @@ from invenio_records.api import Record
 
 from .client import DataCiteMDSClientWrapper
 from .providers import DataCiteProviderWrapper
-from .utils import generate_doi, register_record_doi, validate_record
+from .utils import (
+    generate_doi,
+    register_record_doi,
+    update_record_doi,
+    validate_record,
+)
 
 
 @click.group()
@@ -116,19 +119,12 @@ def update(recid):
     doi = record["doi"]
 
     try:
-        provider = DataCiteProviderWrapper.get(pid_value=doi, pid_type="doi")
+        update_record_doi(record)
     except PIDDoesNotExistError:
         raise ClickException(
             "Record with DOI {} not registered in DataCite.".format(doi)
         )
 
-    doc = validate_record(record)
-
-    landing_page = os.path.join(
-        current_app.config.get("PIDSTORE_LANDING_BASE_URL"), recid
-    )
-
-    provider.update(url=landing_page, doc=doc)
     db.session.commit()
 
     click.echo("Record with DOI {} updated in DataCite".format(doi))

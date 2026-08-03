@@ -59,6 +59,18 @@ def register_record_doi(record_data):
     provider.register(url=landing_page, doc=doc)
 
 
+def update_record_doi(record_data):
+    """Update a record's DOI metadata in DataCite."""
+    from .providers import DataCiteProviderWrapper
+
+    provider = DataCiteProviderWrapper.get(pid_value=record_data["doi"], pid_type="doi")
+    doc = validate_record(record_data)
+    landing_page = os.path.join(
+        current_app.config["PIDSTORE_LANDING_BASE_URL"], str(record_data["recid"])
+    )
+    provider.update(url=landing_page, doc=doc)
+
+
 def generate_doi(prefix, experiment=None):
     """Generate random DOI, unique within PIDStore."""
     while True:
