@@ -1745,3 +1745,29 @@ def test_fix_checks_returns_summary(mock_get_release, logged_in_client):
         "documents": [{"slug": "cms-doc"}],
     }
     mock_release.fix_checks.assert_called_once()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_retry_dois_registers_the_pending_dois(mock_get_release, logged_in_client):
+    mock_release = MagicMock(
+        validations=[],
+        _metadata=MagicMock(
+            errors=[],
+            num_errors=0,
+            num_records=4,
+            num_file_indices=1,
+            num_files=12,
+            num_docs=2,
+        ),
+    )
+    mock_release.retry_doi_registration.return_value = []
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/retry_dois")
+
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "ok"
+    mock_release.retry_doi_registration.assert_called_once_with()
+    mock_get_release.assert_called_once_with(
+        "cms", 1, status=views.ReleaseStatus.PUBLISHED
+    )

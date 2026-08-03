@@ -3,7 +3,11 @@ from unittest.mock import MagicMock
 import pytest
 from invenio_pidstore.errors import PIDDoesNotExistError
 
-from cernopendata.modules.datacite.utils import register_record_doi, validate_record
+from cernopendata.modules.datacite.utils import (
+    register_record_doi,
+    update_record_doi,
+    validate_record,
+)
 
 
 def test_validate_record_returns_serialized_doc(mocker):
@@ -88,3 +92,28 @@ def test_register_record_doi_creates_provider_when_missing(mocker):
     mock_provider.register.assert_called_once_with(
         url="https://opendata.cern.ch/record/7", doc="<resource/>"
     )
+
+
+def test_update_record_doi_updates_the_registered_doi(mocker):
+    mock_provider = MagicMock()
+    mock_wrapper = mocker.patch(
+        "cernopendata.modules.datacite.providers.DataCiteProviderWrapper"
+    )
+    mock_wrapper.get.return_value = mock_provider
+
+    mocker.patch(
+        "cernopendata.modules.datacite.utils.validate_record",
+        return_value="<resource/>",
+    )
+    mock_current_app = mocker.patch("cernopendata.modules.datacite.utils.current_app")
+    mock_current_app.config = {
+        "PIDSTORE_LANDING_BASE_URL": "https://opendata.cern.ch/record"
+    }
+
+    update_record_doi({"doi": "10.1234/TEST", "recid": 42, "experiment": "CMS"})
+
+    mock_wrapper.get.assert_called_once_with(pid_value="10.1234/TEST", pid_type="doi")
+    mock_provider.update.assert_called_once_with(
+        url="https://opendata.cern.ch/record/42", doc="<resource/>"
+    )
+    mock_provider.register.assert_not_called()

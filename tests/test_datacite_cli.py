@@ -71,24 +71,12 @@ def test_update_validates_and_updates_when_doi_registered(app, cli_runner, mocke
     mock_record_cls = mocker.patch("cernopendata.modules.datacite.cli.Record")
     record = {"recid": 1, "doi": "10.1234/TEST"}
     mock_record_cls.get_record.return_value = record
-    mock_provider = MagicMock()
-    mock_wrapper = mocker.patch(
-        "cernopendata.modules.datacite.cli.DataCiteProviderWrapper"
-    )
-    mock_wrapper.get.return_value = mock_provider
-    mock_validate = mocker.patch(
-        "cernopendata.modules.datacite.cli.validate_record",
-        return_value="<resource/>",
-    )
+    mock_update = mocker.patch("cernopendata.modules.datacite.cli.update_record_doi")
     mock_db = mocker.patch("cernopendata.modules.datacite.cli.db")
-    app.config["PIDSTORE_LANDING_BASE_URL"] = "https://opendata.cern.ch/record"
 
     result = cli_runner.invoke(update, ["--recid", "1"], obj=app)
 
     assert result.exit_code == 0
     assert "Record with DOI 10.1234/TEST updated in DataCite" in result.output
-    mock_validate.assert_called_once_with(record)
-    mock_provider.update.assert_called_once_with(
-        url="https://opendata.cern.ch/record/1", doc="<resource/>"
-    )
+    mock_update.assert_called_once_with(record)
     mock_db.session.commit.assert_called_once()

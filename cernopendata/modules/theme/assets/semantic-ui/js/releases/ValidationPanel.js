@@ -21,6 +21,8 @@ export default function ValidationPanel({
 }) {
   const [fixing, setFixing] = useState(false);
   const [fixError, setFixError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState(null);
 
   const visible = validations
     .filter(
@@ -42,6 +44,7 @@ export default function ValidationPanel({
 
   const rows = [...failed, ...optional, ...passed];
   const hasAutomaticFix = failed.some((validation) => validation.fixable);
+  const canRetryDois = releaseStatus === "PUBLISHED" && numErrors > 0;
 
   async function handleFix() {
     setFixing(true);
@@ -56,6 +59,21 @@ export default function ValidationPanel({
       setFixError(err.message);
     } finally {
       setFixing(false);
+    }
+  }
+
+  async function handleRetryDois() {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await fetchJson(`/releases/${experiment}/${releaseId}/retry_dois`, {
+        method: "POST",
+      });
+      onValidationsChanged();
+    } catch (err) {
+      setRetryError(err.message);
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -177,6 +195,34 @@ export default function ValidationPanel({
               <li key={index}>{error}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {retryError && (
+        <Message negative>
+          <Icon name="warning circle" /> {retryError}
+        </Message>
+      )}
+
+      {canRetryDois && (
+        <div className="ui info message validation-autofix-message">
+          <div>
+            <strong>
+              <Icon name="redo" /> Retry the DOI registration
+            </strong>
+            <div>
+              The records whose DOI is not registered with DataCite yet will be
+              sent again.
+            </div>
+          </div>
+          <Button
+            primary
+            loading={retrying}
+            disabled={retrying}
+            onClick={handleRetryDois}
+          >
+            <Icon name="redo" /> Retry
+          </Button>
         </div>
       )}
     </>

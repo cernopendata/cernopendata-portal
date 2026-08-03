@@ -477,6 +477,16 @@ def publish(experiment, release_id):
     return redirect(f"/releases/{experiment}/{release_id}")
 
 
+@blueprint.route("/releases/<experiment>/<int:release_id>/retry_dois", methods=["POST"])
+@login_required
+def retry_dois(experiment, release_id):
+    """Register again the DOIs of a published release that DataCite did not accept."""
+    release = _get_release(experiment, release_id, status=ReleaseStatus.PUBLISHED)
+    release.retry_doi_registration()
+
+    return jsonify({"status": "ok", **_release_state_payload(release)})
+
+
 @blueprint.route(
     "/releases/<experiment>/<int:release_id>/add_documents",
     methods=["POST"],

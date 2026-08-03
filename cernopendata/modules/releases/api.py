@@ -25,6 +25,7 @@
 """CERN Open Data Release api."""
 
 import json
+import re
 import shutil
 from copy import deepcopy
 from datetime import datetime
@@ -40,7 +41,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from cernopendata.modules.datacite.utils import generate_doi as mint_doi
-from cernopendata.modules.datacite.utils import register_record_doi
+from cernopendata.modules.datacite.utils import register_record_doi, update_record_doi
 from cernopendata.modules.datacite.utils import (
     validate_record as validate_datacite_record,
 )
@@ -543,6 +544,41 @@ class Release:
         self._metadata.num_errors = len(errors)
         flag_modified(self._metadata, "errors")
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+        return errors
+
+    def failed_doi_records(self):
+        """Records of the release whose DOI registration failed when publishing."""
+        pattern = re.compile(r"^DataCite registration failed for recid (\S+): ")
+
+        recids = set()
+        for error in self._metadata.errors or []:
+            match = pattern.match(error)
+            if match:
+                recids.add(match.group(1))
+
+        return [record for record in self.records if str(record.get("recid")) in recids]
+
+    def retry_doi_registration(self):
+        """Register again the DOIs that DataCite did not accept when publishing."""
+        if not self.is_status(ReleaseStatus.PUBLISHED):
+            raise RuntimeError("Release is not PUBLISHED")
+
+        errors = []
+        for record_data in self.failed_doi_records():
+            try:
+                update_record_doi(record_data)
+            except Exception as error:
+                current_app.logger.exception("DataCite registration failed")
+                errors.append(
+                    f"DataCite registration failed for recid "
+                    f"{record_data['recid']}: {error}"
+                )
+
+        self._metadata.errors = errors
+        self._metadata.num_errors = len(errors)
+        flag_modified(self._metadata, "errors")
         db.session.add(self._metadata)
         db.session.commit()
         return errors

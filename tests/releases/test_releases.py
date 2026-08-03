@@ -1244,6 +1244,7 @@ def test_publish_collects_datacite_errors(mocker):
     assert "DataCite down" in errors[0]
     assert mock_register.call_count == 2
     mock_session.commit.assert_called_once()
+    assert release.failed_doi_records() == [{"recid": 2, "doi": "10.1234/B"}]
 
 
 def test_get_release(mocker):
@@ -1259,3 +1260,65 @@ def test_get_release(mocker):
     mock_query.filter_by.return_value.first.return_value = None
 
     assert Release.get("cms", 999999) is None
+
+
+def test_retry_doi_registration_updates_only_the_failed_records(mocker):
+    mock_update = mocker.patch("cernopendata.modules.releases.api.update_record_doi")
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    metadata.errors = [
+        "Entry 1: missing recid",
+        "DataCite registration failed for recid 2: DataCite down",
+    ]
+    metadata.records = [
+        {"recid": 1, "doi": "10.1234/A"},
+        {"recid": 2, "doi": "10.1234/B"},
+    ]
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+
+    errors = release.retry_doi_registration()
+
+    assert errors == []
+    assert metadata.errors == []
+    assert metadata.num_errors == 0
+    mock_update.assert_called_once_with({"recid": 2, "doi": "10.1234/B"})
+    mock_session.commit.assert_called_once()
+
+    mocker.patch.object(release, "is_status", return_value=False)
+
+    with pytest.raises(RuntimeError, match="not PUBLISHED"):
+        release.retry_doi_registration()
+
+
+def test_retry_doi_registration_keeps_the_still_failing_records(mocker):
+    mock_update = mocker.patch("cernopendata.modules.releases.api.update_record_doi")
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    mock_update.side_effect = [None, RuntimeError("DataCite still down")]
+
+    metadata = MagicMock()
+    metadata.errors = [
+        "DataCite registration failed for recid 2: DataCite down",
+        "DataCite registration failed for recid 3: DataCite down",
+    ]
+    metadata.records = [
+        {"recid": 2, "doi": "10.1234/B"},
+        {"recid": 3, "doi": "10.1234/C"},
+    ]
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+
+    errors = release.retry_doi_registration()
+
+    assert len(errors) == 1
+    assert "recid 3" in errors[0]
+    assert "DataCite still down" in errors[0]
+    assert mock_update.call_count == 2
+    assert release.failed_doi_records() == [{"recid": 3, "doi": "10.1234/C"}]
