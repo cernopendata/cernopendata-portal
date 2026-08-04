@@ -627,17 +627,15 @@
         },
         "links": {
           "type": "array",
-          "items": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "recid": {
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            }
-          ]
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "recid": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
         }
       },
       "type": "object"
