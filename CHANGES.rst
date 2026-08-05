@@ -1,5 +1,9 @@
 Changes
 =======
+Version 1.1.3 (released 2026-08-05)
+----------------------------
+- fix(releases): ensure edit record form is properly rendered
+
 Version 1.1.2 (released 2026-08-05)
 ----------------------------
 - fix(template): ensure methodology.steps are rendered without errors and correctly
