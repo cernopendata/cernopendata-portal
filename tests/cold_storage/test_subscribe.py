@@ -1,4 +1,5 @@
 import json
+import logging
 
 import pytest
 
@@ -75,14 +76,64 @@ def test_send_email(app, database, smtp_server, staged_record):
     database.session.add(request)
     database.session.commit()
 
-    emails = ["my-email@test.ch"]
+    emails = ["my-email@test.ch", "another-email@test.ch"]
     Request.send_email(request, emails)
-    assert len(smtp_server.inbox) == 1
-    captured_email = smtp_server.inbox[0]
-    assert captured_email["from"] == "opendata-noreply@cern.ch"
-    assert captured_email["to"] == emails
-    assert f"Transfer {request.id} Completed".encode() in captured_email["data"]
-    assert (
-        f"Your transfer with ID {request.id} has been completed successfully".encode()
-        in captured_email["data"]
-    )
+    assert len(smtp_server.inbox) == len(emails)
+    for email, captured_email in zip(emails, smtp_server.inbox):
+        assert captured_email["from"] == "opendata-noreply@cern.ch"
+        assert captured_email["to"] == [email]
+        assert f"Transfer {request.id} Completed".encode() in captured_email["data"]
+        assert (
+            f"Your transfer with ID {request.id} has been completed successfully".encode()
+            in captured_email["data"]
+        )
+
+
+def test_mark_as_completed_notifies_each_subscriber(
+    app, database, smtp_server, staged_record
+):
+    """Tests that completing a request sends one email per subscriber"""
+    record_id = staged_record["record_id"]
+    subscribers = ["first@test.ch", "second@test.ch", "third@test.ch"]
+    request = Request.create(record_id, subscribers=subscribers)
+    database.session.add(request)
+    database.session.commit()
+
+    assert Request.mark_as_completed(request) is True
+
+    request_md = RequestMetadata.query.filter_by(id=request.id).first()
+    assert request_md.status == "completed"
+    assert request_md.completed_at is not None
+
+    assert len(smtp_server.inbox) == len(subscribers)
+    recipients = [captured_email["to"] for captured_email in smtp_server.inbox]
+    assert recipients == [[subscriber] for subscriber in subscribers]
+
+
+def test_send_email_continues_after_a_failure(
+    app, database, smtp_server, staged_record, monkeypatch, caplog
+):
+    """Tests that a failing recipient does not stop the remaining ones"""
+    record_id = staged_record["record_id"]
+    request = Request.create(record_id)
+    database.session.add(request)
+    database.session.commit()
+
+    failing_email = "broken@test.ch"
+    mail_extension = app.extensions["mail"]
+    original_send = mail_extension.send
+
+    def send_rejecting_one_recipient(message):
+        if failing_email in message.recipients:
+            raise RuntimeError("relay refused")
+        return original_send(message)
+
+    monkeypatch.setattr(mail_extension, "send", send_rejecting_one_recipient)
+
+    emails = ["first@test.ch", failing_email, "third@test.ch"]
+    with caplog.at_level(logging.ERROR):
+        Request.send_email(request, emails)
+
+    recipients = [captured_email["to"] for captured_email in smtp_server.inbox]
+    assert recipients == [["first@test.ch"], ["third@test.ch"]]
+    assert f"Failed to send email to {failing_email}: relay refused" in caplog.text
