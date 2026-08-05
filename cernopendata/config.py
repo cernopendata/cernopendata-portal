@@ -595,7 +595,7 @@ RECORDS_REST_FACETS = {
             ),
             file_type=dict(
                 terms=dict(
-                    field="distribution.formats", size=50, order=dict(_key="asc")
+                    field="distribution.formats", size=100, order=dict(_key="asc")
                 )
             ),
             collision_type=dict(
