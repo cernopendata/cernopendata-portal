@@ -1,5 +1,9 @@
 Changes
 =======
+Version 1.1.2 (released 2026-08-05)
+----------------------------
+- fix(template): ensure methodology.steps are rendered without errors and correctly
+
 Version 1.1.1 (released 2026-07-20)
 ----------------------------
 - fix(schema): allow methodology step note to be a string
