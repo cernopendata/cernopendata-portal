@@ -180,15 +180,18 @@ class Request:
         """Send an email notification using Invenio's mail system."""
         subject = f"Transfer {req.id} Completed"
         body = f"Hello,\n\nYour transfer with ID {req.id} has been completed successfully.\n\nBest regards."
-        msg = Message(
-            subject, sender="opendata-noreply@cern.ch", recipients=emails, body=body
-        )
-        # Use InvenioMail's send_email function with a simple text template
-        try:
-            current_app.extensions["mail"].send(msg)
-            logger.info(f"Email sent to {emails}")
-        except Exception as e:
-            logger.error(f"Failed to send email to {emails}: {e}")
+        for subscriber in emails:
+            msg = Message(
+                subject,
+                sender="opendata-noreply@cern.ch",
+                recipients=[subscriber],
+                body=body,
+            )
+            try:
+                current_app.extensions["mail"].send(msg)
+                logger.info(f"Email sent to {subscriber}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {subscriber}: {e}")
 
     @staticmethod
     def create(
@@ -229,7 +232,6 @@ class Request:
         req.completed_at = datetime.utcnow()
         db.session.add(req)
         if req.subscribers:
-            print("Sending emails")
             # Notify subscribers
             Request.send_email(req, req.subscribers)
         db.session.commit()
