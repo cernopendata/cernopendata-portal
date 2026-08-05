@@ -15,6 +15,10 @@ function stripUnsupported(schema) {
   delete result.additionalProperties;
   delete result.uniqueItems;
 
+  if (Array.isArray(result.type)) {
+    result.type = result.properties ? "object" : result.type[0];
+  }
+
   if (result.properties) {
     Object.keys(result.properties).forEach((key) => {
       result.properties[key] = stripUnsupported(result.properties[key]);
