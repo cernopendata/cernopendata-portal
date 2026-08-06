@@ -332,7 +332,7 @@
             {% if step.get("generators") %}
                 Generators: {% for generator in step.generators %} {{generator}} {% endfor %}<br>
             {% endif %}
-            {% for conf_file in step.get("configuration_files") %}
+            {% for conf_file in step.get("configuration_files", []) %}
                 <span class="oi" data-glyph="file"></span>
                 {{ conf_file.get("title", "File #"+ loop.index|string) }}
                 {% if conf_file.get("process") %}
@@ -362,7 +362,7 @@
                 Output dataset: {{ step.output_dataset }}<br>
             {% endif %}
             {% if step.get("note") %}
-                Note: {{ step.note | safe }}<br>
+                Note: {{ step.note.get("description", "") | safe }}<br>
             {% endif %}
 
             {% if step.get("description") %}
