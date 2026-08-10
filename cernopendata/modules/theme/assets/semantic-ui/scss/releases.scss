@@ -256,6 +256,12 @@
         width: 8em;
     }
 
+    .name-column {
+        width: 34%;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
     .discussion-column {
         width: 12em;
 

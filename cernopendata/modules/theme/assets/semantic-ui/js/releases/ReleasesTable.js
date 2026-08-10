@@ -180,6 +180,7 @@ export default function ReleasesTable({ experiment }) {
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell
+                className="name-column"
                 sorted={sortedProp("name")}
                 onClick={() => handleSort("name")}
               >
@@ -219,7 +220,7 @@ export default function ReleasesTable({ experiment }) {
               </Table.HeaderCell>
             </Table.Row>
             <Table.Row>
-              <Table.HeaderCell>
+              <Table.HeaderCell className="name-column">
                 <Input
                   fluid
                   icon="search"
@@ -265,7 +266,9 @@ export default function ReleasesTable({ experiment }) {
                   }}
                   style={{ cursor: "pointer" }}
                 >
-                  <Table.Cell>{release.name}</Table.Cell>
+                  <Table.Cell className="name-column">
+                    {release.name}
+                  </Table.Cell>
                   <Table.Cell>
                     <div className="release-step">
                       <span className="release-step-icon">
