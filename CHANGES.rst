@@ -1,6 +1,19 @@
 Changes
 =======
-Version 1.1.0 (released 2006-07-02)
+Version 1.2.0 (released 2026-08-10)
+- feat(releases): redesign the releases page; update release details view, including displaying validation feedback; redesign the form editor and add it for documents
+- feat(releases): allow retrying registering dois on published releases
+- perf(releases): move rolling back a release into a celery task
+- fix(releases): ensure file checksums have a prefix
+- refactor(releases): improve display of error messages
+- fix(theme): center footer content and pin it to the bottom
+- fix(cold): send transfer notifications individually
+- fix(schema): fix the links object inside a note
+- fix(facets): increase the number of entries for the file type to 100
+- fix(template): render methodology steps correctly
+
+----------------------------
+Version 1.1.0 (released 2026-07-02)
 ----------------------------
 - feat(datacite): Add more fields to the datacite exporter: keywords, usage, methodology and language
 - fix(releases): ensure export json feature works for creating release
