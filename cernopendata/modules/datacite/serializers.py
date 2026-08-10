@@ -121,7 +121,11 @@ class DataCiteSerializer(Schema):
 
     def get_creator(self, obj):
         """Get creators based on authors or collaboration field."""
-        authors = obj.get("authors", [obj.get("collaboration", None)])
+        authors = obj.get("authors") or []
+        if not authors:
+            collaboration = obj.get("collaboration") or {}
+            if collaboration.get("name"):
+                authors = [collaboration]
         creators = [
             {
                 "name": author["name"],
@@ -138,6 +142,7 @@ class DataCiteSerializer(Schema):
                 ),
             }
             for author in authors
+            if author.get("name")
         ]
         return creators
 

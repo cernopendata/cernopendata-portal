@@ -16,7 +16,10 @@ def test_validate_record_returns_serialized_doc(mocker):
     )
     mock_schema43 = mocker.patch("cernopendata.modules.datacite.utils.schema43")
 
-    mock_doc = {"titles": [{"title": "Test"}]}
+    mock_doc = {
+        "titles": [{"title": "Test"}],
+        "creators": [{"name": "CMS collaboration"}],
+    }
     mock_serializer_cls.return_value.dump.return_value = mock_doc
     mock_schema43.tostring.return_value = "<resource/>"
 
@@ -32,7 +35,7 @@ def test_validate_record_returns_serialized_doc(mocker):
 def test_validate_record_propagates_schema_errors(mocker):
     mocker.patch(
         "cernopendata.modules.datacite.utils.DataCiteSerializer"
-    ).return_value.dump.return_value = {}
+    ).return_value.dump.return_value = {"creators": [{"name": "CMS collaboration"}]}
     mock_schema43 = mocker.patch("cernopendata.modules.datacite.utils.schema43")
     mock_schema43.validate.side_effect = ValueError("required field missing")
 
@@ -117,3 +120,15 @@ def test_update_record_doi_updates_the_registered_doi(mocker):
         url="https://opendata.cern.ch/record/42", doc="<resource/>"
     )
     mock_provider.register.assert_not_called()
+
+
+def test_validate_record_rejects_a_record_without_creators(mocker):
+    mocker.patch(
+        "cernopendata.modules.datacite.utils.DataCiteSerializer"
+    ).return_value.dump.return_value = {"titles": [{"title": "Test"}], "creators": []}
+    mock_schema43 = mocker.patch("cernopendata.modules.datacite.utils.schema43")
+
+    with pytest.raises(ValueError, match="no creators to register"):
+        validate_record({"recid": "atlas-160004"})
+
+    mock_schema43.tostring.assert_not_called()

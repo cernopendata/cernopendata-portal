@@ -38,6 +38,11 @@ from .serializers import DataCiteSerializer
 def validate_record(record):
     """Serialize a record to schema43 and validate it."""
     doc = DataCiteSerializer().dump(record)
+    if not doc.get("creators"):
+        raise ValueError(
+            f"Record {record.get('recid')} has neither authors nor a collaboration, "
+            "so DataCite has no creators to register"
+        )
     schema43.validate(doc)
     return schema43.tostring(doc)
 
