@@ -161,6 +161,7 @@ def create_record(data, skip_files, logger=None):
 def update_record(pid, data, skip_files, logger=None):
     """Updates the given record."""
     record = RecordFilesWithIndex.get_record(pid.object_uuid)
+    file_keys = ["files", "_files", "file_indices", "_file_indices"]
     if not skip_files:
         for o in ObjectVersion.get_by_bucket(record.bucket).all():
             o.remove()
@@ -171,10 +172,13 @@ def update_record(pid, data, skip_files, logger=None):
     for k in list(record.keys()):
         if k in ["_bucket", "pids"]:
             continue
-        if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
+        if skip_files and k in file_keys:
             continue
         del record[k]
-    record.update(data)
+    if skip_files:
+        record.update({k: v for k, v in data.items() if k not in file_keys})
+    else:
+        record.update(data)
     if not skip_files:
         _handle_record_files(record, data, logger)
         record.update(data)
