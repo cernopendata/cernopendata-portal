@@ -102,6 +102,23 @@ def _merge_index_files(record):
     record["files"] = files
 
 
+def _strip_derived_fields(record):
+    """Return the record without the fields derived when it was created."""
+    if not isinstance(record, dict):
+        return record
+    derived_fields = (
+        "_availability_details",
+        "_bucket",
+        "_file_indices",
+        "_files",
+        "bucket",
+        "dataset",
+    )
+    return {
+        field: value for field, value in record.items() if field not in derived_fields
+    }
+
+
 def _normalise_record(record):
     """Normalise a single exported record for release import."""
     if not isinstance(record, dict):
@@ -109,8 +126,7 @@ def _normalise_record(record):
     # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
     if "metadata" in record:
         record = record["metadata"]
-        for field in ("_files", "_bucket", "bucket", "_file_indices"):
-            record.pop(field, None)
+    record = _strip_derived_fields(record)
     if "index_files" in record:
         _merge_index_files(record)
     return record
@@ -133,7 +149,7 @@ def _split_payload(payload, source_filename):
         isinstance(payload.get("records"), list)
         or isinstance(payload.get("documents"), list)
     ):
-        records = payload.get("records") or []
+        records = _normalise_payload(payload.get("records") or [])
         documents = payload.get("documents") or []
     else:
         items = _normalise_payload(payload)
@@ -323,7 +339,7 @@ def release_json(experiment, release_id):
         "name": metadata.name,
         "description": metadata.description,
         "discussion_url": metadata.discussion_url,
-        "records": metadata.records or [],
+        "records": [_strip_derived_fields(record) for record in metadata.records or []],
         "documents": metadata.documents or [],
     }
     filename = _release_download_filename(metadata.name, release_id)

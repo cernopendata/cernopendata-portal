@@ -572,6 +572,24 @@ def test_update_document_slug_not_found(mock_get_release, logged_in_client):
             ],
         ),
         ({"records": [{"recid": 1, "files": []}]}, [{"recid": 1, "files": []}], []),
+        (
+            {
+                "records": [
+                    {
+                        "recid": 1,
+                        "files": [],
+                        "_files": [],
+                        "_bucket": "abc",
+                        "bucket": "def",
+                        "_file_indices": [],
+                        "_availability_details": {},
+                        "dataset": {},
+                    }
+                ]
+            },
+            [{"recid": 1, "files": []}],
+            [],
+        ),
     ],
 )
 def test_split_payload(payload, expected_records, expected_documents):
@@ -1771,3 +1789,31 @@ def test_retry_dois_registers_the_pending_dois(mock_get_release, logged_in_clien
     mock_get_release.assert_called_once_with(
         "cms", 1, status=views.ReleaseStatus.PUBLISHED
     )
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_download_release_strips_the_derived_fields(mock_get_release, client):
+    metadata = MagicMock(
+        description=None,
+        discussion_url=None,
+        records=[
+            {
+                "recid": 1,
+                "experiment": "CMS",
+                "_files": [{"key": "f.root"}],
+                "_file_indices": [],
+                "_availability_details": {"online": 1},
+                "_bucket": "abc",
+                "bucket": "def",
+                "dataset": {},
+            }
+        ],
+        documents=[],
+    )
+    metadata.name = "release-1.json"
+    mock_get_release.return_value = MagicMock(_metadata=metadata)
+
+    resp = client.get("/releases/api/cms/1")
+
+    assert resp.status_code == 200
+    assert resp.get_json()["records"] == [{"recid": 1, "experiment": "CMS"}]
