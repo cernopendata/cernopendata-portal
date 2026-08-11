@@ -1,6 +1,16 @@
 Changes
 =======
+
+Version 1.2.1 (released 2026-08-11)
+----------------------------
+- fix(mappings): map methodology.steps.note as an object
+- fix(datacite): fall back to the collaboration when authors is empty
+- fix(releases): strip the derived fields from records on import and export
+- fix(fixtures): keep the record files when updating with skip_files
+- fix(releases): stop long release names overflowing the releases table
+
 Version 1.2.0 (released 2026-08-10)
+----------------------------
 - feat(releases): redesign the releases page; update release details view, including displaying validation feedback; redesign the form editor and add it for documents
 - feat(releases): allow retrying registering dois on published releases
 - perf(releases): move rolling back a release into a celery task
@@ -12,7 +22,6 @@ Version 1.2.0 (released 2026-08-10)
 - fix(facets): increase the number of entries for the file type to 100
 - fix(template): render methodology steps correctly
 
-----------------------------
 Version 1.1.0 (released 2026-07-02)
 ----------------------------
 - feat(datacite): Add more fields to the datacite exporter: keywords, usage, methodology and language
