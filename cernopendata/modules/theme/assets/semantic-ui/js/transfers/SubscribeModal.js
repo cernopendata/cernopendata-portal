@@ -1,11 +1,12 @@
 import React from "react";
-import { Modal, Button, Form } from "semantic-ui-react";
+import { Modal, Button, Form, Message } from "semantic-ui-react";
 
 const SubscribeModal = ({
   isModalOpen,
   email,
   setEmail,
   emailError,
+  subscribeError,
   handleSubscribe,
   closeModal,
   isLoading,
@@ -34,6 +35,7 @@ const SubscribeModal = ({
           onChange={(e) => setEmail(e.target.value)}
         />
       </Form>
+      {subscribeError && <Message negative>{subscribeError}</Message>}
     </Modal.Content>
     <Modal.Actions>
       <Button onClick={closeModal} disabled={isLoading}>

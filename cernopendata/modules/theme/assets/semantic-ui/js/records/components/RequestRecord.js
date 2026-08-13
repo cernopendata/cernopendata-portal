@@ -16,12 +16,14 @@ const RequestRecordApp = ({
   const [emailError, setEmailError] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [requestError, setRequestError] = useState(null);
 
   const handleClose = () => {
     setOpen(false);
     setEmailError(false);
     setEmail("");
     setConfirmed(false);
+    setRequestError(null);
   };
 
   const handleSubmit = async () => {
@@ -31,6 +33,7 @@ const RequestRecordApp = ({
       return;
     }
     setLoading(true);
+    setRequestError(null);
     try {
       await axios.post(`/record/${recordId}/stage`, {
         email: email.trim(),
@@ -38,11 +41,10 @@ const RequestRecordApp = ({
       });
       window.location.reload();
     } catch (error) {
-      alert(`Error: ${error.response.data}`);
+      setRequestError(error.response?.data?.error || "Request failed");
       console.error("Request failed", error);
     } finally {
       setLoading(false);
-      setOpen(false);
     }
   };
 
@@ -126,12 +128,14 @@ const RequestRecordApp = ({
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (emailError) setEmailError(false);
+                  if (requestError) setRequestError(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && confirmed) handleSubmit();
                 }}
               />
             </Form>
+            {requestError && <Message negative>{requestError}</Message>}
           </Modal.Content>
           <Modal.Actions>
             <Button onClick={handleClose}>Cancel</Button>
