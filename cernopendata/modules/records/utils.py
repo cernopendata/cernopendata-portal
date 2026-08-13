@@ -61,7 +61,7 @@ def stage(pid, record, **kwargs):
             distribution=record["distribution"],
         )
     except ValueError as e:
-        return Response(f"Invalid email address: {str(e)}", status=400)
+        return jsonify({"error": f"Invalid email address: {str(e)}"}), 400
 
     record["availability"] = RecordAvailability.REQUESTED.value
     record.commit()
@@ -70,14 +70,7 @@ def stage(pid, record, **kwargs):
     print(f"Transfer requested {id}", file=sys.stderr)
     record_stage.send(current_app._get_current_object(), obj=record)
 
-    # try:
-    #    response = requests.get(purge_url)
-    #    response.raise_for_status()
-    # except Exception as e:
-    #    # Log error or fallback
-    #    print(f"Failed to purge cache: {e}", file=sys.stderr)
-    # print("AND CACHE PURGED!!!", file=sys.stderr)
-    return Response("OK", status=200)
+    return jsonify({"message": "OK"})
 
 
 def subscribe(pid, record, **kwargs):
@@ -88,10 +81,13 @@ def subscribe(pid, record, **kwargs):
     try:
         if Request.subscribe(transfer_id, email):
             db.session.commit()
-            return Response(f"{email} subscribed successfully", status=200)
-        return Response(f"{email} is already subscribed", status=403)
+            return jsonify({"message": f"{email} subscribed successfully"})
+        return jsonify({"error": f"{email} is already subscribed"}), 403
     except ValueError as e:
-        return Response(f"{email} is not a valid email address: {str(e)}", status=400)
+        return (
+            jsonify({"error": f"{email} is not a valid email address: {str(e)}"}),
+            400,
+        )
 
 
 def get_file_index(pid, record, file_index, **kwargs):

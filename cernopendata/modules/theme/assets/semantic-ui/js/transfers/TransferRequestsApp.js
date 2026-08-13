@@ -15,6 +15,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [subscribeError, setSubscribeError] = useState(null);
 
   const [statusFilters, setStatusFilters] = useState([]);
   const [actionFilter, setActionFilter] = useState([]);
@@ -101,6 +102,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
       return;
     }
     setIsSubmitting(true);
+    setSubscribeError(null);
     try {
       await axios.post(`/record/${selectedRecid}/subscribe`, {
         email,
@@ -108,7 +110,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
       });
       closeAndResetModal(false);
     } catch (error) {
-      alert(`Error subscribing: ${error.response.data}`);
+      setSubscribeError(error.response?.data?.error || "Request failed");
       console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
@@ -131,6 +133,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
     setModalOpen(false);
     setEmail("");
     setEmailError(false);
+    setSubscribeError(null);
   };
 
   return (
@@ -172,8 +175,10 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
         setEmail={(val) => {
           setEmail(val);
           if (emailError) setEmailError(false);
+          if (subscribeError) setSubscribeError(null);
         }}
         emailError={emailError}
+        subscribeError={subscribeError}
         isLoading={isSubmitting}
       />
     </div>
