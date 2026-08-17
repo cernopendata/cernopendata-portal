@@ -46,7 +46,7 @@ import "./IndexFilesModal.scss";
 export default function IndexFilesModal({
   open,
   setOpen,
-  indexFile,
+  indexFile = {},
   recordAvailability,
 }) {
   const files = indexFile.files;
@@ -58,9 +58,9 @@ export default function IndexFilesModal({
     const end = page * ITEMS_PER_PAGE;
     return files.slice(start, end);
   };
-  const getFileUri = (file_key) =>
-    `/record/${config.pidValue}/files/${file_key}`;
-
+  const getFileUri = (file) => {
+    return file.uri.replace('root://', 'https://');
+  }
   const disableMessage =
     recordAvailability === "requested"
       ? "It has already been requested. Once it is ready, this button will become available."
@@ -99,7 +99,7 @@ export default function IndexFilesModal({
                           },
                         }
                       : {
-                          href: getFileUri(file.key),
+                          href: getFileUri(file),
                         };
                   return (
                     <Table.Row key={file.checksum}>
@@ -152,7 +152,7 @@ export default function IndexFilesModal({
           setOpen={setOpenDownloadModal}
           filename={selectedFile.filename}
           size={selectedFile.size}
-          uri={getFileUri(selectedFile.key)}
+          uri={getFileUri(selectedFile)}
         />
       )}
     </>
@@ -163,8 +163,4 @@ IndexFilesModal.propTypes = {
   open: PropTypes.bool.isRequired,
   setOpen: PropTypes.func.isRequired,
   indexFile: PropTypes.object,
-};
-
-IndexFilesModal.defaultProps = {
-  indexFile: {},
 };

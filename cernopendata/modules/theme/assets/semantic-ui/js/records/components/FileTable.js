@@ -235,7 +235,7 @@ export default function FileTable({ items, table_type, recordAvailability }) {
                           icon
                           size="mini"
                           primary
-                          {...downloadProp}
+                          href={file.uri.replace('root://', 'https://')}
                           disabled={file.availability === "on demand"}
                         >
                           <Icon name="download" />
