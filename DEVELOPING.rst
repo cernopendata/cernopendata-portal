@@ -101,6 +101,47 @@ operating system configuration allowing only ports 1024 and up:
 Development tips
 ================
 
+Working with database migrations
+--------------------------------
+
+Database schema changes are managed with Alembic via ``invenio-db``.
+The revisions of this repository live in ``cernopendata/alembic/`` and belong to the ``cernopendata`` branch.
+
+When you change a model, create a revision. The ``-b`` option puts it on the ``cernopendata`` branch:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic revision \
+        "<message>" -b cernopendata
+
+To apply the pending revisions, and to inspect the state of the database:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic upgrade cernopendata@head
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic current
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic heads
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic branches
+
+Please always upgrade ``cernopendata@head`` and not ``heads``.
+The deployed databases are behind the installed Invenio packages, so a bare ``upgrade heads`` would also run Invenio's own migrations.
+
+New instances get their tables from ``cernopendata db create``, which stamps
+``alembic_version`` as well, so they never run a migration. This means the
+revisions are only ever exercised on long-lived instances, and it is worth
+round-tripping them locally first: ``alembic downgrade cernopendata@base``
+followed by ``alembic upgrade cernopendata@head`` should reproduce what
+``db create`` builds.
+
+Deployments do not automatically run the migrations, so when a release contains a new revision it has to be applied on each instance.
+Run the following command in the web pod after the new image has rolled out:
+
+.. code-block:: console
+
+   $ cernopendata alembic upgrade cernopendata@head
+
+Do not ``alembic downgrade`` past ``c17474edeffe``. That revision is the baseline describing the schema as it was when Alembic was implemented.
+
 Working with Markdown
 ---------------------
 

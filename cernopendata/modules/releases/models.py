@@ -39,9 +39,9 @@ class ReleaseStatus(str, Enum):
     EDITING = "EDITING"
     STAGED = "STAGED"
     STAGING = "STAGING"
-    ROLLINGBACK = "ROLLINGBACK"
-    PUBLISHING = "PUBLISHING"
     PUBLISHED = "PUBLISHED"
+    PUBLISHING = "PUBLISHING"
+    ROLLINGBACK = "ROLLINGBACK"
 
 
 class ReleaseValidationMetadata(db.Model):
