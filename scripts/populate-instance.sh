@@ -27,6 +27,7 @@ set -o nounset
 
 cernopendata db init
 cernopendata db create
+cernopendata alembic stamp heads
 cernopendata index init
 sleep 20
 
