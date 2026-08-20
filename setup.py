@@ -207,6 +207,9 @@ setup(
         "invenio_config.module": [
             "cernopendata = cernopendata.config",
         ],
+        "invenio_db.alembic": [
+            "cernopendata = cernopendata:alembic",
+        ],
         "invenio_pidstore.minters": [
             "cernopendata_recid_minter = "
             " cernopendata.modules.records.minters.recid:"
