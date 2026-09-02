@@ -10,10 +10,13 @@
           "properties": {
             "availability": {
               "properties": {
-                "on demand": {
+                "ondemand": {
                   "type": "unsigned_long"
                 },
                 "online": {
+                  "type": "unsigned_long"
+                },
+                "requested": {
                   "type": "unsigned_long"
                 }
               },

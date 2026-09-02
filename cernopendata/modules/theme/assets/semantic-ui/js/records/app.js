@@ -25,7 +25,7 @@
  */
 
 import React from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 
 import FilesBoxApp from "./FilesBoxApp";
 
@@ -35,7 +35,8 @@ import RequestRecordApp from "./components/RequestRecord";
 
 const citeContainer = document.querySelector("#citations-react-app");
 if (citeContainer) {
-  ReactDOM.render(React.createElement(CitationsApp), citeContainer);
+  const root = createRoot(citeContainer);
+  root.render(React.createElement(CitationsApp));
 }
 const requestContainer = document.querySelector("#request-record-react-app");
 if (requestContainer) {
@@ -43,21 +44,19 @@ if (requestContainer) {
   const availability = requestContainer.dataset.availability;
   const size = requestContainer.dataset.size;
   const files = requestContainer.dataset.files;
-  ReactDOM.render(
+  const root = createRoot(requestContainer);
+  root.render(
     <RequestRecordApp
       recordId={recordId}
       availability={availability}
       num_files={files}
       size={size}
     />,
-    requestContainer,
   );
 }
 const domContainer = document.querySelector("#files-box-react-app");
 if (domContainer) {
   const recordAvailability = domContainer.dataset.recordavailability;
-  ReactDOM.render(
-    <FilesBoxApp recordAvailability={recordAvailability} />,
-    domContainer,
-  );
+  const root = createRoot(domContainer);
+  root.render(<FilesBoxApp recordAvailability={recordAvailability} />);
 }
