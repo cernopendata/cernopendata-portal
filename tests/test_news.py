@@ -29,3 +29,10 @@ def test_news(app, database, search):
         news = soup.find_all("div", class_="news-card")
         assert len(news) == 1
         assert news[0].h4.a["href"] == "/docs/dummy_news"
+
+
+def test_news_endpoint_cors(client):
+    """Test that the /api/news.xml endpoint includes CORS headers."""
+    res = client.get("/api/news.xml")
+    assert res.status_code == 200
+    assert res.headers.get("Access-Control-Allow-Origin") == "*"
