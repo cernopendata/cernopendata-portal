@@ -576,10 +576,10 @@ RECORDS_REST_FACETS = {
     "records": {
         "aggs": dict(
             type=dict(
-                terms=dict(field="type.primary", order=dict(_key="asc")),
+                terms=dict(field="type.primary", size=100, order=dict(_key="asc")),
                 aggs=dict(
                     subtype=dict(
-                        terms=dict(field="type.secondary", order=dict(_key="asc"))
+                        terms=dict(field="type.secondary", size=100, order=dict(_key="asc"))
                     )
                 ),
             ),
