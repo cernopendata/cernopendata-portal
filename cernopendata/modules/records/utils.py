@@ -33,6 +33,7 @@ from flask import (
     render_template,
     request,
 )
+import re
 from invenio_db import db
 from invenio_files_rest.signals import file_downloaded
 from invenio_files_rest.views import ObjectResource
@@ -46,6 +47,7 @@ from werkzeug.utils import import_string
 
 from cernopendata.cold_storage.api import RecordAvailability, Request
 from cernopendata.cold_storage.stats.signals import record_stage
+from cernopendata.modules.records.latex import clean_latex_title
 
 
 def stage(pid, record, **kwargs):
@@ -304,6 +306,9 @@ def record_metadata_view(pid, record, template=None):
         record=record,
     )
 
+    raw_title = record.get("title", "Untitled record")
+    cleaned_title = clean_latex_title(raw_title)
+
     return render_template(
         [
             f"cernopendata_records_ui/records/record_detail_{collection}.html",
@@ -311,7 +316,7 @@ def record_metadata_view(pid, record, template=None):
         ],
         pid=pid,
         record=record,
-        title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
+        title=cleaned_title + " | CERN Open Data Portal",
     )
 
 
@@ -334,11 +339,14 @@ def doc_metadata_view(pid, record, template=None):
         pid=pid,
         record=record,
     )
+    raw_title = record.get("title", "Untitled document")
+    cleaned_title = clean_latex_title(raw_title)
+
     return render_template(
         ["cernopendata_records_ui/docs/detail.html"],
         pid=pid,
         record=record,
-        title=record.get("title", "Untitled document") + " | CERN Open Data Portal",
+        title=cleaned_title + " | CERN Open Data Portal",
     )
 
 

@@ -49,6 +49,7 @@ from .api import Release
 from .models import ReleaseStatus
 from .tasks import publish_release, rollback_release, stage_release
 from .utils import curator_experiments
+from cernopendata.modules.records.utils import clean_latex_title
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -1015,6 +1016,7 @@ def preview_record():
     data = request.json
     if not data or not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON payload"}), 400
+    cleaned_title = clean_latex_title(data.get("title", "Untitled record"))
     return {
         "html": render_template(
             [
@@ -1022,7 +1024,7 @@ def preview_record():
             ],
             pid=data.get("recid", ""),
             record=data,
-            title=data.get("title", "Untitled record") + " | CERN Open Data Portal",
+            title=cleaned_title + " | CERN Open Data Portal",
         )
     }
 
@@ -1034,11 +1036,12 @@ def preview_document():
     data = request.json
     if not data or not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON payload"}), 400
+    cleaned_title = clean_latex_title(data.get("title", "Untitled document"))
     return {
         "html": render_template(
             ["cernopendata_records_ui/docs/detail.html"],
             pid=data.get("slug", ""),
             record=data,
-            title=data.get("title", "Untitled document") + " | CERN Open Data Portal",
+            title=cleaned_title + " | CERN Open Data Portal",
         )
     }
