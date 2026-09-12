@@ -74,8 +74,35 @@ option_verify = click.option(
 )
 
 option_debug = click.option(
-    "-d", "--debug", is_flag=True, help="Swicth on the debug messages"
+    "-d", "--debug", is_flag=True, help="Switch on the debug messages"
 )
+
+option_silent = click.option(
+    "-s", "--silent", is_flag=True, help="Switch off info messages (log level warning)"
+)
+
+
+def _setup_logging(debug=False, silent=False):
+    """Setup logging level based on CLI verbosity options."""
+    if debug:
+        level = logging.DEBUG
+    elif silent:
+        level = logging.WARNING
+    else:
+        level = logging.INFO
+    logging.basicConfig(level=level)
+    logging.getLogger().setLevel(level)
+    for name in [
+        "cernopendata",
+        "cernopendata.cold_storage",
+        "cernopendata.cold_storage.cli",
+        "cernopendata.cold_storage.manager",
+        "cernopendata.cold_storage.storage",
+        "cernopendata.cold_storage.catalog",
+        "cernopendata.cold_storage.service",
+        "cernopendata.cold_storage.transfer.fts",
+    ]:
+        logging.getLogger(name).setLevel(level)
 
 option_max_transfers = click.option(
     "-m",
@@ -125,9 +152,10 @@ def cold():
 @option_force
 @option_dry
 @option_debug
+@option_silent
 @option_max_transfers
 @option_file
-def archive(record, register, limit, force, dry, debug, max_transfers, file):
+def archive(record, register, limit, force, dry, debug, silent, max_transfers, file):
     """Move a record to cold."""
     _doOperation(
         ColdStorageActions.ARCHIVE,
@@ -137,6 +165,7 @@ def archive(record, register, limit, force, dry, debug, max_transfers, file):
         force,
         dry,
         debug,
+        silent,
         max_transfers,
         file,
     )
@@ -150,12 +179,12 @@ def _doOperation(
     force,
     dry,
     debug,
+    silent=False,
     max_transfers=0,
     file=None,
 ):
     """Internal function to do the CLI commands."""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    _setup_logging(debug=debug, silent=silent)
     m = ColdStorageManager()
     counter = 0
     transfers = 0
@@ -187,9 +216,10 @@ def _doOperation(
 @option_force
 @option_dry
 @option_debug
+@option_silent
 @option_max_transfers
 @option_file
-def stage(record, register, limit, force, dry, debug, max_transfers, file):
+def stage(record, register, limit, force, dry, debug, silent, max_transfers, file):
     """Move a record from cold."""
     _doOperation(
         ColdStorageActions.STAGE,
@@ -199,6 +229,7 @@ def stage(record, register, limit, force, dry, debug, max_transfers, file):
         force,
         dry,
         debug,
+        silent,
         max_transfers,
         file,
     )
@@ -242,14 +273,14 @@ def list():
 @argument_record
 @option_verify
 @option_debug
+@option_silent
 @option_file
-def list(record, verify, debug, file):
+def list(record, verify, debug, silent, file):
     """Print the urls for an entry.
 
     By default, it prints the urls for all the files of the entry.
     """
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    _setup_logging(debug=debug, silent=silent)
     m = ColdStorageManager()
     stats = {
         "files": 0,
@@ -343,43 +374,52 @@ def _verify_files(file: dict) -> list:
 @option_ignore_tag
 @option_dry
 @option_debug
+@option_silent
 @option_file
-def clear_hot(record, limit, force, dry, debug, file):
+def clear_hot(record, limit, force, dry, debug, silent, file):
     """Delete the hot copy of a file that has a cold copy."""
     _doOperation(
-        ColdStorageActions.CLEAR_HOT, record, None, limit, force, dry, debug, file=file
+        ColdStorageActions.CLEAR_HOT,
+        record,
+        None,
+        limit,
+        force,
+        dry,
+        debug,
+        silent,
+        file=file,
     )
 
 
 @cold.command()
 @with_appcontext
 @option_debug
-def process_transfers(debug):
+@option_silent
+def process_transfers(debug, silent):
     """Check the status of the transfers."""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    _setup_logging(debug=debug, silent=silent)
     return TransferService.process_transfers()
 
 
 @cold.command()
 @with_appcontext
 @option_debug
-def process_requests(debug):
+@option_silent
+def process_requests(debug, silent):
     """Check the status of the requests."""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    _setup_logging(debug=debug, silent=silent)
     return RequestService.process_requests()
 
 
 @cold.command()
 @with_appcontext
 @option_debug
+@option_silent
 @option_action
 @option_record
-def transfers(debug, action, record):
+def transfers(debug, silent, action, record):
     """List the transfers."""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    _setup_logging(debug=debug, silent=silent)
     logger.info("Checking if there are transfers")
     transfers = Transfer.get_ongoing_transfers(datetime.utcnow())
     if record:
