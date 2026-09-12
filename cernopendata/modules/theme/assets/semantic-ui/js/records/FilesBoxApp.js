@@ -25,7 +25,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Pagination } from "semantic-ui-react";
+import { Message, Pagination, Table } from "semantic-ui-react";
 
 import { FileTable } from "./components";
 import config, { ITEMS_PER_PAGE, RECORD_FILEPAGE_URL } from "./config";
@@ -34,21 +34,36 @@ const FilesBoxApp = ({ recordAvailability }) => {
   const [page, setPage] = useState(1);
   const [files, setFiles] = useState({});
   const [indexFiles, setIndexFiles] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { pidValue } = config;
 
   useEffect(() => {
     const type = getType();
+    setIsLoading(true);
+    setError(null);
     fetch(RECORD_FILEPAGE_URL(pidValue, page, type))
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load files (HTTP ${response.status})`);
+        }
+        return response.json();
+      })
       .then((data) => {
         if (type === "files") {
           setFiles(data);
         } else if (type === "index_files") {
           setIndexFiles(data);
         } else {
-          setFiles(data.files);
-          setIndexFiles(data.index_files);
+          setFiles(data.files || {});
+          setIndexFiles(data.index_files || {});
         }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch files", err);
+        setError(err.message || "Failed to load files");
+        setIsLoading(false);
       });
   }, [page]);
 
@@ -87,6 +102,41 @@ const FilesBoxApp = ({ recordAvailability }) => {
       )}
     </>
   );
+
+  const renderLoadingPlaceholder = () => (
+    <Table singleLine>
+      <Table.Header>
+        <Table.Row>
+          <Table.HeaderCell>Filename / Description</Table.HeaderCell>
+          <Table.HeaderCell>Size</Table.HeaderCell>
+          <Table.HeaderCell />
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        <Table.Row>
+          <Table.Cell colSpan="3" textAlign="center" style={{ padding: "2em" }}>
+            <i className="spinner loading icon large" />
+            Loading files and indexes...
+          </Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+
+  if (isLoading) {
+    return renderLoadingPlaceholder();
+  }
+
+  if (error) {
+    return (
+      <Message
+        negative
+        icon="warning sign"
+        header="Error loading files"
+        content={error}
+      />
+    );
+  }
 
   return (
     <>
