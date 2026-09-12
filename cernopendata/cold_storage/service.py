@@ -142,17 +142,17 @@ class RequestService:
                         submitted += len(info)
                         transfer.num_transfers += len(info)
                         transfer.size += sum(item.size for item in info)
-                    transfer.started_at = datetime.utcnow()
+                        transfer.started_at = datetime.utcnow()
+                        if max_transfers == submitted:
+                            logger.info(
+                                f"Reached the threshold of {threshold} transfers. There might be more in this record"
+                                f"({submitted + active_transfers_count}). Let's wait before continuing"
+                            )
+                        else:
+                            transfer.status = "started"
                     logger.info(
                         f"THE LIMIT WAS {max_transfers}, AND WE SUBMITTED {submitted}"
                     )
-                    if max_transfers == submitted:
-                        logger.info(
-                            f"Reached the threshold of {threshold} transfers. There might be more in this record"
-                            f"({submitted + active_transfers_count}). Let's wait before continuing"
-                        )
-                    else:
-                        transfer.status = "started"
                     db.session.add(transfer)
                     db.session.commit()
                     if max_transfers - submitted <= 0:
@@ -180,7 +180,7 @@ class RequestService:
                     if record["availability"] != RecordAvailability.ONLINE.value:
                         logger.info("Let's check the availability just in case...")
                         Catalog().save_record_availability(record)
-                        if record["availability"] == RecordAvailability.REQUESTED.value:
+                        if record["availability"] != RecordAvailability.ONLINE.value:
                             logger.info("The transfer is still waiting")
                             continue
                 elif action == ColdStorageActions.ARCHIVE:
