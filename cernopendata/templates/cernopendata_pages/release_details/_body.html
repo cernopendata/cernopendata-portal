@@ -1,17 +1,35 @@
 
 {% set release_status = release.status.value %}
 
-{% if release_status == 'EDITING' %}
+{% if release_status in ['EDITING', 'STAGING', 'PUBLISHING', 'ROLLINGBACK'] %}
+{% set progress_verb = {'EDITING': 'edited', 'STAGING': 'staged', 'PUBLISHING': 'published', 'ROLLINGBACK': 'rolled back'}[release_status] %}
 <div class="ui warning message release-status-message">
+    {% if release_status == 'EDITING' %}
     <p><i class="clock icon"></i> Changes are currently being applied. If this message persists, something may have gone wrong.</p>
-</div>
-{% elif release_status in ['STAGING', 'PUBLISHING', 'ROLLINGBACK'] %}
-{% set progress_verb = {'STAGING': 'staged', 'PUBLISHING': 'published', 'ROLLINGBACK': 'rolled back'}[release_status] %}
-<div class="ui warning message release-status-message">
+    {% else %}
     <p><i class="clock icon"></i> The release is being {{ progress_verb }}. If this message persists, something may have gone wrong.</p>
+    {% endif %}
 </div>
 <script>
-    setTimeout(function () { window.location.reload(); }, 5000);
+    (function () {
+        var currentStatus = {{ release_status | tojson }};
+        var pollInterval = setInterval(function () {
+            fetch("/releases/{{ experiment }}/{{ release._metadata.id }}/state")
+                .then(function (res) {
+                    if (!res.ok) {
+                        return null;
+                    }
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (data && data.status && data.status !== currentStatus) {
+                        clearInterval(pollInterval);
+                        window.location.reload();
+                    }
+                })
+                .catch(function () {});
+        }, 5000);
+    })();
 </script>
 {% elif release_status == 'PUBLISHED' %}
 <div class="ui positive message release-status-message">
