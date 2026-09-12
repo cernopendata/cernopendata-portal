@@ -275,9 +275,10 @@ def release_upload(experiment):
 
 
 def _release_state_payload(release):
-    """Validation results, errors and counters of a release."""
+    """Validation results, errors, counters and status of a release."""
     metadata = release._metadata
     return {
+        "status": release.status.value,
         "validations": [validation.to_dict() for validation in release.validations],
         "errors": (metadata.errors or [])[:100],
         "num_errors": metadata.num_errors or 0,

@@ -1710,8 +1710,9 @@ def test_release_state(mock_get_release, logged_in_client):
     validation = MagicMock()
     validation.to_dict.return_value = {"name": "Valid recid", "status": False}
 
-    mock_get_release.return_value = MagicMock(
+    mock_release = MagicMock(
         validations=[validation],
+        status=MagicMock(value="DRAFT"),
         _metadata=MagicMock(
             errors=["Entry 1: missing recid"],
             num_errors=1,
@@ -1721,11 +1722,13 @@ def test_release_state(mock_get_release, logged_in_client):
             num_docs=2,
         ),
     )
+    mock_get_release.return_value = mock_release
 
     resp = logged_in_client.get("/releases/cms/1/state")
 
     assert resp.status_code == 200
     assert resp.get_json() == {
+        "status": "DRAFT",
         "validations": [{"name": "Valid recid", "status": False}],
         "errors": ["Entry 1: missing recid"],
         "num_errors": 1,
