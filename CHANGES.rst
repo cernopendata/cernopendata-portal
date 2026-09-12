@@ -8,6 +8,7 @@ Version 1.2.1 (released 2026-08-11)
 - fix(releases): strip the derived fields from records on import and export
 - fix(fixtures): keep the record files when updating with skip_files
 - fix(releases): stop long release names overflowing the releases table
+- fix(cold): improve transfer completion email context (closes #407)
 
 Version 1.2.0 (released 2026-08-10)
 ----------------------------

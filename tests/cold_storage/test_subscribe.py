@@ -72,6 +72,8 @@ def test_subscribe(app, database, staged_record):
 def test_send_email(app, database, smtp_server, staged_record):
     """Tests sending an email"""
     record_id = staged_record["record_id"]
+    recid = staged_record["recid"]
+    title = staged_record["title"]
     request = Request.create(record_id)
     database.session.add(request)
     database.session.commit()
@@ -82,11 +84,33 @@ def test_send_email(app, database, smtp_server, staged_record):
     for email, captured_email in zip(emails, smtp_server.inbox):
         assert captured_email["from"] == "opendata-noreply@cern.ch"
         assert captured_email["to"] == [email]
-        assert f"Transfer {request.id} Completed".encode() in captured_email["data"]
         assert (
-            f"Your transfer with ID {request.id} has been completed successfully".encode()
+            f"CERN Open Data: Staging request for record {recid} completed".encode()
             in captured_email["data"]
         )
+        assert (
+            "A file staging request on the CERN Open Data portal has completed successfully.".encode()
+            in captured_email["data"]
+        )
+        assert f"Record: {title}".encode() in captured_email["data"]
+        assert f"Record ID: {recid}".encode() in captured_email["data"]
+        assert f"Request ID: {request.id}".encode() in captured_email["data"]
+        assert (
+            "The requested files are now staged and ready to download.".encode()
+            in captured_email["data"]
+        )
+        assert (
+            f"https://opendata.cern.ch/record/{recid}".encode()
+            in captured_email["data"]
+        )
+        assert (
+            f"https://opendata.cern.ch/transfer_requests?record_id={recid}".encode()
+            in captured_email["data"]
+        )
+        assert (
+            "You are receiving this email because this address was "
+            "subscribed to staging updates for this record."
+        ).encode() in captured_email["data"]
 
 
 def test_mark_as_completed_notifies_each_subscriber(
