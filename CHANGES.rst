@@ -3,6 +3,7 @@ Changes
 
 Version 1.2.1 (released 2026-08-11)
 ----------------------------
+- perf(tasks): reduce logging volume in process_eos_dump (closes #315)
 - fix(mappings): map methodology.steps.note as an object
 - fix(datacite): fall back to the collaboration when authors is empty
 - fix(releases): strip the derived fields from records on import and export
