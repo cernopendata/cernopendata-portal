@@ -31,7 +31,13 @@ import pkg_resources
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
-from invenio_files_rest.models import FileInstance, ObjectVersion
+from invenio_files_rest.models import (
+    Bucket,
+    BucketTag,
+    FileInstance,
+    ObjectVersion,
+    ObjectVersionTag,
+)
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
@@ -83,7 +89,7 @@ def get_jsons_from_dir(dir):
     return res
 
 
-def _handle_record_files(record, data, logger=None):
+def _handle_record_files(record, data, logger=None, existing_tags=None):
     """Handles record files."""
     # let's make a copy of files, since we might change it
     logger = logging.getLogger(__name__) if not logger else logger
@@ -109,12 +115,29 @@ def _handle_record_files(record, data, logger=None):
         f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
         if "type" in file and file["type"] == "index.json":
             # We don't need to store the index
-            FileIndexMetadata.create(
+            idx_obj = FileIndexMetadata.create(
                 record,
                 f,
                 description=file.get("description", filename),
                 logger=logger,
             )
+            if existing_tags:
+                for obj_v in ObjectVersion.get_by_bucket(idx_obj._bucket).all():
+                    fi = FileInstance.get(str(obj_v.file_id))
+                    f_uri = fi.uri if fi else None
+                    tags_to_restore = existing_tags.get(f_uri) or existing_tags.get(obj_v.key)
+                    if tags_to_restore:
+                        for tag_key, tag_val in tags_to_restore.items():
+                            ObjectVersionTag.create_or_update(
+                                obj_v.version_id, tag_key, tag_val
+                            )
+                refreshed = FileIndexMetadata.get(None, str(idx_obj._bucket))
+                record["_file_indices"] = [
+                    elem for elem in record.get("_file_indices", [])
+                    if elem.get("bucket") != str(idx_obj._bucket)
+                ]
+                record["_file_indices"].append(refreshed.dumps())
+                data["_file_indices"] = record["_file_indices"]
             f.delete()
         elif "type" in file and file["type"] == "index.txt":
             # The txt indexes should be ignored. Just delete the file
@@ -125,12 +148,19 @@ def _handle_record_files(record, data, logger=None):
             real_files.append(file)
             try:
                 obj = MultiURIFileObject.create_version(record.bucket, filename, f.id)
+                if existing_tags:
+                    tags_to_restore = existing_tags.get(file.get("uri")) or existing_tags.get(filename)
+                    if tags_to_restore:
+                        for tag_key, tag_val in tags_to_restore.items():
+                            ObjectVersionTag.create_or_update(
+                                obj.version_id, tag_key, tag_val
+                            )
                 file_info = {
                     "bucket": str(obj.bucket_id),
                     "checksum": obj.file.checksum,
                     "key": obj.key,
                     "version_id": str(obj.version_id),
-                    "availability": "online",
+                    "availability": MultiURIFileObject(obj, {}).availability,
                 }
                 file.update(file_info)
             except Exception as e:
@@ -161,11 +191,38 @@ def create_record(data, skip_files, logger=None):
 def update_record(pid, data, skip_files, logger=None):
     """Updates the given record."""
     record = RecordFilesWithIndex.get_record(pid.object_uuid)
-    file_keys = ["files", "_files", "file_indices", "_file_indices"]
+    file_keys = ["files", "_files", "file_indices", "_file_indices", "availability", "_availability_details"]
+    existing_tags = {}
     if not skip_files:
-        for o in ObjectVersion.get_by_bucket(record.bucket).all():
-            o.remove()
-            FileInstance.query.filter_by(id=o.file_id).delete()
+        if record.bucket:
+            for o in ObjectVersion.get_by_bucket(record.bucket).all():
+                tags = {
+                    tag.key: tag.value
+                    for tag in ObjectVersionTag.query.filter_by(
+                        object_version_id=o.version_id
+                    ).all()
+                    if tag.key in ("uri_cold", "hot_deleted")
+                }
+                if tags:
+                    if o.file and o.file.uri:
+                        existing_tags[o.file.uri] = tags
+                    existing_tags[o.key] = tags
+                o.remove()
+                FileInstance.query.filter_by(id=o.file_id).delete()
+        for buckettag in BucketTag.query.filter_by(key="record", value=str(record.id)):
+            b = Bucket.get(buckettag.bucket_id)
+            for o in ObjectVersion.get_by_bucket(b).all():
+                tags = {
+                    tag.key: tag.value
+                    for tag in ObjectVersionTag.query.filter_by(
+                        object_version_id=o.version_id
+                    ).all()
+                    if tag.key in ("uri_cold", "hot_deleted")
+                }
+                if tags:
+                    if o.file and o.file.uri:
+                        existing_tags[o.file.uri] = tags
+                    existing_tags[o.key] = tags
         FileIndexMetadata.delete_by_record(record=record)
     # This is to ensure that fields that do not appear in the new data
     # are not just kept from the previous version
@@ -177,11 +234,12 @@ def update_record(pid, data, skip_files, logger=None):
         del record[k]
     if skip_files:
         record.update({k: v for k, v in data.items() if k not in file_keys})
+        record.check_availability()
     else:
-        record.update(data)
+        record.update({k: v for k, v in data.items() if k not in ("availability", "_availability_details")})
     if not skip_files:
-        _handle_record_files(record, data, logger)
-        record.update(data)
+        _handle_record_files(record, data, logger, existing_tags=existing_tags)
+        record.update({k: v for k, v in data.items() if k not in ("availability", "_availability_details")})
         db.session.commit()
     return record
 
