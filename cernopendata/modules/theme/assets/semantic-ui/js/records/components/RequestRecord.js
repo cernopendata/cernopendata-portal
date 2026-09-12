@@ -41,7 +41,20 @@ const RequestRecordApp = ({
       });
       window.location.reload();
     } catch (error) {
-      setRequestError(error.response?.data?.error || "Request failed");
+      let errorMsg = "Request failed. Please try again later.";
+      const respData = error.response?.data;
+      if (respData && typeof respData.error === "string") {
+        errorMsg = respData.error;
+      } else if (typeof respData === "string" && !respData.trim().startsWith("<")) {
+        errorMsg = respData;
+      } else if (error.response?.status === 403) {
+        errorMsg = "Access forbidden. You do not have permission to perform this request.";
+      } else if (error.response?.statusText) {
+        errorMsg = `Request failed: ${error.response.statusText}`;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      setRequestError(errorMsg);
       console.error("Request failed", error);
     } finally {
       setLoading(false);
