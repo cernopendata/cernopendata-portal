@@ -8,6 +8,8 @@ Version 1.2.1 (released 2026-08-11)
 - fix(releases): strip the derived fields from records on import and export
 - fix(fixtures): keep the record files when updating with skip_files
 - fix(releases): stop long release names overflowing the releases table
+- fix(releases): prevent HTML form editor from creating empty fields (closes #409)
+- fix(cold): ensure transfers table resolves recid pid type (closes #377)
 
 Version 1.2.0 (released 2026-08-10)
 ----------------------------
