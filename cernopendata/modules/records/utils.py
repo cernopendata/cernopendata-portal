@@ -33,6 +33,7 @@ from flask import (
     render_template,
     request,
 )
+import re
 from invenio_db import db
 from invenio_files_rest.signals import file_downloaded
 from invenio_files_rest.views import ObjectResource
@@ -46,6 +47,85 @@ from werkzeug.utils import import_string
 
 from cernopendata.cold_storage.api import RecordAvailability, Request
 from cernopendata.cold_storage.stats.signals import record_stage
+
+_GREEK_AND_MATH = {
+    r"\to": "→",
+    r"\rightarrow": "→",
+    r"\leftarrow": "←",
+    r"\pm": "±",
+    r"\mp": "∓",
+    r"\times": "×",
+    r"\cdot": "·",
+    r"\approx": "≈",
+    r"\neq": "≠",
+    r"\leq": "≤",
+    r"\geq": "≥",
+    r"\infty": "∞",
+    r"\alpha": "α",
+    r"\beta": "β",
+    r"\gamma": "γ",
+    r"\delta": "δ",
+    r"\epsilon": "ε",
+    r"\eta": "η",
+    r"\theta": "θ",
+    r"\lambda": "λ",
+    r"\mu": "μ",
+    r"\nu": "ν",
+    r"\xi": "ξ",
+    r"\pi": "π",
+    r"\rho": "ρ",
+    r"\sigma": "σ",
+    r"\tau": "τ",
+    r"\phi": "φ",
+    r"\chi": "χ",
+    r"\psi": "ψ",
+    r"\omega": "ω",
+    r"\Gamma": "Γ",
+    r"\Delta": "Δ",
+    r"\Theta": "Θ",
+    r"\Lambda": "Λ",
+    r"\Xi": "Ξ",
+    r"\Pi": "Π",
+    r"\Sigma": "Σ",
+    r"\Phi": "Φ",
+    r"\Psi": "Ψ",
+    r"\Omega": "Ω",
+}
+
+_SUBSCRIPTS = str.maketrans(
+    "0123456789+-=()acdeghijklmnoprstuvx",
+    "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐ꜀ᑯₑ₉ₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ",
+)
+_SUPERSCRIPTS = str.maketrans(
+    "0123456789+-=()abdenoptuvwxyz",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ᵃᵇᵈᵉⁿᵒᵖᵗᵘᵛʷˣʸᶻ",
+)
+
+
+def clean_latex_title(text):
+    """Convert LaTeX symbols in titles to plain unicode text for browser tab display."""
+    if not text:
+        return text
+    s = str(text)
+    # Square root
+    s = re.sub(r"\\sqrt\{([^}]+)\}", r"√(\1)", s)
+    s = re.sub(r"\\sqrt\s+(\w+)", r"√\1", s)
+
+    # Greek and mathematical operators
+    for k in sorted(_GREEK_AND_MATH.keys(), key=len, reverse=True):
+        v = _GREEK_AND_MATH[k]
+        s = re.sub(re.escape(k) + r"(?![a-zA-Z])", v, s)
+
+    # Subscripts and superscripts
+    s = re.sub(r"\_\{([^}]+)\}", lambda m: m.group(1).translate(_SUBSCRIPTS), s)
+    s = re.sub(r"\^\{([^}]+)\}", lambda m: m.group(1).translate(_SUPERSCRIPTS), s)
+    s = re.sub(r"\_([0-9a-zA-Z+-])", lambda m: m.group(1).translate(_SUBSCRIPTS), s)
+    s = re.sub(r"\^([0-9a-zA-Z+-])", lambda m: m.group(1).translate(_SUPERSCRIPTS), s)
+
+    # Remove math mode delimiters and leftover backslashes
+    s = s.replace("$", "")
+    s = re.sub(r"\\([a-zA-Z]+)", r"\1", s)
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def stage(pid, record, **kwargs):
@@ -304,6 +384,9 @@ def record_metadata_view(pid, record, template=None):
         record=record,
     )
 
+    raw_title = record.get("title", "Untitled record")
+    cleaned_title = clean_latex_title(raw_title)
+
     return render_template(
         [
             f"cernopendata_records_ui/records/record_detail_{collection}.html",
@@ -311,7 +394,7 @@ def record_metadata_view(pid, record, template=None):
         ],
         pid=pid,
         record=record,
-        title=record.get("title", "Untitled record") + " | CERN Open Data Portal",
+        title=cleaned_title + " | CERN Open Data Portal",
     )
 
 
@@ -334,11 +417,14 @@ def doc_metadata_view(pid, record, template=None):
         pid=pid,
         record=record,
     )
+    raw_title = record.get("title", "Untitled document")
+    cleaned_title = clean_latex_title(raw_title)
+
     return render_template(
         ["cernopendata_records_ui/docs/detail.html"],
         pid=pid,
         record=record,
-        title=record.get("title", "Untitled document") + " | CERN Open Data Portal",
+        title=cleaned_title + " | CERN Open Data Portal",
     )
 
 
