@@ -31,7 +31,7 @@ ProcessEosDumpTask = {"task": "cernopendata.tasks.process_eos_dump"}
 @shared_task
 def process_eos_dump():
     """Process the latest EOS dump."""
-    logging.info("Starting processing EOS dump...")
+    logger.info("Starting processing EOS dump...")
     current_batch = []
     batch_count = 0
     processed_count = 0
@@ -57,15 +57,23 @@ def process_eos_dump():
                 failed_count += len(current_batch)
             current_batch = []
 
+            if batch_count % 100 == 0:
+                logger.info(
+                    f"Progress: Processed {batch_count} batches "
+                    f"({processed_count} entries)."
+                )
+
     if current_batch:
         batch_count += 1
-        logging.info(f"- Processing batch {batch_count} of size {len(current_batch)}")
+        logger.debug(f"- Processing batch {batch_count} of size {len(current_batch)}")
         try:
             _process_batch(current_batch)
+            processed_count += len(current_batch)
         except Exception as e:
             logger.error(f"Failed to process batch {batch_count}: {str(e)}")
+            failed_count += len(current_batch)
 
-    logging.info(
+    logger.info(
         f"Finished processing: Processed {processed_count} entries. "
         f"Skipped {skipped_count} entries. "
         f"Failed to process {failed_count} entries."
@@ -163,7 +171,7 @@ def _process_batch(dump_entries):
         if errors:
             logger.error(f"Failed to index {errors} items.")
         else:
-            logger.info(f"Processed {success} items across indexes.")
+            logger.debug(f"Processed {success} items across indexes.")
 
     db.session.expunge_all()
 
@@ -187,7 +195,7 @@ def _update_last_accessed(entries, index):
     if result.get("failures"):
         logger.error(f"Failed to update {result['failures']} items.")
     else:
-        logger.info(f"Successfully updated {result.get('updated', 0)} items.")
+        logger.debug(f"Successfully updated {result.get('updated', 0)} items.")
 
 
 def _get_existing_mapping_info(entries, index):
