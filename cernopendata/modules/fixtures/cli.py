@@ -476,6 +476,8 @@ def glossary(files, mode, verbose):
     logger = setup_cli_logger(verbose)
 
     def load_glossary_data(data, filename):
+        if "title" not in data and "anchor" in data:
+            data["title"] = data["anchor"]
         return data["anchor"]
 
     result = _process_fixture_files(

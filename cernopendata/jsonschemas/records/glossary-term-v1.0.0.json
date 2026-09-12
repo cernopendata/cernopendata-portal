@@ -80,6 +80,10 @@
       "title": "Term",
       "type": "array"
     },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
     "type": {
       "additionalProperties": false,
       "properties": {
