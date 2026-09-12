@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   Form,
@@ -54,10 +54,50 @@ export default function EditRecordModal({
   }, []);
 
   const [jsonText, setJsonText] = useState("");
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     const data = editAllMode ? records : editingRecord;
     setJsonText(JSON.stringify(data, null, 2));
   }, [editAllMode, records, editingRecord]);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (editAllMode) {
+          if (!Array.isArray(parsed)) {
+            setError("Uploaded JSON must be an array of records.");
+            return;
+          }
+          setRecords(parsed);
+        } else {
+          if (Array.isArray(parsed)) {
+            setError("Uploaded JSON must be a single record object.");
+            return;
+          }
+          setEditingRecord(parsed);
+        }
+        setError(null);
+      } catch (err) {
+        setError("Failed to parse JSON file: " + err.message);
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+      setError("Failed to read file.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const formPane = {
     menuItem: "Form",
@@ -170,6 +210,22 @@ export default function EditRecordModal({
         )}
       </Modal.Content>
       <Modal.Actions>
+        <input
+          type="file"
+          accept=".json,application/json"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleFileUpload}
+        />
+        <Button
+          type="button"
+          floated="left"
+          icon
+          labelPosition="left"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Icon name="upload" /> Replace from JSON file
+        </Button>
         <Button onClick={onClose}>Cancel</Button>
         <Button primary onClick={handleSave}>
           <Icon name="save" /> Save
