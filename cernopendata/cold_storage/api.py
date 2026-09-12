@@ -35,6 +35,7 @@ from flask_mail import Message
 from invenio_db import db
 from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
 from invenio_records_files.api import FileObject, Record
+from invenio_records.models import RecordMetadata
 from sqlalchemy import func
 
 from .models import RequestMetadata, TransferMetadata
@@ -178,8 +179,71 @@ class Request:
     @staticmethod
     def send_email(req, emails):
         """Send an email notification using Invenio's mail system."""
-        subject = f"Transfer {req.id} Completed"
-        body = f"Hello,\n\nYour transfer with ID {req.id} has been completed successfully.\n\nBest regards."
+        record_title = None
+        recid = None
+        try:
+            record_meta = RecordMetadata.query.get(req.record_id)
+            if record_meta and record_meta.json:
+                record_title = record_meta.json.get("title")
+                recid = record_meta.json.get("recid")
+        except Exception as e:
+            logger.warning(
+                f"Could not retrieve record metadata for email notification: {e}"
+            )
+
+        subject = "CERN Open Data: Staging request completed"
+        if recid:
+            subject = f"CERN Open Data: Staging request for record {recid} completed"
+
+        body_lines = [
+            "Hello,",
+            "",
+            "A file staging request on the CERN Open Data portal has completed successfully.",
+            "",
+        ]
+        if record_title:
+            body_lines.append(f"Record: {record_title}")
+        if recid:
+            body_lines.append(f"Record ID: {recid}")
+        if req.id:
+            body_lines.append(f"Request ID: {req.id}")
+        if req.file:
+            body_lines.append(f"File: {req.file}")
+        if req.created_at:
+            body_lines.append(
+                f"Requested at: {req.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
+        if req.completed_at:
+            body_lines.append(
+                f"Completed at: {req.completed_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
+
+        body_lines.extend(
+            [
+                "",
+                "The requested files are now staged and ready to download.",
+                "",
+            ]
+        )
+
+        if recid:
+            body_lines.append(f"View record: https://opendata.cern.ch/record/{recid}")
+            body_lines.append(
+                f"View transfer request: https://opendata.cern.ch/transfer_requests?record_id={recid}"
+            )
+            body_lines.append("")
+
+        body_lines.extend(
+            [
+                "You are receiving this email because this address was subscribed to staging updates for this record.",
+                "",
+                "Best regards,",
+                "CERN Open Data team",
+                "https://opendata.cern.ch",
+            ]
+        )
+        body = "\n".join(body_lines)
+
         for subscriber in emails:
             msg = Message(
                 subject,
