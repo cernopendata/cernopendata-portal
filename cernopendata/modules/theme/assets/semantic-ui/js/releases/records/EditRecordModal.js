@@ -12,7 +12,7 @@ import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
 import SchemaForm from "../shared/SchemaForm";
 import createBridge from "../shared/schema";
-import { fetchJson } from "../shared/utils";
+import { fetchJson, pruneEmpty } from "../shared/utils";
 
 export default function EditRecordModal({
   editingRecord,
@@ -72,7 +72,7 @@ export default function EditRecordModal({
           <AutoForm
             schema={bridge}
             model={editingRecord}
-            onChangeModel={(m) => setEditingRecord(m)}
+            onChangeModel={(m) => setEditingRecord(pruneEmpty(m) || {})}
           >
             <SchemaForm
               schema={origSchema}

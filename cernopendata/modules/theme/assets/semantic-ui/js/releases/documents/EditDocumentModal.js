@@ -12,7 +12,7 @@ import { AutoForm } from "uniforms-semantic";
 import PreviewTab from "../shared/PreviewTab";
 import SchemaForm from "../shared/SchemaForm";
 import createBridge from "../shared/schema";
-import { fetchJson } from "../shared/utils";
+import { fetchJson, pruneEmpty } from "../shared/utils";
 
 export default function EditDocumentModal({
   doc,
@@ -146,8 +146,9 @@ export default function EditDocumentModal({
                       schema={bridge}
                       model={metaData}
                       onChangeModel={(m) => {
-                        setMetaData(m);
-                        setMetaDataBuffer(JSON.stringify(m, null, 2));
+                        const cleaned = pruneEmpty(m) || {};
+                        setMetaData(cleaned);
+                        setMetaDataBuffer(JSON.stringify(cleaned, null, 2));
                       }}
                     >
                       <SchemaForm
