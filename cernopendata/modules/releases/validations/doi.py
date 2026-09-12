@@ -3,7 +3,7 @@
 from flask import current_app
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 
-from ...datacite.utils import generate_doi
+from ...datacite.utils import generate_doi, validate_record
 from .base import Validation
 
 
@@ -47,6 +47,15 @@ class ValidDoi(Validation):
 
         for suffix in self._registered_suffixes(prefix, list(used_suffixes)):
             errors.append(f"DOI suffix already registered: {suffix}")
+
+        for i, record in enumerate(release.records or []):
+            if not record.get("doi"):
+                continue
+            try:
+                validate_record(record)
+            except Exception as e:
+                recid = record.get("recid", f"Entry {i + 1}")
+                errors.append(f"Record {recid}: Invalid DataCite metadata: {e}")
 
         return errors
 
