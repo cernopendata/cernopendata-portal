@@ -268,7 +268,7 @@ def faceted_search(page=None, experiment=None, collection=None):
     }
 
     for facet in facets:
-        _filter = filter_map.get(facet) or abort(404)
+        _filter = filter_map.get(facet.lower()) or abort(404)
         filters[_filter[0]] = _filter[1]
 
     return redirect(url_for("invenio_search_ui.search", **filters))

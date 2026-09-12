@@ -281,3 +281,23 @@ def test_old_search_qs(old_qs_args, new_qs_args):
     assert set(translated_qs.pop("f")) == set(new_qs_args.pop("f"))
     # compare rest of query params
     assert translated_qs == new_qs_args
+
+
+@pytest.mark.parametrize(
+    "url,expected_redirect",
+    [
+        ("/collection/CMS", "/search?experiment=CMS"),
+        ("/collection/cms", "/search?experiment=CMS"),
+        ("/collection/CMS-Primary-Datasets", "/search?collections=CMS-Primary-Datasets"),
+        ("/collection/cms-primary-datasets", "/search?collections=CMS-Primary-Datasets"),
+        ("/collection/Data-Policies", "/search?collections=Data-Policies"),
+        ("/collection/data-policies", "/search?collections=Data-Policies"),
+        ("/collection/News", "/search?type=News"),
+        ("/collection/news", "/search?type=News"),
+    ],
+)
+def test_collection_redirections(client, url, expected_redirect):
+    """Test case-insensitive redirections from /collection/<collection>."""
+    res = client.get(url)
+    assert res.status_code == 302
+    assert res.location.endswith(expected_redirect)
