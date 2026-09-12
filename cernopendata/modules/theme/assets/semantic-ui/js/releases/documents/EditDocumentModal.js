@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   Form,
@@ -72,6 +72,48 @@ export default function EditDocumentModal({
     setBodyBuffer(body?.content || "");
     setError(null);
   }, [doc]);
+
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          setError("Uploaded JSON must be a document object.");
+          return;
+        }
+        const { body, ...rest } = parsed;
+        const newMetaData = { ...rest };
+        if (body) {
+          newMetaData.body = { ...body };
+          delete newMetaData.body.content;
+          if (body.content !== undefined) {
+            setBodyBuffer(body.content);
+          }
+        }
+        setMetaData(newMetaData);
+        setMetaDataBuffer(JSON.stringify(newMetaData, null, 2));
+        setError(null);
+      } catch (err) {
+        setError("Failed to parse JSON file: " + err.message);
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+      setError("Failed to read file.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -218,6 +260,22 @@ export default function EditDocumentModal({
         />
       </Modal.Content>
       <Modal.Actions>
+        <input
+          type="file"
+          accept=".json,application/json"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleFileUpload}
+        />
+        <Button
+          type="button"
+          floated="left"
+          icon
+          labelPosition="left"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Icon name="upload" /> Replace from JSON file
+        </Button>
         <Button onClick={onClose}>Cancel</Button>
         <Button primary onClick={handleSave}>
           <Icon name="save" /> Save
