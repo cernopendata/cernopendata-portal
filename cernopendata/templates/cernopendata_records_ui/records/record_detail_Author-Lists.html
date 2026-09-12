@@ -81,7 +81,7 @@
               <label>Parent Dataset:</label>
               <span>
                 {% if relation.recid %}
-                <a href="/record/{{relation.recid}}">{{relation.title}}</a>
+                <a href="/record/{{relation.recid}}">{{relation.title or relation.recid | get_record_title}}</a>
                 {% else %}
                   {{relation.title}}
                 {% endif %}
