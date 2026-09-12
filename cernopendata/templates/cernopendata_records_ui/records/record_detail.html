@@ -36,7 +36,11 @@
             {% if record.authors %}
                 ;
             {% endif %}
-            {{ record.collaboration.name }}
+            {% if record.collaboration.recid %}
+                <a href="/record/{{ record.collaboration.recid }}">{{ record.collaboration.name }}</a>
+            {% else %}
+                {{ record.collaboration.name }}
+            {% endif %}
         {% endif %}
     </p>
 

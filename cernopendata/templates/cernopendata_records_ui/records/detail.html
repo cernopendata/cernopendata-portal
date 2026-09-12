@@ -27,7 +27,11 @@
                         <small>{{author.name}}</small>
                         {% endfor %}
                         {% if record.collaboration %}
-                        <span class="ui green label">{{record.collaboration.name}}</span>
+                            {% if record.collaboration.recid %}
+                            <a class="ui green label" href="/record/{{record.collaboration.recid}}">{{record.collaboration.name}}</a>
+                            {% else %}
+                            <span class="ui green label">{{record.collaboration.name}}</span>
+                            {% endif %}
                         {% endif %}
                         {% if record.year %}
                         <span class="ui green label">{{record.year}} Run</span>
