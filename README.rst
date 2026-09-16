@@ -8,9 +8,6 @@
 .. image:: https://img.shields.io/badge/licence-GPL_2-green.svg?style=flat
    :target: https://raw.githubusercontent.com/cernopendata/cernopendata-portal/main/LICENSE
 
-.. image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/cernopendata/opendata.cern.ch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
-
 About
 -----
 
@@ -34,8 +31,7 @@ information.
 Support
 -------
 
-You can ask questions at our `Forum <https://opendata-forum.cern.ch/>`_ or get
-in touch via our `Chatroom <https://gitter.im/cernopendata/opendata.cern.ch>`_.
+You can ask questions at our `Forum <https://opendata-forum.cern.ch/>`_.
 
 Authors
 -------
