@@ -11,9 +11,6 @@ from cernopendata.cold_storage.models import RequestMetadata
 
 from .utils import run_command
 
-# from cernopendata.cold_storage.models import TransferMetadata
-
-
 SINGLE_FILE_RECORDS = [
     {
         "recid": "1114",
@@ -95,16 +92,20 @@ def test_request_with_failed_transfer(
             )
             assert result.status_code == 200
 
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+
     failed_transfer = Transfer.create(
         {
             "action": "stage",
             "new_filename": "test-file",
             "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id,
             "file_id": "test-file-id",
             "method": "test",
         }
     )
     failed_transfer.status = "FAILED"
+    failed_transfer.finished = failed_transfer.submitted
     database.session.add(failed_transfer)
     database.session.commit()
 
@@ -112,3 +113,58 @@ def test_request_with_failed_transfer(
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.num_failed_transfers == 1
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_ignores_other_failures(
+    mock_verify, client, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "1118",
+            "title": "Test Record with Other Failures",
+            "file_specs": [
+                {"name": "file3.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+
+    failed_transfer_of_another_request = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id + 1,
+            "file_id": "test-file-id",
+            "method": "test",
+        }
+    )
+    failed_transfer_of_another_request.status = "FAILED"
+    failed_transfer_of_another_request.finished = (
+        failed_transfer_of_another_request.submitted
+    )
+    database.session.add(failed_transfer_of_another_request)
+    database.session.commit()
+
+    result = run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_failed_transfers == 0
