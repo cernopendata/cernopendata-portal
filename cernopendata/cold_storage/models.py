@@ -91,6 +91,7 @@ class TransferMetadata(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     record_uuid = db.Column(db.String(36), nullable=False)
+    request_id = db.Column(db.Integer, nullable=True)
     file_id = db.Column(db.String(36), nullable=False)
     action = db.Column(db.String(50), nullable=False)
     new_filename = db.Column(db.String(512), nullable=False)

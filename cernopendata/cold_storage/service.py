@@ -136,6 +136,7 @@ class RequestService:
                         dry=False,
                         max_transfers=max_transfers - submitted,
                         file=transfer.file,
+                        request_id=transfer.id,
                     )
                     logger.debug(f"Got {info}")
                     if info:
@@ -173,7 +174,7 @@ class RequestService:
             for request in requests:
                 record = RecordFilesWithIndex.get_record(request.record_id)
                 request.num_failed_transfers = Transfer.get_failed_transfers_count(
-                    request.record_id
+                    request
                 )
                 db.session.add(request)
                 if action == ColdStorageActions.STAGE:

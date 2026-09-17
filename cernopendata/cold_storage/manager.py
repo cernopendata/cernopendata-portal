@@ -53,7 +53,7 @@ class ColdStorageManager:
         return "tags" not in file or "hot_deleted" not in file["tags"]
 
     def _move_record_file(
-        self, record_uuid, file, action, move_function, register, force, dry
+        self, record_uuid, file, action, move_function, register, force, dry, request_id
     ):
         """Create a new copy of the files of a record in a new QoS."""
         if self._is_qos(file, action):
@@ -96,6 +96,7 @@ class ColdStorageManager:
         if not entry:
             return "error", None
         entry["record_uuid"] = record_uuid
+        entry["request_id"] = request_id
         entry["key"] = file["key"]
         entry["file_id"] = file["file_id"]
         entry["size"] = file["size"]
@@ -113,6 +114,7 @@ class ColdStorageManager:
         dry,
         max_transfers,
         file,
+        request_id,
     ):
         """Internal function to move the fiels of a record."""
         # Let's find the files inside the record
@@ -124,7 +126,14 @@ class ColdStorageManager:
             return []
         for my_file in self._catalog.get_files_from_record(record, limit, file):
             status, new_transfer = self._move_record_file(
-                record.id, my_file, action, move_function, register, force, dry
+                record.id,
+                my_file,
+                action,
+                move_function,
+                register,
+                force,
+                dry,
+                request_id,
             )
             summary[status] = summary.get(status, 0) + 1
             if new_transfer:
@@ -152,6 +161,7 @@ class ColdStorageManager:
         dry,
         max_transfers=0,
         file=None,
+        request_id=None,
     ):
         """Internal function."""
         if action in [ColdStorageActions.ARCHIVE, ColdStorageActions.STAGE]:
@@ -169,6 +179,7 @@ class ColdStorageManager:
                 dry,
                 max_transfers,
                 file,
+                request_id,
             )
         elif action == ColdStorageActions.CLEAR_HOT:
             return self.clear_hot(record_uuid, limit, force, dry, file)
