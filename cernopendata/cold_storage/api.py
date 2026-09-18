@@ -110,6 +110,7 @@ class Transfer:
             action=entry["action"],
             new_filename=entry["new_filename"],
             record_uuid=entry["record_uuid"],
+            request_id=entry.get("request_id"),
             file_id=entry["file_id"],
             method=entry["method"],
             method_id=entry.get("method_id", ""),
@@ -164,10 +165,10 @@ class Transfer:
             return current_app.config["COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD"]
 
     @staticmethod
-    def get_failed_transfers_count(record_id):
+    def get_failed_transfers_count(request):
         """Get number of failed transfers."""
         return TransferMetadata.query.filter(
-            TransferMetadata.record_uuid == str(record_id),
+            TransferMetadata.request_id == request.id,
             TransferMetadata.status == "FAILED",
         ).count()
 

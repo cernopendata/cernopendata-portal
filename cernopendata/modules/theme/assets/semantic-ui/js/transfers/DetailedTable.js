@@ -57,7 +57,7 @@ const DetailedTable = ({
 
   const getSuccessfulTransferCount = (item) => {
     if (item.num_failed_transfers !== null) {
-      return item.num_transfers - item.num_failed_transfers;
+      return Math.max(0, item.num_transfers - item.num_failed_transfers);
     }
     return item.num_transfers;
   };
