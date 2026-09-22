@@ -168,7 +168,7 @@ const DetailedTable = ({
               onClick={() => handleSort("size")}
               rowSpan="2"
             >
-              Size of issued
+              Size of successful
               <br />
               transfers
             </Table.HeaderCell>
