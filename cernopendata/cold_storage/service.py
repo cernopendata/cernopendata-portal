@@ -142,7 +142,6 @@ class RequestService:
                     if info:
                         submitted += len(info)
                         transfer.num_transfers += len(info)
-                        transfer.size += sum(item.size for item in info)
                     transfer.started_at = datetime.utcnow()
                     logger.info(
                         f"THE LIMIT WAS {max_transfers}, AND WE SUBMITTED {submitted}"
@@ -176,6 +175,7 @@ class RequestService:
                 request.num_failed_transfers = Transfer.get_failed_transfers_count(
                     request
                 )
+                request.size = Transfer.get_completed_transfers_size(request)
                 db.session.add(request)
                 if action == ColdStorageActions.STAGE:
                     if record["availability"] != RecordAvailability.ONLINE.value:

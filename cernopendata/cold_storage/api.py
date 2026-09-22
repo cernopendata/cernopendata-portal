@@ -172,6 +172,18 @@ class Transfer:
             TransferMetadata.status == "FAILED",
         ).count()
 
+    @staticmethod
+    def get_completed_transfers_size(request):
+        """Get the total size of the completed transfers."""
+        return (
+            db.session.query(func.coalesce(func.sum(TransferMetadata.size), 0))
+            .filter(
+                TransferMetadata.request_id == request.id,
+                TransferMetadata.status == "DONE",
+            )
+            .scalar()
+        )
+
 
 class Request:
     """Class to check the cold storage requests."""
