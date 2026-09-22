@@ -807,6 +807,8 @@ OAUTHCLIENT_CERN_OPENID_ALLOWED_ROLES = [
     "delphi-curator",
     "alice-curator",
     "default-role",
+    "opal-curator",
+    "lhcb-curator",
 ]
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True
 
