@@ -35,11 +35,13 @@ from deepdiff import DeepDiff
 from flask import current_app
 from invenio_db import db
 from invenio_indexer.api import RecordIndexer
+from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from cernopendata.api import RecordFilesWithIndex
 from cernopendata.modules.datacite.utils import generate_doi as mint_doi
 from cernopendata.modules.datacite.utils import register_record_doi, update_record_doi
 from cernopendata.modules.datacite.utils import (
@@ -53,6 +55,7 @@ from cernopendata.modules.fixtures.cli import (
     update_doc_or_glossary,
     update_record,
 )
+from cernopendata.modules.records.api import OpenDataRecord
 
 from .models import (
     ReleaseHistory,
@@ -77,27 +80,29 @@ class ReleaseValidation:
     @property
     def fixable(self):
         """Check if a validation has pending errors that can be fixed automatically."""
-        return self.validator.fixable(self._metadata.release)
+        return bool(self.validator and self.validator.fixable(self._metadata.release))
 
     @property
     def error_message(self):
         """Error message that should be presented."""
+        if not self.validator:
+            return f"Validation '{self.name}' is no longer available."
         return self.validator.error_message
 
     @property
     def optional(self):
         """Boolean to check if the validation is optional."""
-        return self.validator.optional
+        return True if not self.validator else self.validator.optional
 
     @property
     def is_document_validation(self):
         """True if this validation only applies to documents."""
-        return self.validator.applies_to == {"documents"}
+        return bool(self.validator and self.validator.applies_to == {"documents"})
 
     @property
     def is_record_validation(self):
         """True if this validation only applies to records."""
-        return self.validator.applies_to == {"records"}
+        return bool(self.validator and self.validator.applies_to == {"records"})
 
     @property
     def name(self):
@@ -126,6 +131,8 @@ class ReleaseValidation:
 
     def fix(self):
         """Execute the fix for a validation."""
+        if not self.validator:
+            return []
         return self.validator.fix(self._metadata.release)
 
     def to_dict(self):
@@ -229,6 +236,7 @@ class Release:
             num_docs=len(documents),
             status=ReleaseStatus.DRAFT.value,
         )
+
         obj = cls(release)
         obj.create_validations()
         obj.validate(current_user)
@@ -458,7 +466,6 @@ class Release:
             self.change_status(ReleaseStatus.DRAFT, current_user)
             db.session.commit()
             raise RuntimeError("Release has validation errors and cannot be staged")
-
         schema = self._record_schema_url()
         for record_data in self._metadata.records:
             record_data.setdefault("$schema", schema)
@@ -469,7 +476,11 @@ class Release:
             record_data["prerelease"] = (
                 f"{self._metadata.experiment}/{self._metadata.id}"
             )
-            record = create_record(record_data, False)
+            # Records copied from an existing entry carry version metadata and
+            # must retain their file references instead of creating duplicate
+            # file objects with the same URI.
+            skip_files = bool(record_data.get("version"))
+            record = create_record(record_data, skip_files)
             record.commit()
 
         doc_schema = self._document_schema_url()
@@ -506,6 +517,41 @@ class Release:
         """Record a rollback failure and revert the release to STAGED."""
         self._mark_failed("Rollback", message, ReleaseStatus.STAGED, current_user)
 
+    @staticmethod
+    def _move_concept_pids(pid_type, concept_id, entry, entry_cls, indexer, oai=False):
+        """Move the concept PIDs of an entry to the version being published.
+
+        The concept PIDs are the ones without the '-v<version>' suffix. They are
+        minted with the first version and are the permanent entry point of an
+        entry, so they have to follow the latest version. The version they were
+        pointing to stops being the latest one.
+        """
+        concept_pid = PersistentIdentifier.get(pid_type, concept_id)
+        if concept_pid.object_uuid == entry.id:
+            return
+
+        previous = entry_cls.get_record(concept_pid.object_uuid)
+        previous.setdefault("_versions", {})["is_latest"] = False
+        previous.commit()
+        indexer.index(previous)
+
+        concept_pid.object_uuid = entry.id
+        db.session.add(concept_pid)
+
+        if not oai:
+            return
+        oai_value = f"oai:cernopendata.cern:{concept_id}"
+        try:
+            oai_pid = PersistentIdentifier.get("oai", oai_value)
+        except PIDDoesNotExistError:
+            # Entries created before the OAI PIDs were introduced do not have one.
+            current_app.logger.warning(
+                f"No OAI PID '{oai_value}'; it cannot be moved to the latest version."
+            )
+            return
+        oai_pid.object_uuid = entry.id
+        db.session.add(oai_pid)
+
     def publish(self, current_user):
         """Publish a release."""
         if not self.is_status(ReleaseStatus.PUBLISHING):
@@ -514,10 +560,24 @@ class Release:
         indexer = RecordIndexer()
         errors = []
         for record_data in self._metadata.records:
-            pid_object = PersistentIdentifier.get("recid", record_data["recid"])
+            version = record_data.get("version") or 1
+            # The bare recid is the concept PID: it keeps pointing to the first
+            # version, so the version-specific PID is the one to update.
+            pid_object = PersistentIdentifier.get(
+                "recid", f"{record_data['recid']}-v{version}"
+            )
             record = update_record(pid_object, record_data, True)
             record.commit()
             indexer.index(record)
+            if version > 1:
+                self._move_concept_pids(
+                    "recid",
+                    record_data["recid"],
+                    record,
+                    RecordFilesWithIndex,
+                    indexer,
+                    oai=True,
+                )
             if record_data.get("doi"):
                 try:
                     register_record_doi(record_data)
@@ -535,10 +595,15 @@ class Release:
             doc_copy = deepcopy(doc_data)
             doc_copy.pop("_source_filename", None)
             doc_copy.pop("prerelease", None)
-            pid_object = PersistentIdentifier.get("docid", slug)
+            version = doc_copy.get("version") or 1
+            # As for the records, the bare slug is the concept PID and keeps
+            # pointing to the first version.
+            pid_object = PersistentIdentifier.get("docid", f"{slug}-v{version}")
             doc = update_doc_or_glossary(pid_object, doc_copy, skip_files=True)
             doc.commit()
             indexer.index(doc)
+            if version > 1:
+                self._move_concept_pids("docid", slug, doc, OpenDataRecord, indexer)
 
         self._metadata.errors = errors
         self._metadata.num_errors = len(errors)
@@ -589,15 +654,18 @@ class Release:
             raise RuntimeError("Release is not ROLLINGBACK")
 
         for record_data in self._metadata.records:
-            pid_object = PersistentIdentifier.get("recid", record_data["recid"])
-            delete_record(pid_object, "recid", logger=current_app.logger)
+            version = record_data.get("version") or 1
+            pid_object = PersistentIdentifier.get(
+                "recid", f"{record_data['recid']}-v{version}"
+            )
+            delete_record(pid_object, "recid")
 
         for doc_data in self._metadata.documents or []:
             slug = doc_data.get("slug")
             if slug:
-                pid_object = PersistentIdentifier.get("docid", slug)
-                delete_doc_or_glossary(pid_object, "docid", logger=current_app.logger)
-
+                version = doc_data.get("version") or 1
+                pid_object = PersistentIdentifier.get("docid", f"{slug}-v{version}")
+                delete_doc_or_glossary(pid_object, "docid")
         self.change_status(ReleaseStatus.READY, current_user)
         db.session.add(self._metadata)
         db.session.commit()
