@@ -576,15 +576,15 @@ RECORDS_REST_FACETS = {
     "records": {
         "aggs": dict(
             type=dict(
-                terms=dict(field="type.primary", order=dict(_key="asc")),
+                terms=dict(field="type.primary", order=dict(_key="asc"), size=50),
                 aggs=dict(
                     subtype=dict(
-                        terms=dict(field="type.secondary", order=dict(_key="asc"))
+                        terms=dict(field="type.secondary", order=dict(_key="asc"), size=50)
                     )
                 ),
             ),
-            experiment=dict(terms=dict(field="experiment", order=dict(_key="asc"))),
-            availability=dict(terms=dict(field="availability")),
+            experiment=dict(terms=dict(field="experiment", order=dict(_key="asc"), size=50)),
+            availability=dict(terms=dict(field="availability", size=50)),
             year=dict(
                 date_histogram=dict(
                     field="date_created",
@@ -599,27 +599,27 @@ RECORDS_REST_FACETS = {
                 )
             ),
             collision_type=dict(
-                terms=dict(field="collision_information.type", order=dict(_key="asc"))
+                terms=dict(field="collision_information.type", order=dict(_key="asc"), size=50)
             ),
             collision_energy=dict(
-                terms=dict(field="collision_information.energy", order=dict(_key="asc"))
+                terms=dict(field="collision_information.energy", order=dict(_key="asc"), size=50)
             ),
             category=dict(
-                terms=dict(field="categories.primary", order=dict(_key="asc")),
+                terms=dict(field="categories.primary", order=dict(_key="asc"), size=50),
                 aggs=dict(
                     subcategory=dict(
-                        terms=dict(field="categories.secondary", order=dict(_key="asc"))
+                        terms=dict(field="categories.secondary", order=dict(_key="asc"), size=50)
                     )
                 ),
             ),
             magnet_polarity=dict(
-                terms=dict(field="magnet_polarity", order=dict(_term="asc"))
+                terms=dict(field="magnet_polarity", order=dict(_term="asc"), size=50)
             ),
             stripping_stream=dict(
-                terms=dict(field="stripping.stream", order=dict(_term="asc"))
+                terms=dict(field="stripping.stream", order=dict(_term="asc"), size=50)
             ),
             stripping_version=dict(
-                terms=dict(field="stripping.version", order=dict(_term="asc"))
+                terms=dict(field="stripping.version", order=dict(_term="asc"), size=50)
             ),
             number_events={
                 "range": {
@@ -634,8 +634,8 @@ RECORDS_REST_FACETS = {
                     ],
                 }
             },
-            signature=dict(terms=dict(field="signature", order=dict(_key="asc"))),
-            keywords=dict(terms=dict(field="keywords", order=dict(_key="asc"))),
+            signature=dict(terms=dict(field="signature", order=dict(_key="asc"), size=50)),
+            keywords=dict(terms=dict(field="keywords", order=dict(_key="asc"), size=50)),
         ),
         "post_filters": dict(
             availability=terms_filter("availability"),
