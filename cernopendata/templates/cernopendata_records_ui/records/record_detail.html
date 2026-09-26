@@ -103,7 +103,7 @@
         {% if record.accelerator %} <a class="ui tiny label grey"  href="/search?q={{ record.accelerator }}"> {{ record.accelerator }}</a> {% endif %}
         {% if record.relations %}
         {% for relation in record.relations %}
-            {% if relation.type == 'isChildOf' and relation.recid %} <a  class="ui tiny label grey" href="/record/{{ relation.recid or relation.title }}"> Parent Dataset: {{relation.title}}</a> {% endif %}
+            {% if relation.type == 'isChildOf' and relation.recid %} <a  class="ui tiny label grey" href="/record/{{ relation.recid or relation.title }}"> Parent Dataset: {{relation.title or relation.recid | get_record_title}}</a> {% endif %}
         {% endfor %}
         {% endif %}
     </p>
