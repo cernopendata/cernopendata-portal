@@ -13,6 +13,7 @@ from datetime import timedelta
 from celery import shared_task
 from flask.cli import with_appcontext
 
+from .cli import setup_cold_logging
 from .service import RequestService, TransferService
 
 CheckTransfersTask = {
@@ -25,5 +26,6 @@ CheckTransfersTask = {
 @with_appcontext
 def check_transfers():
     """Check the ongoing transfers."""
+    setup_cold_logging()
     RequestService.process_requests()
     TransferService.process_transfers()
