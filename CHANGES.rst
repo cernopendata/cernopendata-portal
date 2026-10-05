@@ -1,6 +1,15 @@
 Changes
 =======
 
+Version 1.3.0 (released 2026-10-05)
+----------------------------
+- feat(opal): add new experiment OPAL
+- feat(cold): improve verbosity options for cold storage commands
+- fix(cold): ensure staging requests are allowed; fix information displayed in the transfer requests table
+- fix(releases): ensure editor does not add empty fields
+- build: update xrootd version
+- docs: update contribution guidelines and add an AI policy
+
 Version 1.2.1 (released 2026-08-11)
 ----------------------------
 - fix(mappings): map methodology.steps.note as an object
