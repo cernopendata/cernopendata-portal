@@ -1,6 +1,18 @@
 Changes
 =======
 
+Version 1.3.0 (released 2026-10-13)
+----------------------------
+- feat(curation): add new experiment OPAL and MCNet
+- feat(cold): improve verbosity options for cold storage commands
+- fix(cold): ensure staging requests are allowed; fix information displayed and the sorting in the transfer requests table
+- fix(releases): ensure editor does not add empty fields
+- fix(oai-pmh): ensure next results can be viewed without causing errors
+- fix(news): add CORS headers to news endpoint
+- build(nginx): upgrade to nginx version 1.30 and use a redirect to eospublic, instead of reading from the fuse mount point
+- build: update xrootd version
+- docs: update contribution guidelines and add an AI policy
+
 Version 1.2.1 (released 2026-08-11)
 ----------------------------
 - fix(mappings): map methodology.steps.note as an object
