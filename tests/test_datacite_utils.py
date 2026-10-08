@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from invenio_pidstore.errors import PIDDoesNotExistError
 
+from cernopendata.modules.datacite.serializers import datacite_etree
 from cernopendata.modules.datacite.utils import (
     register_record_doi,
     update_record_doi,
@@ -132,3 +133,21 @@ def test_validate_record_rejects_a_record_without_creators(mocker):
         validate_record({"recid": "atlas-160004"})
 
     mock_schema43.tostring.assert_not_called()
+
+
+def test_datacite_etree_handles_a_record_without_doi(app):
+    record = {
+        "_source": {
+            "recid": 12501,
+            "title": "Test",
+            "publisher": "CERN Open Data Portal",
+            "date_published": "2020",
+            "type": {"primary": "Software"},
+            "collaboration": {"name": "CMS collaboration"},
+        }
+    }
+
+    with app.test_request_context("/", base_url="https://opendata.cern.ch"):
+        resource = datacite_etree(None, record)
+
+    assert resource.find("titles") is not None

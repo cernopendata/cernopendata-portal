@@ -527,7 +527,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     <!-- oai resumptionToken -->
 
-    <xsl:template match="oai:resumptionToken">
+    <xsl:template match="oai:resumptionToken[string(.)]">
         <p>There are more results.</p>
         <table class="values">
             <tr><td class="key">resumptionToken:</td>

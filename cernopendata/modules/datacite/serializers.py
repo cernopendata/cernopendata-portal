@@ -38,6 +38,8 @@ def datacite_etree(pid, record):
     """
     # TODO: Ditto. See https://github.com/inveniosoftware/flask-resources/issues/117
     data_dict = DataCiteSerializer().dump(record["_source"])
+    if not data_dict["identifiers"]:
+        data_dict.pop("identifiers")
     f = schema43.dump_etree(data_dict)
 
     if f.find("identifier") is None:
