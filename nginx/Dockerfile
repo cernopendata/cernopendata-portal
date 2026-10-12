@@ -24,8 +24,22 @@
 
 FROM docker.io/library/nginx:1.30-perl
 
+# Install the CA-Certificate
+RUN curl -fsSL \
+        'https://ca.cern.ch/cafiles/certificates/CERN%20Root%20Certification%20Authority%202.crt' \
+        -o /tmp/CERN-Root-2.der && \
+    openssl x509 -inform DER \
+        -in /tmp/CERN-Root-2.der \
+        -out /usr/local/share/ca-certificates/CERN-Root-2.crt && \
+    update-ca-certificates && \
+    rm /tmp/CERN-Root-2.der
+
+# Expose the resolver
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 RUN rm /etc/nginx/conf.d/default.conf
-COPY localhost.conf /etc/nginx/conf.d/
+# Rendered into /etc/nginx/conf.d/localhost.conf by the entrypoint (envsubst),
+# which fills in ${NGINX_LOCAL_RESOLVERS} from /etc/resolv.conf.
+COPY localhost.conf.template /etc/nginx/templates/
 COPY localhost.crt /etc/ssl/localhost.crt
 COPY localhost.key /etc/ssl/localhost.key
 

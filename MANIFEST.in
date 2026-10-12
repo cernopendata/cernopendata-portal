@@ -12,6 +12,7 @@ include Dockerfile
 include LICENSE
 include babel.ini
 include nginx/Dockerfile
+include nginx/localhost.conf.template
 include pytest.ini
 include sentry/Dockerfile
 recursive-include cernopendata *.config
@@ -37,7 +38,6 @@ recursive-include cernopendata *.txt
 recursive-include cernopendata *.variables
 recursive-include cernopendata *.xml
 recursive-include cernopendata *.xsl
-recursive-include nginx *.conf
 recursive-include scripts *.cfg
 recursive-include scripts *.py
 recursive-include scripts *.sh
