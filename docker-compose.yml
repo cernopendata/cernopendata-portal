@@ -178,7 +178,7 @@ services:
   proxy:
     restart: "always"
     build: ./nginx
-    image: cernopendata/nginx:1.22
+    image: cernopendata/nginx:1.30
     ports:
       - "127.0.0.1:80:80"
       - "127.0.0.1:443:443"

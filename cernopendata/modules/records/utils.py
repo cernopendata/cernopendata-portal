@@ -23,6 +23,7 @@ import itertools
 import json
 import sys
 from os.path import basename
+from pathlib import Path
 
 from flask import (
     Response,
@@ -193,14 +194,13 @@ def eos_file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
 def eos_send_file_or_404(file_path=""):
     """File download for a given EOS uri."""
-    storage = EOSFileStorage(
-        "root://eospublic.cern.ch//eos/opendata/" + file_path,
-        # create_dir=False
-    )
+    file_url = "root://eospublic.cern.ch//eos/opendata/" + file_path
 
     filename = file_path.split("/")[-1:]
 
     try:
+        size = Path("/eos/opendata/" + file_path).stat().st_size
+        storage = EOSFileStorage(file_url, size=size)
         return storage.send_file(filename[0])
     except Exception:
         abort(404)
