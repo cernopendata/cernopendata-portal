@@ -9,6 +9,7 @@ from cernopendata.cold_storage.api import Transfer
 from cernopendata.cold_storage.cli import cold
 from cernopendata.cold_storage.models import RequestMetadata
 from cernopendata.cold_storage.schemas import TransferRequestSchema
+from cernopendata.cold_storage.service import RequestService
 
 from .utils import run_command
 
@@ -243,3 +244,33 @@ def test_request_size_counts_only_completed_transfers(
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.size == 1234
     assert request.num_failed_transfers == 1
+
+
+def test_sort_by_successful_transfers(app, database, record_factory):
+    """Sort successful transfers column in transfer requests table."""
+    f1 = [{"name": "file5.txt", "content": b"dummy"}]
+    f2 = [{"name": "file6.txt", "content": b"dummy"}]
+    record1 = record_factory({"recid": "2101", "title": "R1", "file_specs": f1})
+    record2 = record_factory({"recid": "2102", "title": "R2", "file_specs": f2})
+
+    uuid1 = PersistentIdentifier.get("recid", record1["id"]).object_uuid
+    uuid2 = PersistentIdentifier.get("recid", record2["id"]).object_uuid
+
+    req1 = RequestMetadata(record_id=uuid1, num_transfers=10, num_failed_transfers=6)
+    req2 = RequestMetadata(record_id=uuid2, num_transfers=7, num_failed_transfers=0)
+    database.session.add_all([req1, req2])
+    database.session.commit()
+
+    kwargs = {"sort": "num_transfers", "page": 1, "per_page": 100}
+
+    # Fetch sorted request IDs filtered to the test records
+    def get_sorted_ids(direction):
+        result = RequestService.get_requests(direction=direction, **kwargs)
+        ids = []
+        for request in result.items:
+            if request.id in (req1.id, req2.id):
+                ids.append(request.id)
+        return ids
+
+    assert get_sorted_ids("desc") == [req2.id, req1.id]
+    assert get_sorted_ids("asc") == [req1.id, req2.id]

@@ -28,7 +28,7 @@ from datetime import datetime
 
 from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from cernopendata.api import RecordFilesWithIndex
 
@@ -243,12 +243,18 @@ class RequestService:
             ).all()
 
         if sort:
-            column = getattr(RequestMetadata, sort, None)
-            if column is not None:
-                if direction == "desc":
-                    query = query.order_by(column.desc())
-                else:
-                    query = query.order_by(column.asc())
+            # Sort by successful transfers (total - failed, clamped to 0) or by column
+            if sort == "num_transfers":
+                total = func.coalesce(RequestMetadata.num_transfers, 0)
+                failed = func.coalesce(RequestMetadata.num_failed_transfers, 0)
+                successful = total - failed
+                sort_expr = case((successful < 0, 0), else_=successful)
+            else:
+                sort_expr = getattr(RequestMetadata, sort, None)
+
+            if sort_expr is not None:
+                order = sort_expr.desc() if direction == "desc" else sort_expr.asc()
+                query = query.order_by(order)
         else:
             query = query.order_by(RequestMetadata.created_at.desc())
 
