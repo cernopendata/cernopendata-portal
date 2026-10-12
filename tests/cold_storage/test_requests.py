@@ -8,6 +8,7 @@ from invenio_pidstore.models import PersistentIdentifier
 from cernopendata.cold_storage.api import Transfer
 from cernopendata.cold_storage.cli import cold
 from cernopendata.cold_storage.models import RequestMetadata
+from cernopendata.cold_storage.schemas import TransferRequestSchema
 
 from .utils import run_command
 
@@ -60,6 +61,9 @@ def test_requests(
         f"{len(record_data['file_specs'])} transfers have been submitted!"
         in caplog.text
     )
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert TransferRequestSchema().dump(request)["recid"] == recid
 
 
 @patch(

@@ -60,5 +60,7 @@ class TransferRequestSchema(Schema):
 
     def get_recid(self, obj):
         """Convert the uuid into the recid."""
-        pid = PersistentIdentifier.query.filter_by(object_uuid=obj.record_id).first()
+        pid = PersistentIdentifier.query.filter_by(
+            object_uuid=obj.record_id, pid_type="recid"
+        ).first()
         return pid.pid_value if pid else None
