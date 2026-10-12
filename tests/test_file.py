@@ -31,17 +31,17 @@ from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records.models import RecordMetadata
+from werkzeug.exceptions import NotFound
 
-from cernopendata.api import FileIndexMetadata, RecordFilesWithIndex
 from cernopendata.modules.fixtures.cli import (
     create_record,
     delete_record,
     update_record,
 )
-from cernopendata.modules.records.utils import record_file_page
+from cernopendata.modules.records.utils import eos_send_file_or_404, record_file_page
 
 
-def test_file(app, database, search):
+def test_file(app, database, search, monkeypatch):
     """Checking that records can be inserted"""
     data = {
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
@@ -75,6 +75,18 @@ def test_file(app, database, search):
         )
         response = json.loads(req.response[0])
     assert response["files"][0]["uri"] == "root://foo/bar"
+
+    path_mock = MagicMock()
+    path_mock.return_value.stat.return_value.st_size = 2048
+    monkeypatch.setattr("cernopendata.modules.records.utils.Path", path_mock)
+    monkeypatch.setattr("invenio_files_rest.storage.PyFSFileStorage.open", MagicMock())
+    with app.test_request_context():
+        download = eos_send_file_or_404("foo/baz")
+        assert download.headers["Content-Length"] == "2048"
+        path_mock.assert_called_with("/eos/opendata/foo/baz")
+        path_mock.return_value.stat.side_effect = FileNotFoundError
+        with pytest.raises(NotFound):
+            eos_send_file_or_404("foo/missing")
     record.commit()
     data2 = {
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
