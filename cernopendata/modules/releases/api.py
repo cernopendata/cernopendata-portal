@@ -274,13 +274,14 @@ class Release:
     def validate_experiment(cls, experiment):
         """Ensure that the requested experiment exists."""
         return experiment in {
-            "lhcb",
-            "opera",
             "alice",
             "atlas",
             "cms",
             "delphi",
+            "lhcb",
+            "mcnet",
             "opal",
+            "opera",
         }
 
     @classmethod
