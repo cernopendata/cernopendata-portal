@@ -55,6 +55,52 @@ def get_record_title(id, type="recid"):
     return record.get("title", "")
 
 
+@blueprint.app_template_global("entry_versions")
+def entry_versions(pid_type, entry_id, current_uuid=None):
+    """Return every version of an entry, sorted from the oldest one.
+
+    `entry_id` is the identifier without the version suffix, and `current_uuid`
+    the id of the record being displayed, used to flag which version that is.
+    The versions are discovered from the PIDs, so the full list is returned no
+    matter which version is being displayed. Each one is reported with the date
+    its record was created, which is when that version appeared on the portal.
+    Versions whose record is gone are skipped, so that a broken version does
+    not hide the rest of them.
+    """
+    import re
+
+    from invenio_pidstore.models import PersistentIdentifier
+    from invenio_records.api import Record
+    from sqlalchemy.exc import NoResultFound
+
+    # The '_' of a slug is a wildcard for LIKE, so the suffix is checked again
+    # below to discard the entries that only look like a version of this one.
+    candidates = PersistentIdentifier.query.filter(
+        PersistentIdentifier.pid_type == pid_type,
+        PersistentIdentifier.pid_value.like(f"{entry_id}-v%"),
+    ).all()
+
+    versions = []
+    for pid in candidates:
+        match = re.fullmatch(rf"{re.escape(entry_id)}-v(\d+)", pid.pid_value)
+        if not match:
+            continue
+        try:
+            record = Record.get_record(pid.object_uuid)
+        except NoResultFound:
+            continue
+        versions.append(
+            {
+                "index": int(match.group(1)),
+                "pid_value": pid.pid_value,
+                "created": record.created,
+                "is_current": str(pid.object_uuid) == str(current_uuid),
+            }
+        )
+
+    return sorted(versions, key=lambda version: version["index"])
+
+
 @blueprint.app_template_filter("get_first_file")
 def get_first_file(file_list):
     """Fetches first file from a list."""

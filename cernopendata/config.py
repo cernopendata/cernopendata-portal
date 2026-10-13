@@ -304,7 +304,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 # JSONSchemas
 JSONSCHEMAS_ENDPOINT = "/schema"
-JSONSCHEMAS_HOST = "opendata.cern.ch"
+JSONSCHEMAS_HOST = os.environ.get("CERNOPENDATA_JSONSCHEMAS_HOST", "opendata.cern.ch")
 # JSONSCHEMAS_URL_SCHEME = "http"
 JSONSCHEMAS_REPLACE_REFS = True
 
@@ -446,6 +446,9 @@ def _query_parser_and(qstr=None):
         )
     else:
         _query = dsl.Q()
+
+    # Exclude the old versions
+    _query = _query & ~dsl.Q("term", **{"_versions.is_latest": False})
     # This is only for backward compatibility, in case a link like https://opendata.cern/search?q=&f=ondemand
     # had been saved. Since it is kind of a corner case, we could consider dropping it completely on a future release
     if (

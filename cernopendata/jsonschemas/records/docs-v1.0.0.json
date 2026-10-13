@@ -6,6 +6,24 @@
     "$schema": {
       "type": "string"
     },
+    "_concept_parent": {
+      "type": "string"
+    },
+    "_id_field": {
+      "type": "string"
+    },
+    "_versions": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "is_latest": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "author": {
       "type": "string"
     },
@@ -123,6 +141,11 @@
         }
       },
       "type": "object"
+    },
+    "version": {
+      "description": "The version number of this record",
+      "minimum": 1,
+      "type": "integer"
     }
   },
   "title": "Article Schema.",
