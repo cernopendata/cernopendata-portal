@@ -802,13 +802,14 @@ OAUTHCLIENT_CERN_VERIFY_EXP = True
 OAUTHCLIENT_CERN_VERIFY_AUD = False
 OAUTHCLIENT_CERN_USER_INFO_FROM_ENDPOINT = True
 OAUTHCLIENT_CERN_OPENID_ALLOWED_ROLES = [
-    "cms-curator",
-    "atlas-curator",
-    "delphi-curator",
     "alice-curator",
+    "atlas-curator",
+    "cms-curator",
     "default-role",
-    "opal-curator",
+    "delphi-curator",
     "lhcb-curator",
+    "mcnet-curator",
+    "opal-curator",
 ]
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True
 
