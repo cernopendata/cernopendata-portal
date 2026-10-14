@@ -70,7 +70,7 @@ const DetailedTable = ({
         compact
         size="small"
         className="hoverable-row-table"
-        style={isLoading ? { pointerEvents: "none", opacity: 0.8 } : {}}
+        style={isLoading ? { opacity: 0.8 } : {}}
       >
         <Table.Header>
           <Table.Row>
@@ -194,15 +194,13 @@ const DetailedTable = ({
               <Input
                 type="text"
                 placeholder="Filter by record"
-                defaultValue={recordFilter}
+                value={recordFilter}
                 onChange={(e) => {
-                  if (isLoading) return;
                   const value = e.target.value;
                   setRecordFilter(value);
                   updateURLParam("record_id", value);
                 }}
                 className="narrow-filter"
-                disabled={isLoading}
               ></Input>
             </Table.HeaderCell>
             <Table.HeaderCell>
