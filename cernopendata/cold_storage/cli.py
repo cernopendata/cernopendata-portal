@@ -29,6 +29,7 @@ from datetime import datetime
 from math import log2
 
 import click
+import gfal2
 from flask.cli import with_appcontext
 from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
@@ -121,6 +122,9 @@ def setup_cold_logging(debug=False, silent=False):
         raise click.UsageError("--debug and --silent options are incompatible")
     level = logging.DEBUG if debug else logging.WARNING if silent else logging.INFO
     logging.getLogger("cernopendata.cold_storage").setLevel(level)
+    gfal2.set_verbose(
+        gfal2.verbose_level.debug if debug else gfal2.verbose_level.warning
+    )
 
 
 @click.group()
