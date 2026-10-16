@@ -295,7 +295,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cold-storage-events": {
         **CheckTransfersTask,
-        "schedule": timedelta(minutes=5),  # Every thirty minutes
+        "schedule": timedelta(minutes=15),  # Every fifteen minutes
+        "options": {"expires": 900},
     },
     "process-eos-dump": {
         **ProcessEosDumpTask,
