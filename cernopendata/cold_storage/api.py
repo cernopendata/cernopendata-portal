@@ -26,6 +26,7 @@
 
 import importlib
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 
@@ -34,6 +35,8 @@ from flask import current_app
 from flask_mail import Message
 from invenio_db import db
 from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
+from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
 from invenio_records_files.api import FileObject, Record
 from sqlalchemy import func
 
@@ -191,8 +194,40 @@ class Request:
     @staticmethod
     def send_email(req, emails):
         """Send an email notification using Invenio's mail system."""
-        subject = f"Transfer {req.id} Completed"
-        body = f"Hello,\n\nYour transfer with ID {req.id} has been completed successfully.\n\nBest regards."
+        pid = PersistentIdentifier.query.filter_by(
+            object_uuid=req.record_id, pid_type="recid"
+        ).first()
+        recid = pid.pid_value if pid else ""
+        record_metadata = RecordMetadata.query.get(req.record_id)
+        title = (record_metadata.json or {}).get("title") if record_metadata else None
+        title = title or f"Record {recid}"
+        record_url = (
+            os.path.join(current_app.config["PIDSTORE_LANDING_BASE_URL"], recid)
+            if recid
+            else ""
+        )
+
+        date_format = "%d %B %Y %H:%M"
+        requested_on = req.created_at.strftime(date_format) if req.created_at else "-"
+        completed_on = (
+            req.completed_at.strftime(date_format) if req.completed_at else "-"
+        )
+
+        subject = f"[CERN Open Data] Files for record {recid} are ready to download"
+        body = (
+            "Dear user,\n\n"
+            "The files you requested from the CERN Open Data portal are now "
+            "available for download:\n\n"
+            f"{title}: {record_url}\n\n"
+            f"The request was submitted on {requested_on} "
+            f"and completed on {completed_on}.\n\n"
+            "You are receiving this message because this email address was "
+            "subscribed to notifications for this request. It may have been "
+            "subscribed by someone else; if you do not recognise it, you can "
+            "safely ignore this message.\n\n"
+            "Best regards,\n"
+            "The CERN Open Data team"
+        )
         for subscriber in emails:
             msg = Message(
                 subject,
