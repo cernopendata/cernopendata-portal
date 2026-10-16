@@ -82,11 +82,11 @@ def test_send_email(app, database, smtp_server, staged_record):
     for email, captured_email in zip(emails, smtp_server.inbox):
         assert captured_email["from"] == "opendata-noreply@cern.ch"
         assert captured_email["to"] == [email]
-        assert f"Transfer {request.id} Completed".encode() in captured_email["data"]
-        assert (
-            f"Your transfer with ID {request.id} has been completed successfully".encode()
-            in captured_email["data"]
-        )
+        data = captured_email["data"]
+        assert b"[CERN Open Data]" in data
+        assert b"Dummy file" in data
+        assert b"record 1114" in data
+        assert b"/record/1114" in data
 
 
 def test_mark_as_completed_notifies_each_subscriber(
