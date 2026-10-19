@@ -69,8 +69,8 @@ target/
 nginx/localhost.crt
 nginx/localhost.key
 
-# Local dev upload storage
-data/uploads/
+# Local dev storage
+data/
 
 # Claude
 memory/
