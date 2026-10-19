@@ -31,7 +31,14 @@ cernopendata index init
 sleep 20
 
 cernopendata files location local var/data --default
-cernopendata cold location add --cold-path https://eosctapublic.cern.ch:8444/eos/ctapublic/archive/opendata/ --hot-path root://eospublic.cern.ch//eos/opendata/ --manager-class cernopendata.cold_storage.transfer.fts.TransferManager
+
+if [[ "$@" = *"--local-cold-storage"* ]]; then
+    echo "[INFO] Setting up cold storage on local directories, instead of EOS and CTA."
+    mkdir -p "${INVENIO_INSTANCE_PATH}"/cold/hot "${INVENIO_INSTANCE_PATH}"/cold/cold
+    cernopendata cold location add --cold-path "${INVENIO_INSTANCE_PATH}"/cold/cold/ --hot-path "${INVENIO_INSTANCE_PATH}"/cold/hot/ --manager-class cernopendata.cold_storage.transfer.cp.TransferManager
+else
+    cernopendata cold location add --cold-path https://eosctapublic.cern.ch:8444/eos/ctapublic/archive/opendata/ --hot-path root://eospublic.cern.ch//eos/opendata/ --manager-class cernopendata.cold_storage.transfer.fts.TransferManager
+fi
 
 if [[ "$@" = *"--skip-glossary"* ]]; then
     echo "[INFO] Skipping loading of glossary terms."

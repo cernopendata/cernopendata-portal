@@ -242,6 +242,44 @@ Procedure to prefix css files with ``bootstrap-ispy`` class:
 * Place this file in ``/static/assets/`` to serve it
 * Same exact procedure needs to be done for custom `ispy.css file <https://github.com/cms-outreach/ispy-webgl/blob/master/css/ispy.css>`_
 
+Working with cold storage
+-------------------------
+
+By default ``populate-instance.sh`` registers the cold storage location on EOS and CTA with FTS transfers.
+To use local locations for easier local testing, populate the instance with ``--local-cold-storage``:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 /code/scripts/populate-instance.sh --local-cold-storage
+
+This registers two local directories instead, with ``cp`` transfers, so the
+whole archive, clear-hot and stage pipeline runs offline. With
+``docker-compose-dev.yml`` they are stored in ``data/cold/``.
+
+The fixture records point at EOS, so they cannot be used with the local
+locations. Create a record whose files live under the local hot path instead:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata shell scripts/create-cold-test-record.py
+
+To move the files of the record to the local cold storage, use the commands:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata cold archive 900000 --register
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata cold process-transfers
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata cold clear-hot 900000
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata cold list 900000
+
+The record can be staged back by requesting it on its record page, and then running:
+
+.. code-block:: console
+
+   $ docker exec -i -t cernopendata-portal-web-1 cernopendata cold process-requests
+
+Modify ``scripts/create-cold-test-record.py`` to create different records if needed.
+
 Switching between PROD and DEV contexts
 ---------------------------------------
 
