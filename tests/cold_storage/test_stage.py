@@ -14,7 +14,9 @@ from cernopendata.cold_storage.models import RequestMetadata
         ({}, 200, "OK"),
     ],
 )
-def test_stage_endpoint(client, staged_record, payload, expected_status, expected_body):
+def test_stage_endpoint(
+    app, client, database, staged_record, payload, expected_status, expected_body
+):
     recid = staged_record["recid"]
     requests_count = RequestMetadata.query.count()
     with patch("cernopendata.modules.records.utils.RecordIndexer"):
@@ -38,6 +40,20 @@ def test_stage_endpoint(client, staged_record, payload, expected_status, expecte
                     assert payload["email"] in request.subscribers
                 else:
                     assert request.subscribers == []
+
+                signal_mock.reset_mock()
+                duplicate_result = app.test_client().post(
+                    f"/record/{recid}/stage",
+                    data=json.dumps({"file": "file.txt"}),
+                    content_type="application/json",
+                )
+                assert duplicate_result.status_code == 409
+                assert duplicate_result.get_json()["transfer_id"] == request.id
+                assert not signal_mock.send.called
+                assert RequestMetadata.query.count() == requests_count + 1
+
+                request.status = "completed"
+                database.session.commit()
 
             else:
                 assert not signal_mock.send.called

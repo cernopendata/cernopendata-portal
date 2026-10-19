@@ -17,13 +17,40 @@ const RequestRecordApp = ({
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState(null);
+  const [existingTransferId, setExistingTransferId] = useState(null);
+  const [subscribed, setSubscribed] = useState(false);
 
   const handleClose = () => {
+    if (existingTransferId) {
+      window.location.reload();
+      return;
+    }
     setOpen(false);
     setEmailError(false);
     setEmail("");
     setConfirmed(false);
     setRequestError(null);
+  };
+
+  const handleSubscribeExisting = async () => {
+    if (!email || !isEmail(email)) {
+      setEmailError(true);
+      return;
+    }
+    setLoading(true);
+    setRequestError(null);
+    try {
+      await axios.post(`/record/${recordId}/subscribe`, {
+        email: email.trim(),
+        transfer_id: existingTransferId,
+      });
+      setSubscribed(true);
+    } catch (error) {
+      setRequestError(error.response?.data?.error || "Request failed");
+      console.error("Subscription failed", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -41,6 +68,10 @@ const RequestRecordApp = ({
       });
       window.location.reload();
     } catch (error) {
+      if (error.response?.status === 409) {
+        setExistingTransferId(error.response.data.transfer_id);
+        return;
+      }
       setRequestError(error.response?.data?.error || "Request failed");
       console.error("Request failed", error);
     } finally {
@@ -93,60 +124,93 @@ const RequestRecordApp = ({
         <Modal open={open} onClose={handleClose} size="small">
           <Modal.Header>Request to make data available</Modal.Header>
           <Modal.Content>
-            <p>
-              Please confirm you want to request{" "}
-              {file ? "this file" : "all files of the record"}.
-            </p>
-            <Message warning>
-              <p>
-                This action takes time. The more data requested, the longer it
-                will take.
-              </p>
-              <Checkbox
-                label={`I confirm that I want to request ${
-                  num_files ? `${num_files} files` : "this file"
-                }${size ? ` (${toHumanReadableSize(size)} of data)` : ""}`}
-                checked={confirmed}
-                onChange={(e, data) => setConfirmed(data.checked)}
-              />
-            </Message>
-            <Form>
-              <Form.Input
-                id="email-input"
-                label="If you want to be notified, enter your email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                error={
-                  emailError
-                    ? {
-                        content: "Please enter a valid email address",
-                        pointing: "below",
-                      }
-                    : null
-                }
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (emailError) setEmailError(false);
-                  if (requestError) setRequestError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && confirmed) handleSubmit();
-                }}
-              />
-            </Form>
+            {existingTransferId ? (
+              <Message info>This record is already being staged.</Message>
+            ) : (
+              <>
+                <p>
+                  Please confirm you want to request{" "}
+                  {file ? "this file" : "all files of the record"}.
+                </p>
+                <Message warning>
+                  <p>
+                    This action takes time. The more data requested, the longer
+                    it will take.
+                  </p>
+                  <Checkbox
+                    label={`I confirm that I want to request ${
+                      num_files ? `${num_files} files` : "this file"
+                    }${size ? ` (${toHumanReadableSize(size)} of data)` : ""}`}
+                    checked={confirmed}
+                    onChange={(e, data) => setConfirmed(data.checked)}
+                  />
+                </Message>
+              </>
+            )}
+            {subscribed ? (
+              <Message positive>
+                You will be notified at {email.trim()} when the request
+                completes.
+              </Message>
+            ) : (
+              <Form>
+                <Form.Input
+                  id="email-input"
+                  label="If you want to be notified, enter your email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  error={
+                    emailError
+                      ? {
+                          content: "Please enter a valid email address",
+                          pointing: "below",
+                        }
+                      : null
+                  }
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(false);
+                    if (requestError) setRequestError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    if (existingTransferId) handleSubscribeExisting();
+                    else if (confirmed) handleSubmit();
+                  }}
+                />
+              </Form>
+            )}
             {requestError && <Message negative>{requestError}</Message>}
           </Modal.Content>
           <Modal.Actions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button
-              primary
-              disabled={!confirmed || loading}
-              loading={loading}
-              onClick={handleSubmit}
-            >
-              OK
-            </Button>
+            {existingTransferId ? (
+              <>
+                <Button onClick={handleClose}>Close</Button>
+                {!subscribed && (
+                  <Button
+                    primary
+                    disabled={loading}
+                    loading={loading}
+                    onClick={handleSubscribeExisting}
+                  >
+                    Subscribe
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button onClick={handleClose}>Cancel</Button>
+                <Button
+                  primary
+                  disabled={!confirmed || loading}
+                  loading={loading}
+                  onClick={handleSubmit}
+                >
+                  OK
+                </Button>
+              </>
+            )}
           </Modal.Actions>
         </Modal>
       </>
