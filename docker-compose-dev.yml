@@ -35,6 +35,7 @@ services:
       - ./:/code/
       - ../opendata.cern.ch:/content/
       - ./data/uploads:/opt/invenio/var/instance/static/upload
+      - ./data/cold:/opt/invenio/var/instance/cold
 
 #  web-files:
 #    profiles:
@@ -63,3 +64,4 @@ services:
     volumes:
       - ./:/code/
       - ./data/uploads:/opt/invenio/var/instance/static/upload
+      - ./data/cold:/opt/invenio/var/instance/cold
