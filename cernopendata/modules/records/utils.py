@@ -45,7 +45,11 @@ from invenio_records_ui.utils import obj_or_import_string
 from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
 
-from cernopendata.cold_storage.api import RecordAvailability, Request
+from cernopendata.cold_storage.api import (
+    ColdStorageActions,
+    RecordAvailability,
+    Request,
+)
 from cernopendata.cold_storage.stats.signals import record_stage
 
 
@@ -53,6 +57,17 @@ def stage(pid, record, **kwargs):
     """Stages all the files from a record."""
     data = request.get_json()  # Parse JSON data from request
     email = data.get("email", "").strip()
+    existing_request = Request.get_active(record.id, ColdStorageActions.STAGE)
+    if existing_request:
+        return (
+            jsonify(
+                {
+                    "error": "This record is already being staged",
+                    "transfer_id": existing_request.id,
+                }
+            ),
+            409,
+        )
     try:
         id = Request.create(
             record.id,
