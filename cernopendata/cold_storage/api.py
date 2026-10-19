@@ -264,6 +264,15 @@ class Request:
         return rb
 
     @staticmethod
+    def get_active(record_id, action):
+        """Get the request for the record that has not finished yet."""
+        return RequestMetadata.query.filter(
+            RequestMetadata.record_id == record_id,
+            RequestMetadata.action == action.value,
+            RequestMetadata.status.in_(("submitted", "started")),
+        ).first()
+
+    @staticmethod
     def mark_as_started(req, num_transfers, size):
         """Mark a request as started."""
         logger.info(f"The transfer {req.id} has started")
