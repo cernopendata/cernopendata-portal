@@ -4,12 +4,15 @@ from unittest.mock import patch
 
 import pytest
 from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
 
+from cernopendata.api import RecordFilesWithIndex
 from cernopendata.cold_storage.api import Transfer
 from cernopendata.cold_storage.cli import cold
-from cernopendata.cold_storage.models import RequestMetadata
+from cernopendata.cold_storage.models import RequestMetadata, TransferMetadata
 from cernopendata.cold_storage.schemas import TransferRequestSchema
 from cernopendata.cold_storage.service import RequestService
+from cernopendata.cold_storage.tasks import check_transfers
 
 from .utils import run_command
 
@@ -274,3 +277,142 @@ def test_sort_by_successful_transfers(app, database, record_factory):
 
     assert get_sorted_ids("desc") == [req2.id, req1.id]
     assert get_sorted_ids("asc") == [req1.id, req2.id]
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_process_transfers_skips_record_that_fails_to_update(
+    mock_verify, app, database, cli_runner, record_factory, caplog
+):
+    """A record that fails to update is noted on its transfers and does not block the others."""
+    invalid_record = record_factory(
+        {
+            "recid": "2103",
+            "title": "Invalid",
+            "file_specs": [{"name": "file7.txt", "content": b"dummy"}],
+        }
+    )
+    valid_record = record_factory(
+        {
+            "recid": "2104",
+            "title": "Valid",
+            "file_specs": [{"name": "file8.txt", "content": b"dummy"}],
+        }
+    )
+    invalid_uuid = PersistentIdentifier.get("recid", invalid_record["id"]).object_uuid
+    valid_uuid = PersistentIdentifier.get("recid", valid_record["id"]).object_uuid
+
+    invalid_record_metadata = RecordMetadata.query.get(invalid_uuid)
+    invalid_record_metadata.json = {
+        **invalid_record_metadata.json,
+        "property_not_in_schema": True,
+    }
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["archive", invalid_record["id"], "--register"])
+    run_command(cli_runner, app, cold, ["archive", valid_record["id"], "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+
+    invalid_record_file = RecordFilesWithIndex.get_record(invalid_uuid)["_files"][0]
+    valid_record_file = RecordFilesWithIndex.get_record(valid_uuid)["_files"][0]
+    assert "uri_cold" not in invalid_record_file.get("tags", {})
+    assert "uri_cold" in valid_record_file["tags"]
+
+    invalid_record_transfer = TransferMetadata.query.filter_by(
+        record_uuid=str(invalid_uuid)
+    ).one()
+    valid_record_transfer = TransferMetadata.query.filter_by(
+        record_uuid=str(valid_uuid)
+    ).one()
+    assert invalid_record_transfer.status == "DONE"
+    assert invalid_record_transfer.finished is not None
+    assert invalid_record_transfer.reason.startswith("Record not updated: ")
+    assert valid_record_transfer.status == "DONE"
+    assert valid_record_transfer.reason is None
+    assert f"Couldn't update '{invalid_uuid}', skipping it" in caplog.text
+
+
+def test_process_requests_skips_request_that_fails(
+    app, database, record_factory, caplog
+):
+    """Failing requests are skipped, and the other requests are still processed."""
+    invalid_record = record_factory(
+        {
+            "recid": "2105",
+            "title": "Invalid",
+            "file_specs": [{"name": "file9.txt", "content": b"dummy"}],
+        }
+    )
+    valid_record = record_factory(
+        {
+            "recid": "2106",
+            "title": "Valid",
+            "file_specs": [{"name": "file10.txt", "content": b"dummy"}],
+        }
+    )
+    invalid_uuid = PersistentIdentifier.get("recid", invalid_record["id"]).object_uuid
+    valid_uuid = PersistentIdentifier.get("recid", valid_record["id"]).object_uuid
+
+    invalid_record_metadata = RecordMetadata.query.get(invalid_uuid)
+    invalid_record_metadata.json = {
+        **invalid_record_metadata.json,
+        "property_not_in_schema": True,
+        "availability": "on demand",
+    }
+
+    submitted_requests = [
+        RequestMetadata(record_id=valid_uuid, action="stage", status="submitted"),
+        RequestMetadata(record_id=valid_uuid, action="stage", status="submitted"),
+    ]
+    invalid_record_started_requests = [
+        RequestMetadata(record_id=invalid_uuid, action="stage", status="started"),
+        RequestMetadata(record_id=invalid_uuid, action="stage", status="started"),
+    ]
+    valid_record_started_request = RequestMetadata(
+        record_id=valid_uuid, action="stage", status="started"
+    )
+    database.session.add_all(
+        submitted_requests
+        + invalid_record_started_requests
+        + [valid_record_started_request]
+    )
+    database.session.commit()
+    submitted_request_ids = [request.id for request in submitted_requests]
+    invalid_record_started_request_ids = [
+        request.id for request in invalid_record_started_requests
+    ]
+    valid_record_started_request_id = valid_record_started_request.id
+
+    with patch(
+        "cernopendata.cold_storage.service.ColdStorageManager.doOperation",
+        side_effect=Exception("Submission failure"),
+    ):
+        RequestService.process_requests()
+
+    for request_id in submitted_request_ids:
+        request = RequestMetadata.query.filter_by(id=request_id).one()
+        assert request.status == "submitted"
+        assert f"Error submitting request {request_id}, skipping it" in caplog.text
+    for request_id in invalid_record_started_request_ids:
+        request = RequestMetadata.query.filter_by(id=request_id).one()
+        assert request.status == "started"
+        assert f"Error checking request {request_id}, skipping it" in caplog.text
+    valid_record_started_request = RequestMetadata.query.filter_by(
+        id=valid_record_started_request_id
+    ).one()
+    assert valid_record_started_request.status == "completed"
+
+
+def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
+    """An error while processing the requests does not stop the transfers from being processed."""
+    with patch(
+        "cernopendata.cold_storage.tasks.RequestService.process_requests",
+        side_effect=Exception("Request failure"),
+    ), patch(
+        "cernopendata.cold_storage.tasks.TransferService.process_transfers"
+    ) as process_transfers_mock:
+        check_transfers.run.__wrapped__()
+
+    assert process_transfers_mock.called
+    assert "Error processing the requests" in caplog.text
