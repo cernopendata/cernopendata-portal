@@ -101,6 +101,47 @@ operating system configuration allowing only ports 1024 and up:
 Development tips
 ================
 
+Working with database migrations
+--------------------------------
+
+Database schema changes are managed with Alembic via ``invenio-db``.
+The revisions of this repository live in ``cernopendata/alembic/`` and belong to the ``cernopendata`` branch.
+
+When you change a model:
+
+1. Create a revision, before rebuilding your local instance.
+   It is generated from the difference between the models and your local database:
+
+   .. code-block:: console
+
+      $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic revision "<message>" -b cernopendata
+
+2. Review the generated file in ``cernopendata/alembic/``:
+
+   * Remove operations on tables that do not belong to this repository.
+   * Rewrite renames, which are generated as a drop followed by an add.
+   * Add new enum values by hand, as they are not detected.
+
+3. Apply it, then test its downgrade and upgrade.
+
+   .. code-block:: console
+
+      $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic upgrade cernopendata@head
+      $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic downgrade <previous revision>
+
+4. Commit the revision together with the model change.
+
+After a release with a new revision has rolled out, run this in the web pod of each instance:
+
+.. code-block:: console
+
+   $ cernopendata alembic upgrade cernopendata@head
+
+Always upgrade ``cernopendata@head``, never ``heads``, which would also run Invenio's own migrations.
+On deployed instances, never downgrade below ``c17474edeffe``, the baseline.
+
+To inspect the state of the database, use ``cernopendata alembic current``, ``heads`` or ``branches``.
+
 Working with Markdown
 ---------------------
 
