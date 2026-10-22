@@ -51,7 +51,7 @@ class RequestMetadata(db.Model):
         # NOTE no unique constrain for better future ...
     )
     action = db.Column(db.String(50), default="stage", nullable=False)
-    status = db.Column(db.String(50), default="submitted", nullable=False)
+    status = db.Column(db.String(50), default="waiting", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
     num_transfers = db.Column(db.Integer, default=0, nullable=True)

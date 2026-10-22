@@ -269,18 +269,8 @@ class Request:
         return RequestMetadata.query.filter(
             RequestMetadata.record_id == record_id,
             RequestMetadata.action == action.value,
-            RequestMetadata.status.in_(("submitted", "started")),
+            RequestMetadata.status.in_(("waiting", "submitting", "in progress")),
         ).first()
-
-    @staticmethod
-    def mark_as_started(req, num_transfers, size):
-        """Mark a request as started."""
-        logger.info(f"The transfer {req.id} has started")
-        req.started_at = datetime.utcnow()
-        req.status = "started"
-        req.num_transfers = num_transfers
-        req.size = size
-        db.session.add(req)
 
     @staticmethod
     def mark_as_completed(req):
@@ -348,7 +338,7 @@ class ColdRecord(Record):
             db.session.query(func.count())
             .filter(
                 RequestMetadata.record_id == str(self.id),
-                RequestMetadata.status == "submitted",
+                RequestMetadata.status.in_(("waiting", "submitting")),
                 RequestMetadata.action == ColdStorageActions.STAGE.value,
             )
             .scalar()
