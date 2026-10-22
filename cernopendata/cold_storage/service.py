@@ -134,62 +134,76 @@ class RequestService:
                 f"Checking if we can {action.value} more records: active {active_transfers_count}/{threshold}"
             )
 
-            submitted_count = 0
             max_transfers = threshold - active_transfers_count
-            if max_transfers > 0:
-                requests = RequestMetadata.query.filter_by(
-                    status="submitted", action=action.value
-                ).all()
+            if max_transfers <= 0:
+                continue
 
-                for request in requests:
-                    try:
-                        submitted_transfers = manager.doOperation(
-                            action,
-                            request.record_id,
-                            limit=None,
-                            register=True,
-                            force=False,
-                            dry=False,
-                            max_transfers=max_transfers - submitted_count,
-                            file=request.file,
-                            request_id=request.id,
-                        )
-                        if submitted_transfers:
-                            submitted_count += len(submitted_transfers)
-                            request.num_transfers += len(submitted_transfers)
-                        request.started_at = datetime.utcnow()
+            submitted_count = 0
+            requests = RequestMetadata.query.filter_by(
+                status="submitted", action=action.value
+            ).all()
+
+            for request in requests:
+                try:
+                    submitted_transfers = RequestService._submit_request_transfers(
+                        manager, action, request, max_transfers - submitted_count
+                    )
+                    submitted_count += len(submitted_transfers)
+                    logger.info(
+                        f"Request {request.id}: {submitted_count}/{max_transfers} transfers submitted"
+                    )
+                    if submitted_count >= max_transfers:
                         logger.info(
-                            f"Request {request.id}: {submitted_count}/{max_transfers} transfers submitted"
+                            f"Request {request.id}: reached the threshold of {threshold}"
+                            " transfers, continuing in the next run"
                         )
-                        if max_transfers == submitted_count:
-                            logger.info(
-                                f"Request {request.id}: reached the threshold of {threshold}"
-                                " transfers, continuing in the next run"
-                            )
-                        else:
-                            request.status = "started"
+                        if not request.started_at:
+                            request.started_at = datetime.utcnow()
                         db.session.add(request)
                         db.session.commit()
-                    except Exception as e:
-                        logger.exception(
-                            f"Error submitting request {request.id}, skipping it: {e}"
-                        )
-                        db.session.rollback()
-                        continue
-                    if max_transfers - submitted_count <= 0:
-                        logger.info("We have submitted enough. Stopping")
                         break
+                    elif (
+                        submitted_transfers
+                        or RequestService._are_all_request_files_hot(
+                            RecordFilesWithIndex.get_record(request.record_id),
+                            request,
+                        )
+                    ):
+                        if not request.started_at:
+                            request.started_at = datetime.utcnow()
+                        request.status = "started"
+                        db.session.add(request)
+                        db.session.commit()
+                    else:
+                        logger.error(
+                            f"Request {request.id}: no transfers could be issued,"
+                            " retrying in the next run"
+                        )
+                except Exception as e:
+                    logger.exception(
+                        f"Error submitting request {request.id}, skipping it: {e}"
+                    )
+                    db.session.rollback()
             if submitted_count:
                 logger.info(f"{submitted_count} transfers have been submitted!")
 
     @staticmethod
     def check_running():
         """Check the records that are being archived."""
+        manager = ColdStorageManager()
         for action in ColdStorageActions:
             requests = RequestMetadata.query.filter_by(
                 status="started", action=action.value
             ).all()
             logger.debug(f"Checking the {len(requests)} {action.value} requests")
+            active_transfers_count = TransferMetadata.query.filter(
+                TransferMetadata.finished.is_(None),
+                TransferMetadata.action == action.value,
+            ).count()
+            max_transfers = (
+                Transfer.get_active_transfers_threshold(action) or 0
+            ) - active_transfers_count
+            submitted_count = 0
             completed = 0
             for request in requests:
                 try:
@@ -205,14 +219,48 @@ class RequestService:
                                 f"Request {request.id}: rechecking availability"
                             )
                             Catalog().save_record_availability(record)
-                            if (
-                                record["availability"]
-                                == RecordAvailability.REQUESTED.value
-                            ):
+                        if not RequestService._are_all_request_files_hot(
+                            record, request
+                        ):
+                            request_active_transfers_count = (
+                                TransferMetadata.query.filter(
+                                    TransferMetadata.request_id == request.id,
+                                    TransferMetadata.finished.is_(None),
+                                ).count()
+                            )
+                            if request_active_transfers_count:
                                 logger.info(
                                     f"Request {request.id}: transfers still in progress"
                                 )
                                 continue
+                            if submitted_count >= max_transfers:
+                                logger.info(
+                                    f"Request {request.id}: files still cold and the threshold"
+                                    " is reached, retrying in the next run"
+                                )
+                                continue
+                            submitted_transfers = (
+                                RequestService._submit_request_transfers(
+                                    manager,
+                                    action,
+                                    request,
+                                    max_transfers - submitted_count,
+                                )
+                            )
+                            if not submitted_transfers:
+                                logger.warning(
+                                    f"Request {request.id}: files still cold and no transfers"
+                                    " could be resubmitted, retrying in the next run"
+                                )
+                                continue
+                            submitted_count += len(submitted_transfers)
+                            db.session.add(request)
+                            db.session.commit()
+                            logger.info(
+                                f"Request {request.id}: files still cold,"
+                                f" {len(submitted_transfers)} transfers resubmitted"
+                            )
+                            continue
                     elif action == ColdStorageActions.ARCHIVE:
                         files = (
                             f for index in record.file_indices for f in index["files"]
@@ -300,3 +348,29 @@ class RequestService:
             result = query.paginate(page=page, per_page=per_page, error_out=False)
 
         return result
+
+    @staticmethod
+    def _are_all_request_files_hot(record, request):
+        """Check if all the files of a request have a hot copy."""
+        files = Catalog().get_files_from_record(record, file=request.file)
+        if not files:
+            return False
+        return all("hot_deleted" not in file.get("tags", {}) for file in files)
+
+    @staticmethod
+    def _submit_request_transfers(manager, action, request, max_transfers):
+        """Issue transfers for the cold files of a request."""
+        submitted_transfers = manager.doOperation(
+            action,
+            request.record_id,
+            limit=None,
+            register=True,
+            force=False,
+            dry=False,
+            max_transfers=max_transfers,
+            file=request.file,
+            request_id=request.id,
+        )
+        if submitted_transfers:
+            request.num_transfers += len(submitted_transfers)
+        return submitted_transfers or []
