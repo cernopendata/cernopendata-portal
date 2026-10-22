@@ -68,6 +68,14 @@ def test_requests(
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert TransferRequestSchema().dump(request)["recid"] == recid
+    assert request.status == "started"
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == "completed"
+    assert request.completed_at is not None
 
 
 @patch(
@@ -121,6 +129,24 @@ def test_request_with_failed_transfer(
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.num_failed_transfers == 1
+    assert request.status == "started"
+    num_transfers = request.num_transfers
+
+    for active_transfer in TransferMetadata.query.filter(
+        TransferMetadata.request_id == request.id,
+        TransferMetadata.finished.is_(None),
+    ):
+        active_transfer.status = "FAILED"
+        active_transfer.finished = active_transfer.submitted
+        database.session.add(active_transfer)
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers > num_transfers
+    assert request.status == "started"
+    assert request.completed_at is None
 
 
 @patch(
@@ -416,3 +442,41 @@ def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
 
     assert process_transfers_mock.called
     assert "Error processing the requests" in caplog.text
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_without_issued_transfers_is_not_started(
+    mock_verify, client, app, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "2107",
+            "title": "Test Record without Issued Transfers",
+            "file_specs": [
+                {"name": "file11.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == "submitted"
+    assert request.num_transfers == 0

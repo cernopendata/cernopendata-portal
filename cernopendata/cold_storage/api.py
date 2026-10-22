@@ -173,6 +173,14 @@ class Transfer:
         ).count()
 
     @staticmethod
+    def get_active_transfers_count(request):
+        """Get number of transfers that have not finished yet."""
+        return TransferMetadata.query.filter(
+            TransferMetadata.request_id == request.id,
+            TransferMetadata.finished.is_(None),
+        ).count()
+
+    @staticmethod
     def get_completed_transfers_size(request):
         """Get the total size of the completed transfers."""
         return (
