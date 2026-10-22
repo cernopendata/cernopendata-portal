@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cernopendata.cold_storage.models import RequestMetadata
+from cernopendata.cold_storage.models import RequestMetadata, RequestStatus
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_stage_endpoint(
                 assert not signal_mock.send.called
                 assert RequestMetadata.query.count() == requests_count + 1
 
-                request.status = "completed"
+                request.status = RequestStatus.COMPLETED
                 database.session.commit()
 
             else:

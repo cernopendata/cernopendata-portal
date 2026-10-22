@@ -40,7 +40,7 @@ from invenio_records.models import RecordMetadata
 from invenio_records_files.api import FileObject, Record
 from sqlalchemy import func
 
-from .models import RequestMetadata, TransferMetadata
+from .models import RequestMetadata, RequestStatus, TransferMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -269,23 +269,19 @@ class Request:
         return RequestMetadata.query.filter(
             RequestMetadata.record_id == record_id,
             RequestMetadata.action == action.value,
-            RequestMetadata.status.in_(("submitted", "started")),
+            RequestMetadata.status.in_(
+                (
+                    RequestStatus.WAITING,
+                    RequestStatus.SUBMITTING,
+                    RequestStatus.IN_PROGRESS,
+                )
+            ),
         ).first()
-
-    @staticmethod
-    def mark_as_started(req, num_transfers, size):
-        """Mark a request as started."""
-        logger.info(f"The transfer {req.id} has started")
-        req.started_at = datetime.utcnow()
-        req.status = "started"
-        req.num_transfers = num_transfers
-        req.size = size
-        db.session.add(req)
 
     @staticmethod
     def mark_as_completed(req):
         """Mark the request as DONE and notify subscribers."""
-        req.status = "completed"
+        req.status = RequestStatus.COMPLETED
         req.completed_at = datetime.utcnow()
         db.session.add(req)
         if req.subscribers:
@@ -348,7 +344,9 @@ class ColdRecord(Record):
             db.session.query(func.count())
             .filter(
                 RequestMetadata.record_id == str(self.id),
-                RequestMetadata.status == "submitted",
+                RequestMetadata.status.in_(
+                    (RequestStatus.WAITING, RequestStatus.SUBMITTING)
+                ),
                 RequestMetadata.action == ColdStorageActions.STAGE.value,
             )
             .scalar()
