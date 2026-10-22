@@ -26,13 +26,15 @@
 from invenio_pidstore.models import PersistentIdentifier
 from marshmallow import Schema, fields, validate
 
+from .models import RequestStatus
+
 
 class TransferRequestQuerySchema(Schema):
     """Arguments for the transfer search."""
 
     page = fields.Int(load_default=1)
     per_page = fields.Int(load_default=10)
-    status = fields.List(fields.Str())
+    status = fields.List(fields.Enum(RequestStatus))
     action = fields.List(fields.Str())
     record = fields.Str()
     sort = fields.Str()
@@ -47,7 +49,7 @@ class TransferRequestSchema(Schema):
     action = fields.Str()
     num_transfers = fields.Int()
     size = fields.Int()
-    status = fields.Str()
+    status = fields.Enum(RequestStatus)
     created_at = fields.DateTime()
     started_at = fields.DateTime(allow_none=True)
     completed_at = fields.DateTime(allow_none=True)

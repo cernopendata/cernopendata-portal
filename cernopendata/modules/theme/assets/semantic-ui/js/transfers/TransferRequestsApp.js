@@ -89,6 +89,9 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
     return num.toString();
   };
 
+  const formatStatus = (status) =>
+    status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, " ");
+
   const openSubscribeModal = (recid, transferid) => {
     console.log("Opening modal for", recid, transferid);
     setSelectedRecid(recid);
@@ -144,6 +147,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
         summary={summary}
         formatBytes={formatBytes}
         abbreviateNumber={abbreviateNumber}
+        formatStatus={formatStatus}
       />
 
       <h3>Details</h3>
@@ -161,6 +165,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
         recordFilter={recordFilter}
         setRecordFilter={setRecordFilter}
         abbreviateNumber={abbreviateNumber}
+        formatStatus={formatStatus}
         sortField={sortField}
         sortDirection={sortDirection}
         isLoading={isLoading}

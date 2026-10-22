@@ -4,7 +4,7 @@ import logging
 import pytest
 
 from cernopendata.cold_storage.api import Request
-from cernopendata.cold_storage.models import RequestMetadata
+from cernopendata.cold_storage.models import RequestMetadata, RequestStatus
 
 
 @pytest.fixture()
@@ -102,7 +102,7 @@ def test_mark_as_completed_notifies_each_subscriber(
     assert Request.mark_as_completed(request) is True
 
     request_md = RequestMetadata.query.filter_by(id=request.id).first()
-    assert request_md.status == "completed"
+    assert request_md.status == RequestStatus.COMPLETED
     assert request_md.completed_at is not None
 
     assert len(smtp_server.inbox) == len(subscribers)
