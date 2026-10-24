@@ -25,7 +25,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Pagination } from "semantic-ui-react";
+import { Loader, Message, Pagination } from "semantic-ui-react";
 
 import { FileTable } from "./components";
 import config, { ITEMS_PER_PAGE, RECORD_FILEPAGE_URL } from "./config";
@@ -34,12 +34,21 @@ const FilesBoxApp = ({ recordAvailability }) => {
   const [page, setPage] = useState(1);
   const [files, setFiles] = useState({});
   const [indexFiles, setIndexFiles] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { pidValue } = config;
 
   useEffect(() => {
     const type = getType();
+    setLoading(true);
+    setError(null);
     fetch(RECORD_FILEPAGE_URL(pidValue, page, type))
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load files.");
+        }
+        return response.json();
+      })
       .then((data) => {
         if (type === "files") {
           setFiles(data);
@@ -49,7 +58,9 @@ const FilesBoxApp = ({ recordAvailability }) => {
           setFiles(data.files);
           setIndexFiles(data.index_files);
         }
-      });
+      })
+      .catch(() => setError("Failed to load files."))
+      .finally(() => setLoading(false));
   }, [page]);
 
   const getType = () => {
@@ -87,6 +98,15 @@ const FilesBoxApp = ({ recordAvailability }) => {
       )}
     </>
   );
+
+  // Display spinner while file data is loading.
+  if (loading && !files.total && !indexFiles.total) {
+    return <Loader active inline="centered" content="Loading files..." />;
+  }
+
+  if (error) {
+    return <Message negative>{error}</Message>;
+  }
 
   return (
     <>
