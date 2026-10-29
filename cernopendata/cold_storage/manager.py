@@ -75,6 +75,11 @@ class ColdStorageManager:
             exists, error = Storage.verify_file(
                 dest_file, file["size"], file["checksum"]
             )
+            if exists is None:
+                logger.error(
+                    f"Not issuing a transfer for {file['key']}, since the destination could not be checked: {error}"
+                )
+                return "error", None
             if exists:
                 if register:
                     logger.debug(

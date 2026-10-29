@@ -86,19 +86,34 @@ class TransferManager:
         try:
             if not self._context:
                 self._context = fts3.Context(self.endpoint, verify=True)
-            fts_status = fts3.get_job_status(self._context, transfer_id)
+            fts_status = fts3.get_job_status(
+                self._context, transfer_id, list_files=True
+            )
         except Exception as e:
             logger.error(f"Error connecting to fts: {e}")
-            return None, None
+            return None, f"Could not retrieve status from FTS: {e}"
         if not fts_status:
             logger.error("Error retrieving the status from fts")
-            return None, None
+            return None, "Could not retrieve status from FTS: empty response"
         if "job_state" not in fts_status:
             logger.error("The response does not have 'job_state'")
-            return None, None
-        if fts_status["job_state"] == "FINISHED":
+            return None, "Could not retrieve status from FTS: missing 'job_state'"
+        job_state = fts_status["job_state"]
+        if job_state == "FINISHED":
             return "DONE", None
-        return fts_status["job_state"], fts_status["reason"]
+        if job_state in ("FAILED", "CANCELED", "FINISHEDDIRTY"):
+            reason = self._failure_reason(fts_status)
+            if job_state != "FAILED":
+                reason = f"{job_state}: {reason}"
+            return "FAILED", reason
+        return job_state, fts_status.get("reason")
+
+    def _failure_reason(self, fts_status):
+        """Get the reason of a failed job from its file, falling back to the job reason."""
+        for file in fts_status.get("files") or []:
+            if file.get("reason"):
+                return file["reason"]
+        return fts_status.get("reason")
 
     def get_endpoint_info(self):
         """Get information from FTS."""

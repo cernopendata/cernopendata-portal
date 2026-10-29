@@ -23,6 +23,8 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Cold Storage storage interface."""
+
+import errno
 import logging
 import os
 import re
@@ -137,7 +139,9 @@ class Storage:
                     return False, "different checksum"
                 return True, None
             except Exception as e:
-                return False, "File does not exist"
+                if isinstance(e, gfal2.GError) and e.code == errno.ENOENT:
+                    return False, "File does not exist"
+                return None, f"Could not check {filename}: {e}"
         elif parsed.scheme == "" or parsed.scheme == "file":
             return cls._verify_file(parsed.path, size, checksum)
         else:
