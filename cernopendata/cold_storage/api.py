@@ -291,6 +291,13 @@ class Request:
         return True
 
     @staticmethod
+    def update_transfer_counts(request):
+        """Update the number of failed transfers and the completed size of a request."""
+        request.num_failed_transfers = Transfer.get_failed_transfers_count(request)
+        request.size = Transfer.get_completed_transfers_size(request)
+        db.session.add(request)
+
+    @staticmethod
     def subscribe(transfer_id, email):
         """Add an email to the subscribers of a transfer."""
         transfer = RequestMetadata.query.filter_by(id=transfer_id).first()
