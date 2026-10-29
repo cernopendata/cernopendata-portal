@@ -56,9 +56,20 @@ class TransferService:
             id = transfer.id
             try:
                 transfer.last_check = datetime.utcnow()
-                transfer.status, error = Transfer.load_class(
+                status, error = Transfer.load_class(
                     f"{transfer.method}.TransferManager"
                 ).transfer_status(transfer.method_id)
+                if status is None:
+                    logger.error(
+                        f"Transfer {id}: could not retrieve its status, retrying in the next run: {error}"
+                    )
+                    transfer.reason = error
+                    db.session.add(transfer)
+                    db.session.commit()
+                    all_status[id] = None
+                    summary["STATUS_UNKNOWN"] = summary.get("STATUS_UNKNOWN", 0) + 1
+                    continue
+                transfer.status = status
                 if transfer.status == "DONE":
                     logger.debug(f"Transfer {id}: finished, updating the catalog")
                     transfer.finished = datetime.now()
@@ -68,13 +79,12 @@ class TransferService:
                         transfer.action,
                         transfer.new_filename,
                     )
-                if transfer.status == "FAILED" or not transfer.status:
-                    logger.error(
-                        f"Transfer {id}: failed with status {transfer.status}: {error}"
-                    )
+                if transfer.status == "FAILED":
+                    logger.error(f"Transfer {id}: failed: {error}")
                     transfer.reason = error
                     transfer.finished = datetime.now()
                 else:
+                    transfer.reason = None
                     logger.debug(f"Transfer {id}: status {transfer.status}")
                 db.session.add(transfer)
                 db.session.commit()
@@ -149,6 +159,7 @@ class RequestService:
                     submitted_transfers = RequestService._submit_request_transfers(
                         manager, action, request, max_transfers - submitted_count
                     )
+                    Request.update_transfer_counts(request)
                     submitted_count += len(submitted_transfers)
                     logger.info(
                         f"Request {request.id}: {submitted_count}/{max_transfers} transfers submitted"
@@ -198,11 +209,7 @@ class RequestService:
             for request in requests:
                 try:
                     record = RecordFilesWithIndex.get_record(request.record_id)
-                    request.num_failed_transfers = Transfer.get_failed_transfers_count(
-                        request
-                    )
-                    request.size = Transfer.get_completed_transfers_size(request)
-                    db.session.add(request)
+                    Request.update_transfer_counts(request)
                     if action == ColdStorageActions.STAGE:
                         if not RequestService._are_all_request_files_hot(
                             record, request

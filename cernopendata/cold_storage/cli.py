@@ -316,10 +316,14 @@ def list(record, verify, debug, silent, file):
         raise click.exceptions.Exit(1)
 
 
-def _verify_files_exists(uri: str, exists: bool, should_exist: bool) -> str:
+def _verify_files_exists(
+    uri: str, exists: bool, should_exist: bool, check_error: str = None
+) -> str:
     """Check the consistency between the repo and storage for a given uri."""
     error = []
-    if should_exist and not exists:
+    if exists is None:
+        error = check_error
+    elif should_exist and not exists:
         error = f"The file '{uri}' does not exist"
     if exists and not should_exist:
         error = f"The file '{uri}' exists but it is not registered"
@@ -335,9 +339,11 @@ def _verify_files(file: dict) -> list:
     that exist in the storage and are not registered
     """
     errors = []
-    hot_copy, _ = Storage.verify_file(file["uri"], file["size"], file["checksum"])
+    hot_copy, hot_error = Storage.verify_file(
+        file["uri"], file["size"], file["checksum"]
+    )
     new_error = _verify_files_exists(
-        file["uri"], hot_copy, "hot_deleted" not in file.get("tags", {})
+        file["uri"], hot_copy, "hot_deleted" not in file.get("tags", {}), hot_error
     )
     if new_error:
         errors.append(new_error)
@@ -346,9 +352,11 @@ def _verify_files(file: dict) -> list:
         cold_uri = file["tags"]["uri_cold"]
     else:
         cold_uri, _ = Storage.find_url(ColdStorageActions.ARCHIVE, file["uri"])
-    cold_copy, _ = Storage.verify_file(cold_uri, file["size"], file["checksum"])
+    cold_copy, cold_error = Storage.verify_file(
+        cold_uri, file["size"], file["checksum"]
+    )
     new_error = _verify_files_exists(
-        cold_uri, cold_copy, "uri_cold" in file.get("tags", {})
+        cold_uri, cold_copy, "uri_cold" in file.get("tags", {}), cold_error
     )
     if new_error:
         errors.append(new_error)
