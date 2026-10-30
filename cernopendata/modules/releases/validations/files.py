@@ -60,6 +60,8 @@ class ValidFiles(Validation):
             if "files" not in record:
                 continue
             for file in record["files"]:
+                if file.get("uri", "").endswith("*"):
+                    continue
                 valid_checksum = self._has_checksum_prefix(file.get("checksum", ""))
                 if valid_checksum and "size" in file:
                     continue

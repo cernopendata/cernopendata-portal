@@ -732,7 +732,8 @@ class Release:
             self.validate(current_user)
             failing_after = self.failing_validations()
         flag_modified(self._metadata, "records")
-        flag_modified(self._metadata, "documents")
+        if self._metadata.documents:
+            flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
 
