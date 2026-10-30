@@ -33,6 +33,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
   const [sortDirection, setSortDirection] = useState(null);
 
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -47,6 +48,7 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
         });
 
         const res = await axios.get(`/transfer_requests_content?${params}`);
+        if (!active) return;
         setSummary(res.data.summary);
         setDetails(res.data.details);
         setPagination(
@@ -56,12 +58,15 @@ const TransferRequestsApp = ({ defaultRecid = null }) => {
           },
         );
       } catch (err) {
-        console.error("Failed to fetch transfer data", err);
+        if (active) console.error("Failed to fetch transfer data", err);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
     fetchData();
+    return () => {
+      active = false;
+    };
   }, [
     statusFilters,
     actionFilter,
