@@ -111,3 +111,16 @@ def test_fix_keeps_bare_checksum_when_uncomputable(gfal2_mock):
         "checksum": "abc",
         "size": 10,
     }
+
+
+@patch("cernopendata.modules.releases.validations.files.gfal2")
+def test_fix_skips_wildcard_uris(gfal2_mock):
+    release = DummyRelease([{"files": [{"uri": "root://eos/dir/*"}]}])
+    validator = ValidFiles()
+
+    with patch.object(validator, "_get_entry_details") as mock_get_entry_details:
+        errors = validator.fix(release)
+
+    assert errors == []
+    mock_get_entry_details.assert_not_called()
+    assert release.records[0]["files"][0] == {"uri": "root://eos/dir/*"}
