@@ -720,8 +720,22 @@ class Release:
                     current_app.logger.info(
                         f"Ready to fix the validation of {validation.name}"
                     )
-                    errors.extend(validation.fix())
-        current_app.logger.info("Validations have been done")
+                    try:
+                        fix_errors = validation.fix()
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Fix for {validation.name} crashed: {e}"
+                        )
+                        fix_errors = [
+                            f"Fix for '{validation.name}' encountered an unexpected error."
+                        ]
+                    if fix_errors:
+                        current_app.logger.warning(
+                            f"Fixing {validation.name} returned {len(fix_errors)} error(s), "
+                            f"first ones: {fix_errors[:5]}"
+                        )
+                    errors.extend(fix_errors)
+        current_app.logger.info("Fixes have been done")
 
         if errors:
             self._metadata.errors = errors
@@ -731,8 +745,10 @@ class Release:
         else:
             self.validate(current_user)
             failing_after = self.failing_validations()
-        flag_modified(self._metadata, "records")
-        flag_modified(self._metadata, "documents")
+        if self._metadata.records:
+            flag_modified(self._metadata, "records")
+        if self._metadata.documents:
+            flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
 
