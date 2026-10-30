@@ -24,7 +24,7 @@
  * as an Intergovernmental Organization or submit itself to any jurisdiction.
  */
 
-const config = document.querySelector("#files-box-react-app").dataset;
+const config = document.querySelector("#files-box-react-app")?.dataset;
 
 export const ITEMS_PER_PAGE = 5;
 
