@@ -113,6 +113,7 @@ install_requires = [
     "Flask-Markdown @git+https://git@github.com/psaiz/flask-markdown",
     "Flask-Mistune>=0.1.1",
     "mistune>=0.7.4",
+    "pylatexenc>=2.10",
     "pymdown-extensions>=5.0.0",
     "python-markdown-math>=0.3",
     "python-slugify>=1.2.4",
