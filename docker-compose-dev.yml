@@ -63,3 +63,4 @@ services:
     volumes:
       - ./:/code/
       - ./data/uploads:/opt/invenio/var/instance/static/upload
+      - ../opendata.cern.ch:/content/
