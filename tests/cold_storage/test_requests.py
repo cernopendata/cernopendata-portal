@@ -10,7 +10,11 @@ from invenio_records.models import RecordMetadata
 from cernopendata.api import RecordFilesWithIndex
 from cernopendata.cold_storage.api import Transfer
 from cernopendata.cold_storage.cli import cold
-from cernopendata.cold_storage.models import RequestMetadata, TransferMetadata
+from cernopendata.cold_storage.models import (
+    RequestMetadata,
+    RequestStatus,
+    TransferMetadata,
+)
 from cernopendata.cold_storage.schemas import TransferRequestSchema
 from cernopendata.cold_storage.service import RequestService
 from cernopendata.cold_storage.tasks import check_transfers
@@ -61,14 +65,40 @@ def test_requests(
             )
             assert result.status_code == 200
 
-    result = run_command(cli_runner, app, cold, ["process-requests"])
-    assert (
-        f"{len(record_data['file_specs'])} transfers have been submitted!"
-        in caplog.text
-    )
+    with patch.dict(
+        app.config,
+        {"COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD": len(record_data["file_specs"])},
+    ):
+        result = run_command(cli_runner, app, cold, ["process-requests"])
+        assert (
+            f"{len(record_data['file_specs'])} transfers have been submitted!"
+            in caplog.text
+        )
+
+        request = RequestMetadata.query.order_by(
+            RequestMetadata.created_at.desc()
+        ).first()
+        assert TransferRequestSchema().dump(request)["recid"] == recid
+        assert request.status == RequestStatus.SUBMITTING
+        assert request.num_transfers == len(record_data["file_specs"])
+        assert request.started_at is not None
+        started_at = request.started_at
+
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+        request = RequestMetadata.query.order_by(
+            RequestMetadata.created_at.desc()
+        ).first()
+        assert request.status == RequestStatus.SUBMITTING
+        assert request.num_transfers == len(record_data["file_specs"])
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["process-requests"])
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
-    assert TransferRequestSchema().dump(request)["recid"] == recid
+    assert request.status == RequestStatus.COMPLETED
+    assert request.completed_at is not None
+    assert request.started_at == started_at
 
 
 @patch(
@@ -122,6 +152,38 @@ def test_request_with_failed_transfer(
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.num_failed_transfers == 1
+    assert request.status == RequestStatus.IN_PROGRESS
+    num_transfers = request.num_transfers
+
+    for active_transfer in TransferMetadata.query.filter(
+        TransferMetadata.request_id == request.id,
+        TransferMetadata.finished.is_(None),
+    ):
+        active_transfer.status = "FAILED"
+        active_transfer.finished = active_transfer.submitted
+        database.session.add(active_transfer)
+    database.session.commit()
+
+    with patch.dict(app.config, {"COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD": 0}):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers == num_transfers
+    assert request.status == RequestStatus.SUBMITTING
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers == num_transfers
+    assert request.status == RequestStatus.SUBMITTING
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers > num_transfers
+    assert request.status == RequestStatus.IN_PROGRESS
+    assert request.completed_at is None
 
 
 @patch(
@@ -380,28 +442,36 @@ def test_process_requests_skips_request_that_fails(
         "availability": "on demand",
     }
 
-    submitted_requests = [
-        RequestMetadata(record_id=valid_uuid, action="stage", status="submitted"),
-        RequestMetadata(record_id=valid_uuid, action="stage", status="submitted"),
+    waiting_requests = [
+        RequestMetadata(
+            record_id=valid_uuid, action="stage", status=RequestStatus.WAITING
+        ),
+        RequestMetadata(
+            record_id=valid_uuid, action="stage", status=RequestStatus.WAITING
+        ),
     ]
-    invalid_record_started_requests = [
-        RequestMetadata(record_id=invalid_uuid, action="stage", status="started"),
-        RequestMetadata(record_id=invalid_uuid, action="stage", status="started"),
+    invalid_record_in_progress_requests = [
+        RequestMetadata(
+            record_id=invalid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
+        ),
+        RequestMetadata(
+            record_id=invalid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
+        ),
     ]
-    valid_record_started_request = RequestMetadata(
-        record_id=valid_uuid, action="stage", status="started"
+    valid_record_in_progress_request = RequestMetadata(
+        record_id=valid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
     )
     database.session.add_all(
-        submitted_requests
-        + invalid_record_started_requests
-        + [valid_record_started_request]
+        waiting_requests
+        + invalid_record_in_progress_requests
+        + [valid_record_in_progress_request]
     )
     database.session.commit()
-    submitted_request_ids = [request.id for request in submitted_requests]
-    invalid_record_started_request_ids = [
-        request.id for request in invalid_record_started_requests
+    waiting_request_ids = [request.id for request in waiting_requests]
+    invalid_record_in_progress_request_ids = [
+        request.id for request in invalid_record_in_progress_requests
     ]
-    valid_record_started_request_id = valid_record_started_request.id
+    valid_record_in_progress_request_id = valid_record_in_progress_request.id
 
     with patch(
         "cernopendata.cold_storage.service.ColdStorageManager.doOperation",
@@ -409,18 +479,18 @@ def test_process_requests_skips_request_that_fails(
     ):
         RequestService.process_requests()
 
-    for request_id in submitted_request_ids:
+    for request_id in waiting_request_ids:
         request = RequestMetadata.query.filter_by(id=request_id).one()
-        assert request.status == "submitted"
+        assert request.status == RequestStatus.WAITING
         assert f"Error submitting request {request_id}, skipping it" in caplog.text
-    for request_id in invalid_record_started_request_ids:
+    for request_id in invalid_record_in_progress_request_ids:
         request = RequestMetadata.query.filter_by(id=request_id).one()
-        assert request.status == "started"
+        assert request.status == RequestStatus.IN_PROGRESS
         assert f"Error checking request {request_id}, skipping it" in caplog.text
-    valid_record_started_request = RequestMetadata.query.filter_by(
-        id=valid_record_started_request_id
+    valid_record_in_progress_request = RequestMetadata.query.filter_by(
+        id=valid_record_in_progress_request_id
     ).one()
-    assert valid_record_started_request.status == "completed"
+    assert valid_record_in_progress_request.status == RequestStatus.COMPLETED
 
 
 def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
@@ -435,3 +505,52 @@ def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
 
     assert process_transfers_mock.called
     assert "Error processing the requests" in caplog.text
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_without_issued_transfers_is_not_started(
+    mock_verify, client, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "2107",
+            "title": "Test Record without Issued Transfers",
+            "file_specs": [
+                {"name": "file11.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_transfers == 0
+    assert request.started_at is None
+
+    request.file = "missing-file.txt"
+    database.session.add(request)
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.COMPLETED
+    assert request.num_transfers == 0

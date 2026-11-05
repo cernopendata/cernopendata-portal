@@ -19,6 +19,7 @@ const DetailedTable = ({
   openSubscribeModal,
   formatBytes,
   abbreviateNumber,
+  formatStatus,
   initialRecordFilter = "",
   statusFilters,
   setStatusFilters,
@@ -234,7 +235,7 @@ const DetailedTable = ({
                 placeholder="Filter by status"
                 options={statuses.map((status) => ({
                   key: status,
-                  text: status,
+                  text: formatStatus(status),
                   value: status,
                 }))}
                 value={statusFilters}
@@ -267,7 +268,7 @@ const DetailedTable = ({
                     <a href={`/record/${item.recid}`}>{item.recid}</a>
                   </Table.Cell>
                   <Table.Cell>{item.action}</Table.Cell>
-                  <Table.Cell>{item.status}</Table.Cell>
+                  <Table.Cell>{formatStatus(item.status)}</Table.Cell>
                   <Table.Cell>
                     {item.created_at
                       ? new Date(item.created_at).toLocaleString()
