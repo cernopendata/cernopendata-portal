@@ -31,6 +31,7 @@ services:
       - FLASK_DEBUG=1
       - WDB_SOCKET_SERVER=wdb
       - WDB_NO_BROWSER_AUTO_OPEN=True
+      - CERNOPENDATA_JSONSCHEMAS_HOST=localhost
     volumes:
       - ./:/code/
       - ../opendata.cern.ch:/content/
@@ -60,6 +61,8 @@ services:
 
   worker:
     command: bash -c "/code/scripts/start-server-debug.sh worker"
+    environment:
+      - CERNOPENDATA_JSONSCHEMAS_HOST=localhost
     volumes:
       - ./:/code/
       - ./data/uploads:/opt/invenio/var/instance/static/upload
