@@ -87,9 +87,8 @@ def _handle_record_files(record, data, logger=None):
     """Handles record files."""
     # let's make a copy of files, since we might change it
     logger = logging.getLogger(__name__) if not logger else logger
-    verbose = logger.getEffectiveLevel() == logging.DEBUG
     real_files = []
-    if "files" not in data:
+    if "files" not in data and "file_indices" not in data:
         if "distribution" in record and "availability" in record["distribution"]:
             record["availability"] = record["distribution"]["availability"]
         else:
@@ -98,45 +97,65 @@ def _handle_record_files(record, data, logger=None):
         return
     data["_file_indices"] = []
     record["_file_indices"] = []
-    if data["files"] and verbose:
+    if "files" in data:
         logger.info(f"  -> Detected {len(data['files'])} files")
-    for file in data["files"]:
-        assert "uri" in file
-        assert "size" in file
-        assert "checksum" in file
-        f = FileInstance.create()
-        filename = file.get("uri").split("/")[-1:][0]
-        f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
-        if "type" in file and file["type"] == "index.json":
-            # We don't need to store the index
+        for file in data["files"]:
+            assert "uri" in file
+            assert "size" in file
+            assert "checksum" in file
+            if "type" in file and file["type"] == "index.json":
+                logger.warning(
+                    f"The entry {file['uri']} is indeed a file_index. Moving to the right key"
+                )
+                # We don't need to store the index
+                if "file_indices" not in data:
+                    data["file_indices"] = []
+                    record["file_indices"] = []
+                data["file_indices"].append(file)
+                record["file_indices"].append(file)
+            elif "type" in file and file["type"] == "index.txt":
+                logger.warning("Ignoring a file_index of type txt")
+            else:
+                logger.info(f"  -> Detected direct file {file.get('uri')}")
+                f = FileInstance.create()
+                filename = file.get("uri").split("/")[-1:][0]
+                f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
+
+                real_files.append(file)
+                try:
+                    obj = MultiURIFileObject.create_version(
+                        record.bucket, filename, f.id
+                    )
+                    file_info = {
+                        "bucket": str(obj.bucket_id),
+                        "checksum": obj.file.checksum,
+                        "key": obj.key,
+                        "version_id": str(obj.version_id),
+                        "availability": "online",
+                    }
+                    file.update(file_info)
+                except Exception as e:
+                    logger.error(
+                        f"  -> Recid {data.get('recid')} file {filename} could not be loaded due to {str(e)}."
+                    )
+    if "file_indices" in data:
+        logger.info(f"  -> Detected {len(data['file_indices'])} file indices")
+        for file_index in data["file_indices"]:
+            f = FileInstance.create()
+            filename = file.get("uri").split("/")[-1:][0]
+            f.set_uri(
+                file_index.get("uri"),
+                file_index.get("size"),
+                file_index.get("checksum"),
+            )
             FileIndexMetadata.create(
                 record,
                 f,
-                description=file.get("description", filename),
+                description=file_index.get("description", filename),
                 logger=logger,
             )
             f.delete()
-        elif "type" in file and file["type"] == "index.txt":
-            # The txt indexes should be ignored. Just delete the file
-            f.delete()
-        else:
-            if verbose:
-                logger.info(f"  -> Detected direct file {file.get('uri')}")
-            real_files.append(file)
-            try:
-                obj = MultiURIFileObject.create_version(record.bucket, filename, f.id)
-                file_info = {
-                    "bucket": str(obj.bucket_id),
-                    "checksum": obj.file.checksum,
-                    "key": obj.key,
-                    "version_id": str(obj.version_id),
-                    "availability": "online",
-                }
-                file.update(file_info)
-            except Exception as e:
-                logger.error(
-                    f"  -> Recid {data.get('recid')} file {filename} could not be loaded due to {str(e)}."
-                )
+
     record["files"] = real_files
     data["files"] = real_files
     if record.files:
