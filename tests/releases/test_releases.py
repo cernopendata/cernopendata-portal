@@ -102,6 +102,38 @@ def test_create_success(mocker):
     assert release
 
 
+def test_create_validations_filters_by_experiment(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    class FakeValidation:
+        def __init__(self, name, experiment):
+            self.name = name
+            self.experiment = experiment
+            self.optional = False
+
+    mocker.patch(
+        "cernopendata.modules.releases.api.VALIDATIONS",
+        [
+            FakeValidation("all-experiments", None),
+            FakeValidation("cms-only", "cms"),
+            FakeValidation("cms-and-atlas", {"cms", "atlas"}),
+            FakeValidation("lhcb-only", "lhcb"),
+        ],
+    )
+
+    metadata = ReleaseMetadata(
+        name="atlas_release",
+        experiment="atlas",
+        records=[],
+        validations=[],
+        status=ReleaseStatus.DRAFT.value,
+    )
+    Release(metadata).create_validations()
+
+    created = {validation.name for validation in metadata.validations}
+    assert created == {"all-experiments", "cms-and-atlas"}
+
+
 def test_is_status():
     metadata = MagicMock()
     metadata.status = ReleaseStatus.DRAFT.value
