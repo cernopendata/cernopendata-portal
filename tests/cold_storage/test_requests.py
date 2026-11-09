@@ -1,8 +1,10 @@
+import errno
 import json
 import logging
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import gfal2
 import pytest
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records.models import RecordMetadata
@@ -17,7 +19,9 @@ from cernopendata.cold_storage.models import (
 )
 from cernopendata.cold_storage.schemas import TransferRequestSchema
 from cernopendata.cold_storage.service import RequestService
+from cernopendata.cold_storage.storage import Storage
 from cernopendata.cold_storage.tasks import check_transfers
+from cernopendata.cold_storage.transfer.fts import TransferManager as FtsTransferManager
 
 from .utils import run_command
 
@@ -177,6 +181,29 @@ def test_request_with_failed_transfer(
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.num_transfers == num_transfers
     assert request.status == RequestStatus.SUBMITTING
+    num_failed_transfers = request.num_failed_transfers
+
+    another_failed_transfer = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id,
+            "file_id": "another-test-file-id",
+            "method": "test",
+        }
+    )
+    another_failed_transfer.status = "FAILED"
+    another_failed_transfer.finished = another_failed_transfer.submitted
+    database.session.add(another_failed_transfer)
+    database.session.commit()
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_failed_transfers == num_failed_transfers + 1
 
     run_command(cli_runner, app, cold, ["process-requests"])
 
@@ -511,7 +538,7 @@ def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
     "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
 )
 def test_request_without_issued_transfers_is_not_started(
-    mock_verify, client, app, database, cli_runner, record_factory
+    mock_verify, client, app, database, cli_runner, record_factory, caplog
 ):
     record = record_factory(
         {
@@ -545,6 +572,17 @@ def test_request_without_issued_transfers_is_not_started(
     assert request.num_transfers == 0
     assert request.started_at is None
 
+    with patch(
+        "cernopendata.cold_storage.manager.Storage.verify_file",
+        return_value=(None, "Could not check the file: Proxy expired!"),
+    ):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_transfers == 0
+    assert "since the destination could not be checked" in caplog.text
+
     request.file = "missing-file.txt"
     database.session.add(request)
     database.session.commit()
@@ -554,3 +592,112 @@ def test_request_without_issued_transfers_is_not_started(
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.status == RequestStatus.COMPLETED
     assert request.num_transfers == 0
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_process_transfers_retries_transfer_with_unknown_status(
+    mock_verify, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "2108",
+            "title": "Test Record with Unknown Transfer Status",
+            "file_specs": [{"name": "file12.txt", "content": b"dummy"}],
+        }
+    )
+    record_uuid = PersistentIdentifier.get("recid", record["id"]).object_uuid
+    status_error = "Could not retrieve status from FTS: Proxy expired!"
+
+    with patch(
+        "cernopendata.cold_storage.transfer.cp.TransferManager.transfer_status",
+        return_value=(None, status_error),
+    ):
+        run_command(cli_runner, app, cold, ["archive", record["id"]])
+        run_command(cli_runner, app, cold, ["process-transfers"])
+
+    transfer = TransferMetadata.query.filter_by(record_uuid=str(record_uuid)).one()
+    assert transfer.status is None
+    assert transfer.finished is None
+    assert transfer.reason == status_error
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+
+    transfer = TransferMetadata.query.filter_by(record_uuid=str(record_uuid)).one()
+    assert transfer.status == "DONE"
+    assert transfer.finished is not None
+    assert transfer.reason is None
+
+
+@pytest.mark.parametrize(
+    "stat_error, expected_exists",
+    [
+        (gfal2.GError("No such file or directory", errno.ENOENT), False),
+        (gfal2.GError("Proxy expired!", errno.EACCES), None),
+        (ConnectionError("Connection refused"), None),
+    ],
+)
+def test_verify_file_distinguishes_missing_file_from_failed_check(
+    stat_error, expected_exists
+):
+    storage_context = MagicMock()
+    storage_context.stat.side_effect = stat_error
+
+    with patch(
+        "cernopendata.cold_storage.storage.gfal2.creat_context",
+        return_value=storage_context,
+    ):
+        exists, error = Storage.verify_file(
+            "root://eospublic.cern.ch//eos/opendata/file.root", 10, "adler32:1234"
+        )
+
+    assert exists is expected_exists
+    assert error
+
+
+@pytest.mark.parametrize(
+    "job_status, expected_status, expected_reason",
+    [
+        ({"job_state": "FINISHED"}, "DONE", None),
+        (
+            {
+                "job_state": "FAILED",
+                "reason": "One or more files failed.",
+                "files": [
+                    {"reason": ""},
+                    {"reason": "STAGING [42] Connection refused"},
+                ],
+            },
+            "FAILED",
+            "STAGING [42] Connection refused",
+        ),
+        (
+            {
+                "job_state": "FINISHEDDIRTY",
+                "reason": "One or more files failed.",
+                "files": [],
+            },
+            "FAILED",
+            "FINISHEDDIRTY: One or more files failed.",
+        ),
+        ({"job_state": "STAGING", "reason": None}, "STAGING", None),
+        ({}, None, "Could not retrieve status from FTS: empty response"),
+        (
+            Exception("Proxy expired!"),
+            None,
+            "Could not retrieve status from FTS: Proxy expired!",
+        ),
+    ],
+)
+def test_fts_transfer_status(monkeypatch, job_status, expected_status, expected_reason):
+    monkeypatch.setenv("INVENIO_FTS_ENDPOINT", "https://fts.example.org:8446")
+
+    with patch("cernopendata.cold_storage.transfer.fts.fts3.Context"), patch(
+        "cernopendata.cold_storage.transfer.fts.fts3.get_job_status",
+        side_effect=[job_status],
+    ):
+        status, reason = FtsTransferManager().transfer_status("job-id")
+
+    assert status == expected_status
+    assert reason == expected_reason

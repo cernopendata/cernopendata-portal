@@ -127,7 +127,7 @@ When you change a model:
    .. code-block:: console
 
       $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic upgrade cernopendata@head
-      $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic downgrade <previous revision>
+      $ docker exec -i -t cernopendata-portal-web-1 cernopendata alembic downgrade cernopendata@<previous revision>
 
 4. Commit the revision together with the model change.
 
