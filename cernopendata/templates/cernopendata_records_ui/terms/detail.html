@@ -1,5 +1,7 @@
 {%- extends "invenio_records_ui/detail.html" %}
 
+{% from 'cernopendata_records_ui/records/macros/versions.html' import versions_box with context %}
+
 {%- block page_body %}
 <div class="ui one column centered grid container detail-page">
     <div class="row">
@@ -7,8 +9,15 @@
             <div class="ui segment">
                 <div class="card-body">
                     <h1> {{ record.anchor }} </h1>
+                    {% if not record.get('_versions', {}).get('is_latest', true) %}
+                    <div class="ui warning message">
+                          Please, note that this is not the latest version of this entry. An updated version can be found
+                        <a href="{{ url_for('invenio_records_ui.termid', pid_value=record.anchor) }}">here</a>
+                    </div>
+                    {% endif %}
                     <br>
                     <p class="definition-paragraph">{{ record.definition | safe }}</p>
+                    {{ versions_box(record, 'termid', record.anchor) }}
                     {% if record.links %}
                     <div>
                         <span>
