@@ -197,13 +197,11 @@ const DetailedTable = ({
                 placeholder="Filter by record"
                 defaultValue={recordFilter}
                 onChange={(e) => {
-                  if (isLoading) return;
                   const value = e.target.value;
                   setRecordFilter(value);
                   updateURLParam("record_id", value);
                 }}
                 className="narrow-filter"
-                disabled={isLoading}
               ></Input>
             </Table.HeaderCell>
             <Table.HeaderCell>
