@@ -50,6 +50,8 @@ from cernopendata.cold_storage.api import (
     RecordAvailability,
     Request,
 )
+from cernopendata.cold_storage.catalog import Catalog
+from cernopendata.cold_storage.service import RequestService
 from cernopendata.cold_storage.stats.signals import record_stage
 
 
@@ -68,11 +70,17 @@ def stage(pid, record, **kwargs):
             ),
             409,
         )
+    file = data.get("file")
+    files = Catalog().get_files_from_record(record, file=file)
+    if not files:
+        return jsonify({"error": "No files found to stage"}), 400
+    if RequestService.are_all_files_hot(record, file=file):
+        return jsonify({"error": "All files are already available"}), 400
     try:
         id = Request.create(
             record.id,
             subscribers=[email] if email else None,
-            file=data.get("file"),
+            file=file,
             availability=record["_availability_details"],
             distribution=record["distribution"],
         )

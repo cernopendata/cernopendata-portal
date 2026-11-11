@@ -62,10 +62,15 @@ class Catalog:
         if record:
             if "_files" in record:
                 if file:
-                    if file in record["_files"]:
-                        files = record["_files"][file]
-                    else:
-                        possible_files += record["_files"]
+                    files = [
+                        record_file
+                        for record_file in record["_files"]
+                        if record_file["key"] == file
+                    ]
+                    if not files:
+                        possible_files += [
+                            record_file["key"] for record_file in record["_files"]
+                        ]
                 else:
                     files = record["_files"]
             if "_file_indices" in record:

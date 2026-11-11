@@ -202,8 +202,8 @@ class RequestService:
                     record = RecordFilesWithIndex.get_record(request.record_id)
                     Request.update_transfer_counts(request)
                     if action == ColdStorageActions.STAGE:
-                        if not RequestService._are_all_request_files_hot(
-                            record, request
+                        if not RequestService.are_all_files_hot(
+                            record, file=request.file
                         ):
                             if RequestService._has_active_transfers(request):
                                 logger.info(
@@ -309,9 +309,9 @@ class RequestService:
         return result
 
     @staticmethod
-    def _are_all_request_files_hot(record, request):
-        """Check if all the files of a request have a hot copy."""
-        files = Catalog().get_files_from_record(record, file=request.file)
+    def are_all_files_hot(record, file=None):
+        """Check if all the files of a record, or of one of its files, have a hot copy."""
+        files = Catalog().get_files_from_record(record, file=file)
         return all("hot_deleted" not in file.get("tags", {}) for file in files)
 
     @staticmethod
