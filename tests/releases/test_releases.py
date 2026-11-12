@@ -898,6 +898,7 @@ def test_fix_checks_reports_errors_raised_by_a_fix(mocker):
 
     metadata = MagicMock()
     metadata.records = [{"recid": None}]
+    metadata.errors = ["Entry 1: Missing slug"]
 
     release = Release(metadata)
 
@@ -908,13 +909,16 @@ def test_fix_checks_reports_errors_raised_by_a_fix(mocker):
     ).return_value = [slug_validation]
 
     mock_validate = mocker.patch.object(release, "validate")
-    mocker.patch.object(release, "change_status")
+    current_user = MagicMock()
 
-    summary = release.fix_checks(MagicMock())
+    summary = release.fix_checks(current_user)
 
-    mock_validate.assert_not_called()
-    assert metadata.errors == ["Entry 1: Cannot auto-fix slug"]
-    assert metadata.num_errors == 1
+    mock_validate.assert_called_once_with(current_user)
+    assert metadata.errors == [
+        "Entry 1: Missing slug",
+        "Entry 1: Cannot auto-fix slug",
+    ]
+    assert metadata.num_errors == 2
     assert summary["fixed"] == []
     assert summary["remaining"] == ["Valid slug"]
     assert summary["assigned_recids"] == []
