@@ -43,10 +43,11 @@ def datacite_etree(pid, record):
     f = schema43.dump_etree(data_dict)
 
     if f.find("identifier") is None:
-        identifier = etree.SubElement(f, "identifierType", identifierType="URL")
+        identifier = etree.Element("identifier", identifierType="URL")
         identifier.text = (
             f"https://{request.host}/record/{record['_source'].get('recid')}"
         )
+        f.insert(0, identifier)
     return f
 
 
