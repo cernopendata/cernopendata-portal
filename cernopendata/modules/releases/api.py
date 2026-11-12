@@ -710,7 +710,7 @@ class Release:
 
     def fix_checks(self, current_user):
         """Fix all the validations that can be fixed automatically."""
-        errors = []
+        validation_errors = {}
         failing_before = self.failing_validations()
         recids_before = [record.get("recid") for record in self.records]
         current_app.logger.info("Fixing the validations")
@@ -734,17 +734,18 @@ class Release:
                             f"Fixing {validation.name} returned {len(fix_errors)} error(s), "
                             f"first ones: {fix_errors[:5]}"
                         )
-                    errors.extend(fix_errors)
+                        validation_errors[validation.name] = fix_errors
         current_app.logger.info("Fixes have been done")
 
-        if errors:
-            self._metadata.errors = errors
-            self._metadata.num_errors = len(errors)
-            self.change_status(ReleaseStatus.DRAFT, current_user)
-            failing_after = failing_before
-        else:
-            self.validate(current_user)
-            failing_after = self.failing_validations()
+        self.validate(current_user)
+        failing_after = self.failing_validations()
+        for validation in failing_after:
+            for error in validation_errors.get(validation, []):
+                if error not in self._metadata.errors:
+                    self._metadata.errors.append(error)
+        self._metadata.num_errors = len(self._metadata.errors)
+        flag_modified(self._metadata, "errors")
+
         if self._metadata.records:
             flag_modified(self._metadata, "records")
         if self._metadata.documents:
