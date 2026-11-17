@@ -5,6 +5,7 @@ from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 
 from ...datacite.utils import generate_doi
 from .base import Validation
+from cernopendata.api import RecordFilesWithIndex
 
 
 class ValidDoi(Validation):
@@ -45,8 +46,12 @@ class ValidDoi(Validation):
             else:
                 used_suffixes[suffix] = i
 
-        for suffix in self._registered_suffixes(prefix, list(used_suffixes)):
-            errors.append(f"DOI suffix already registered: {suffix}")
+            existing_record = RecordFilesWithIndex.get_record_for_doi(doi)
+
+            if existing_record and existing_record != record.ger("recid"):
+                errors.append(
+                    f"The DOI {doi} is already used by the record {existing_record}"
+                )
 
         return errors
 

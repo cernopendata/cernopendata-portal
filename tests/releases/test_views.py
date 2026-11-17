@@ -82,6 +82,77 @@ def test_upload_url(
     assert kwargs.get("name") == "file.json"
 
 
+@patch("cernopendata.modules.releases.views._check_experiment")
+@patch("cernopendata.modules.releases.views.RecordFilesWithIndex.get_record")
+@patch("cernopendata.modules.releases.views.PersistentIdentifier.get")
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.Release.list_releases")
+def test_create_from_entry(
+    mock_list_releases,
+    mock_create,
+    mock_pid_get,
+    mock_get_record,
+    mock_check_experiment,
+    logged_in_client,
+):
+    record = MagicMock()
+    record.get.return_value = ["CMS"]
+    record.dumps.return_value = {
+        "recid": "123",
+        "experiment": ["CMS"],
+        "prerelease": "cms/7",
+        "_versions": {"index": 1, "is_latest": True},
+    }
+    mock_pid_get.return_value = MagicMock(object_uuid="record-uuid")
+    mock_get_record.return_value = record
+    mock_create.return_value = MagicMock(_metadata=MagicMock(id=42))
+    mock_list_releases.return_value = []
+
+    response = logged_in_client.get("/releases/create_from_entry/recid/123")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/releases/cms/42")
+    mock_check_experiment.assert_called_once_with("cms")
+    _, kwargs = mock_create.call_args
+    assert kwargs["experiment"] == "cms"
+    assert kwargs["records"] == [
+        {
+            "recid": "123",
+            "experiment": ["CMS"],
+            "version": 2,
+            "_versions": {"index": 2, "is_latest": True},
+        }
+    ]
+
+
+@patch("cernopendata.modules.releases.views._check_experiment")
+@patch("cernopendata.modules.releases.views.RecordFilesWithIndex.get_record")
+@patch("cernopendata.modules.releases.views.PersistentIdentifier.get")
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.Release.list_releases")
+def test_create_from_entry_reuses_existing_draft(
+    mock_list_releases,
+    mock_create,
+    mock_pid_get,
+    mock_get_record,
+    mock_check_experiment,
+    logged_in_client,
+):
+    record = MagicMock()
+    record.get.return_value = ["CMS"]
+    mock_pid_get.return_value = MagicMock(object_uuid="record-uuid")
+    mock_get_record.return_value = record
+    mock_list_releases.return_value = [
+        MagicMock(id=41, status="DRAFT", records=[{"recid": "123", "version": 1}])
+    ]
+
+    response = logged_in_client.get("/releases/create_from_entry/recid/123")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/releases/cms/41")
+    mock_create.assert_not_called()
+
+
 @patch("cernopendata.modules.releases.views._get_release")
 def test_add_documents_json_source(mock_get_release, logged_in_client):
     mock_release = MagicMock()
