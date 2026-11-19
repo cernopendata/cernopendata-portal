@@ -11,7 +11,7 @@ def test_reports_files_but_none_provided():
 
     errors = MissingFiles().validate(release)
 
-    assert errors == ["Entry 1 reports having 423 files but none were provided."]
+    assert errors == ["Record 1: reports having 423 files but none were provided"]
 
 
 def test_files_provided():
@@ -65,4 +65,4 @@ def test_only_offending_entries_flagged():
 
     errors = MissingFiles().validate(release)
 
-    assert errors == ["Entry 2 reports having 5 files but none were provided."]
+    assert errors == ["Record 2: reports having 5 files but none were provided"]

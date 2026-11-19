@@ -13,6 +13,7 @@ class ValidSlug(PIDValidation):
     )
     applies_to = {"documents"}
     items_attr = "documents"
+    label = "Document"
     id_field = "slug"
     pid_type = "docid"
 
@@ -25,7 +26,7 @@ class ValidSlug(PIDValidation):
             source = doc.get("_source_filename")
             if not source:
                 errors.append(
-                    f"Entry {i + 1}: Cannot auto-fix slug — no source filename available"
+                    f"Document {i + 1}: Cannot auto-fix slug — no source filename available"
                 )
                 continue
             slug = source.rsplit("/", 1)[-1]
@@ -33,7 +34,7 @@ class ValidSlug(PIDValidation):
                 slug = slug[: -len(".json")]
             if not slug:
                 errors.append(
-                    f"Entry {i + 1}: Cannot derive a slug from source filename '{source}'"
+                    f"Document {i + 1}: Cannot derive a slug from source filename '{source}'"
                 )
                 continue
             doc["slug"] = slug

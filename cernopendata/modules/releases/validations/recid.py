@@ -20,6 +20,7 @@ class ValidRecid(PIDValidation):
         "Each record must have a unique, unregistered recid in the correct format."
     )
     items_attr = "records"
+    label = "Record"
     id_field = "recid"
     pid_type = "recid"
 
@@ -35,10 +36,10 @@ class ValidRecid(PIDValidation):
             recid = record.get("recid")
             if recid and not pattern.match(str(recid)):
                 errors.append(
-                    f"Entry {i + 1}: recid '{recid}' does not match the required format"
+                    f"Record {i + 1}: recid '{recid}' does not match the required format"
                 )
         errors.extend(
-            f"Entry {i + 1}: recid '{recid}' collides with existing recid '{existing}'"
+            f"Record {i + 1}: recid '{recid}' collides with existing recid '{existing}'"
             for i, recid, existing in self._numeric_collisions(release)
         )
         return errors

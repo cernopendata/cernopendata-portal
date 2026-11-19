@@ -30,17 +30,17 @@ class ValidDoi(Validation):
                 continue
             doi_prefix, separator, suffix = doi.partition("/")
             if not separator or not suffix:
-                errors.append(f"Entry {i + 1}: Malformed DOI '{doi}'")
+                errors.append(f"Record {i + 1}: Malformed DOI '{doi}'")
                 continue
             if validate_prefix and doi_prefix != prefix:
                 errors.append(
-                    f"Entry {i + 1}: DOI prefix '{doi_prefix}' does not match "
+                    f"Record {i + 1}: DOI prefix '{doi_prefix}' does not match "
                     f"the prefix '{prefix}'"
                 )
             if suffix in used_suffixes:
                 errors.append(
-                    f"Entry {i + 1}: Duplicate DOI suffix '{suffix}' "
-                    f"(also used by entry {used_suffixes[suffix] + 1})"
+                    f"Record {i + 1}: Duplicate DOI suffix '{suffix}' "
+                    f"(also used by record {used_suffixes[suffix] + 1})"
                 )
             else:
                 used_suffixes[suffix] = i

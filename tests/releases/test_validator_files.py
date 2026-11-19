@@ -19,10 +19,10 @@ def test_validate_missing_metadata():
     errors = validator.validate(release)
 
     assert errors == [
-        "Entry 1, file 1: Missing size",
-        "Entry 1, file 1: Missing checksum",
-        "Entry 1, file 2: Missing size",
-        "Entry 1, file 2: Invalid checksum 'abc'",
+        "Record 1, file 1: Missing size",
+        "Record 1, file 1: Missing checksum",
+        "Record 1, file 2: Missing size",
+        "Record 1, file 2: Invalid checksum 'abc'",
     ]
 
 
@@ -40,7 +40,7 @@ def test_validate_invalid_checksum():
 
     validator = ValidFiles()
 
-    assert validator.validate(release) == ["Entry 1, file 1: Invalid checksum 'abc'"]
+    assert validator.validate(release) == ["Record 1, file 1: Invalid checksum 'abc'"]
 
 
 def test_validate_no_files():
