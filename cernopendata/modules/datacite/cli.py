@@ -34,12 +34,7 @@ from invenio_records.api import Record
 
 from .client import DataCiteMDSClientWrapper
 from .providers import DataCiteProviderWrapper
-from .utils import (
-    generate_doi,
-    register_record_doi,
-    update_record_doi,
-    validate_record,
-)
+from .utils import generate_doi, register_record_doi, update_record_doi, validate_record
 
 
 @click.group()

@@ -24,9 +24,9 @@
 
 """Pages for CERN Open Data Portal."""
 
+import importlib.resources
 import json
 
-import pkg_resources
 from flask import (
     Blueprint,
     Response,
@@ -183,10 +183,10 @@ def glossary():
 @blueprint.route("/glossary/json")
 def glossary_json():
     """Fetch glossary json."""
-    filepath = pkg_resources.resource_filename(
-        "cernopendata.modules.fixtures", "data/terms/terms.json"
+    filepath = importlib.resources.files("cernopendata.modules.fixtures").joinpath(
+        "data/terms/terms.json"
     )
-    with open(filepath, "r") as f:
+    with filepath.open("r") as f:
         glossary = json.load(f)
     return jsonify(glossary)
 

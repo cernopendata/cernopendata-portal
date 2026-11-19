@@ -107,7 +107,7 @@ def default_config(instance_path):
         INVENIO_REDIS_URL=None,
         ACCOUNTS_SESSION_REDIS_URL=None,
         SESSION_REDIS_URL=None,
-        CACHE_TYPE="simple",
+        CACHE_TYPE="SimpleCache",
     )
 
 

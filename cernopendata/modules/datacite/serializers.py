@@ -23,12 +23,11 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Serializers for datacite module."""
 
+from bs4 import BeautifulSoup
 from datacite import schema43
 from flask import request
 from lxml import etree
 from marshmallow import Schema, fields
-
-from bs4 import BeautifulSoup
 
 
 def datacite_etree(pid, record):

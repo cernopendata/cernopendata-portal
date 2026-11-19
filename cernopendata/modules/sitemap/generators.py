@@ -18,6 +18,7 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
 """Sitemap generation for CERN Open Data Portal."""
+
 import math
 
 import arrow
