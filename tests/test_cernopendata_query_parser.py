@@ -23,6 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """cernopendata-query-parser test."""
+
 from invenio_search.engine import dsl
 
 from cernopendata.config import _query_parser_and

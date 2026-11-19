@@ -23,6 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """CERN Open Data Validations."""
+
 from importlib import import_module
 from pathlib import Path
 

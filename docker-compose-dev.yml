@@ -37,10 +37,6 @@ services:
       - ./data/uploads:/opt/invenio/var/instance/static/upload
       - ./data/cold:/opt/invenio/var/instance/cold
 
-#  web-files:
-#    profiles:
-#      - donotstart
-
   proxy:
     volumes:
       - ./:/code/

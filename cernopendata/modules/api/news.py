@@ -22,9 +22,7 @@ def get_latest_news():
     except Exception:
         news = []
 
-    rss_items = "\n".join(
-        [
-            f"""
+    rss_items = "\n".join([f"""
             <item>
                 <title>{article.get("title", "CERN Open Data update")}</title>
                 <link>
@@ -38,11 +36,7 @@ def get_latest_news():
                     Author: {article.get("author", "Open Data Portal team")}
                 </description>
             </item>
-            """
-            for a in news
-            if (article := a.get("_source"))
-        ]
-    )
+            """ for a in news if (article := a.get("_source"))])
 
     rss_feed = f"""<?xml version="1.0" encoding="UTF-8" ?>
     <rss version="2.0">

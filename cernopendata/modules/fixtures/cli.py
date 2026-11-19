@@ -19,6 +19,7 @@
 
 """Command line interface for CERN Open Data Portal."""
 
+import importlib.resources
 import json
 import logging
 import os
@@ -27,7 +28,6 @@ import uuid
 from os.path import exists, isdir
 
 import click
-import pkg_resources
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
@@ -295,8 +295,10 @@ def _get_list_of_fixture_files(files, type, logger):
         else:
             return files
     if not data_dir:
-        data_dir = pkg_resources.resource_filename(
-            "cernopendata", f"modules/fixtures/data/{type}"
+        data_dir = str(
+            importlib.resources.files("cernopendata").joinpath(
+                f"modules/fixtures/data/{type}"
+            )
         )
 
     return get_jsons_from_dir(data_dir)

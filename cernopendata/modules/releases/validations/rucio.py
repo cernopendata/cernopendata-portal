@@ -47,7 +47,7 @@ class RucioDatasets(Validation):
         rucio_client = DIDClient()
         for i, record in enumerate(release.records):
             if "rucio_dataset" in record and "files" not in record:
-                (schema, dataset_type, dataset_date, dataset_format) = record[
+                schema, dataset_type, dataset_date, dataset_format = record[
                     "rucio_dataset"
                 ].split("/")
                 files = self._get_files_from_rucio_dataset(
