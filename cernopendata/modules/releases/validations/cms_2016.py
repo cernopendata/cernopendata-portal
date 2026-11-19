@@ -22,6 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Validation process."""
+
 from .base import Validation
 from .expected_fields import ExpectedFieldsValidation
 

@@ -23,6 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Schemas used for the transfers."""
+
 from invenio_pidstore.models import PersistentIdentifier
 from marshmallow import Schema, fields, validate
 

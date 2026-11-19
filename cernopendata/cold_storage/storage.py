@@ -29,14 +29,14 @@ import logging
 import os
 import re
 import zlib
-import gfal2
+from urllib.parse import urlparse
 
+import gfal2
 from invenio_db import db
 from sqlalchemy import literal
 
 from .api import ColdStorageActions, Transfer
 from .models import Location
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

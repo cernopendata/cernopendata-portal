@@ -96,7 +96,11 @@ check_pydocstyle () {
 }
 
 check_isort () {
-    isort -rc -c -df --profile black -- **/*.py
+    # `-rc` and `-df` are isort 4 spellings: deprecated since isort 5 and
+    # removed in isort 9, where `-df` parses as `-d -f`. Recursion is the
+    # default since isort 5, so the directories are listed explicitly rather
+    # than relying on `**/*.py`, which only matched one level deep.
+    isort --check-only --df --profile black cernopendata tests scripts setup.py
 }
 
 check_manifest () {

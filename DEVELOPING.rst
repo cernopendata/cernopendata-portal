@@ -213,18 +213,6 @@ If you alter one of the fixture files, you can upload your changes by using the
 
    $ docker exec -i -t cernopendata-portal-web-1 cernopendata fixtures records -f /content/data/records/opera-ed-datasets.json --mode replace
 
-Working with files
-------------------
-
-If you are working with serving file assets, please note that ``web-files``
-container may loose XRootD connection to EOS if you change networks or resume
-your laptop from the deep sleep. In this case it may be necessary to restart the
-``web`` and ``web-files`` containers:
-
-.. code-block:: console
-
-   $ docker compose -f docker-compose-dev.yml restart web web-files
-
 Working with proxy
 ------------------
 

@@ -22,6 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Signals for the staging."""
+
 from blinker import Namespace
 
 _signals = Namespace()
