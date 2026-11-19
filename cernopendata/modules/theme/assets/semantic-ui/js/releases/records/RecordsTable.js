@@ -177,6 +177,7 @@ export default function RecordsTable({
           <Table celled compact>
             <Table.Header>
               <Table.Row>
+                <Table.HeaderCell collapsing>#</Table.HeaderCell>
                 <Table.HeaderCell>RecId</Table.HeaderCell>
                 <Table.HeaderCell>DOI</Table.HeaderCell>
                 <Table.HeaderCell>Title</Table.HeaderCell>
@@ -186,7 +187,7 @@ export default function RecordsTable({
             <Table.Body>
               {visible.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan="4" textAlign="center">
+                  <Table.Cell colSpan="5" textAlign="center">
                     No records in this release.
                   </Table.Cell>
                 </Table.Row>
@@ -195,6 +196,9 @@ export default function RecordsTable({
                   const assigned = assignedRecids.has(record.recid);
                   return (
                     <Table.Row key={`record-${record.recid || i}`}>
+                      <Table.Cell collapsing>
+                        {records.indexOf(record) + 1}
+                      </Table.Cell>
                       <Table.Cell
                         className={`no-glossary${assigned ? " recid-assigned" : ""}`}
                         data-tooltip={

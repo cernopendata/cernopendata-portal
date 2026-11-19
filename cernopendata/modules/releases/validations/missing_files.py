@@ -20,7 +20,7 @@ class MissingFiles(Validation):
                 and "rucio_dataset" not in record
             ):
                 errors.append(
-                    f"Entry {i + 1} reports having {number_files} files "
-                    f"but none were provided."
+                    f"Record {i + 1}: reports having {number_files} files "
+                    f"but none were provided"
                 )
         return errors

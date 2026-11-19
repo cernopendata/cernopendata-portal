@@ -27,7 +27,7 @@ class ValidFiles(Validation):
         for i, record in enumerate(release.records):
             if "files" in record:
                 for j, file in enumerate(record["files"]):
-                    file_label = f"Entry {i + 1}, file {j + 1}"
+                    file_label = f"Record {i + 1}, file {j + 1}"
                     if "size" not in file:
                         errors.append(f"{file_label}: Missing size")
                     if "checksum" not in file:

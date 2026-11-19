@@ -82,6 +82,7 @@ export default function DocumentsTable({
         <Table celled compact>
           <Table.Header>
             <Table.Row>
+              <Table.HeaderCell collapsing>#</Table.HeaderCell>
               <Table.HeaderCell>Slug / Path</Table.HeaderCell>
               <Table.HeaderCell>Title</Table.HeaderCell>
               <Table.HeaderCell>Type</Table.HeaderCell>
@@ -91,7 +92,7 @@ export default function DocumentsTable({
           <Table.Body>
             {visible.length === 0 ? (
               <Table.Row>
-                <Table.Cell colSpan="4" textAlign="center">
+                <Table.Cell colSpan="5" textAlign="center">
                   No documents in this release.
                 </Table.Cell>
               </Table.Row>
@@ -102,6 +103,9 @@ export default function DocumentsTable({
                 );
                 return [
                   <Table.Row key={`doc-${doc.slug || i}`}>
+                    <Table.Cell collapsing>
+                      {documents.indexOf(doc) + 1}
+                    </Table.Cell>
                     <Table.Cell className="no-glossary">
                       {doc.slug || "—"}
                     </Table.Cell>
@@ -120,6 +124,7 @@ export default function DocumentsTable({
                     <Table.Row
                       key={`img-${image.parent_slug}-${image.filename}`}
                     >
+                      <Table.Cell collapsing />
                       <Table.Cell className="no-glossary">
                         <span className="image-row-url">{image.url}</span>
                         <Button
