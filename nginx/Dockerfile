@@ -22,7 +22,7 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
-FROM docker.io/library/nginx:1.30-perl
+FROM docker.io/library/nginx:1.31-perl
 
 # Install the CA-Certificate
 RUN curl -fsSL \
