@@ -23,7 +23,9 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """CERN Open Data Release utils."""
+
 import logging
+from pathlib import Path
 
 from flask import current_app
 from flask_login import current_user
@@ -102,3 +104,16 @@ def curator_experiments():
         roles = remote_user.extra_data.get("cern_roles", [])
         exps = [r[:-8] for r in roles if r.endswith("-curator")]
     return dict(curator_experiments=exps)
+
+
+def images_dir(release_id, slug=None):
+    """Return the images directory of a release, or of one of its documents."""
+    release_dir = (
+        Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve() / str(release_id)
+    ).resolve()
+    if not slug:
+        return release_dir
+    slug_dir = (release_dir / slug).resolve()
+    if release_dir not in slug_dir.parents:
+        raise ValueError(f"Invalid slug '{slug}'")
+    return slug_dir

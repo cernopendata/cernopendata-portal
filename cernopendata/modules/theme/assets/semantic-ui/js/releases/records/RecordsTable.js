@@ -11,6 +11,7 @@ import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
 import AddItemsModal from "../shared/AddItemsModal";
 import RowActions from "../shared/RowActions";
+import ConfirmDeleteModal from "../shared/ConfirmDeleteModal";
 import { fetchJson, usePagination } from "../shared/utils";
 
 export default function RecordsTable({
@@ -41,6 +42,7 @@ export default function RecordsTable({
   const [doiErrors, setDoiErrors] = useState([]);
   const [error, setError] = useState(null);
   const [bulkMessage, setBulkMessage] = useState(null);
+  const [deletingRecord, setDeletingRecord] = useState(null);
 
   const allHaveDoi =
     records.length > 0 && records.every((record) => record.doi);
@@ -82,6 +84,16 @@ export default function RecordsTable({
   useEffect(() => {
     typesetMath();
   }, [page, records]);
+
+  async function deleteRecord(record) {
+    const data = await fetchJson(
+      `/releases/${experiment}/${releaseId}/records/${records.indexOf(record)}` +
+        (record.recid ? `?recid=${encodeURIComponent(record.recid)}` : ""),
+      { method: "DELETE" },
+    );
+    setRecords(data.records);
+    onContentChanged();
+  }
 
   const closeEditModal = () => {
     setEditingRecord(null);
@@ -218,6 +230,7 @@ export default function RecordsTable({
                             setEditingRecord(record);
                             setEditingIndex(records.indexOf(record));
                           }}
+                          onDelete={() => setDeletingRecord(record)}
                           editDisabled={editDisabled}
                           viewDisabled={viewDisabled}
                           viewHref={`/record/${record.recid}`}
@@ -280,6 +293,17 @@ export default function RecordsTable({
           );
           onContentChanged();
         }}
+      />
+
+      <ConfirmDeleteModal
+        open={!!deletingRecord}
+        itemLabel={
+          deletingRecord?.recid
+            ? `record ${deletingRecord.recid}`
+            : "this record"
+        }
+        onConfirm={() => deleteRecord(deletingRecord)}
+        onClose={() => setDeletingRecord(null)}
       />
     </>
   );

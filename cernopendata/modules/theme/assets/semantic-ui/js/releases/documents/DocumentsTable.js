@@ -5,8 +5,9 @@ import EditDocumentModal from "./EditDocumentModal";
 import UploadImagesModal from "./UploadImagesModal";
 import EditImageModal from "./EditImageModal";
 import PreviewImageModal from "./PreviewImageModal";
-import { usePagination } from "../shared/utils";
+import { fetchJson, usePagination } from "../shared/utils";
 import RowActions from "../shared/RowActions";
+import ConfirmDeleteModal from "../shared/ConfirmDeleteModal";
 
 export default function DocumentsTable({
   experiment,
@@ -32,6 +33,8 @@ export default function DocumentsTable({
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [editingImage, setEditingImage] = useState(null);
+  const [deletingDoc, setDeletingDoc] = useState(null);
+  const [deletingImage, setDeletingImage] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +54,36 @@ export default function DocumentsTable({
       cancelled = true;
     };
   }, [experiment, releaseId]);
+
+  async function deleteDocument(doc) {
+    const data = await fetchJson(
+      `/releases/${experiment}/${releaseId}/documents/${documents.indexOf(doc)}` +
+        (doc.slug ? `?slug=${encodeURIComponent(doc.slug)}` : ""),
+      { method: "DELETE" },
+    );
+    setDocuments(data.documents);
+    if (doc.slug) {
+      setImages((prev) => prev.filter((img) => img.parent_slug !== doc.slug));
+    }
+    onContentChanged();
+  }
+
+  async function deleteImage(image) {
+    await fetchJson(
+      `/releases/${experiment}/${releaseId}/images/${image.parent_slug}/${image.filename}`,
+      { method: "DELETE" },
+    );
+    setImages((prev) =>
+      prev.filter(
+        (img) =>
+          !(
+            img.parent_slug === image.parent_slug &&
+            img.filename === image.filename
+          ),
+      ),
+    );
+    onContentChanged();
+  }
 
   return (
     <>
@@ -114,6 +147,7 @@ export default function DocumentsTable({
                     <Table.Cell collapsing>
                       <RowActions
                         onEdit={() => setEditingDoc(doc)}
+                        onDelete={() => setDeletingDoc(doc)}
                         editDisabled={editDisabled}
                         viewDisabled={viewDisabled}
                         viewHref={doc.slug ? `/docs/${doc.slug}` : undefined}
@@ -148,6 +182,7 @@ export default function DocumentsTable({
                         <RowActions
                           onEdit={() => setEditingImage(image)}
                           onView={() => setPreviewImage(image)}
+                          onDelete={() => setDeletingImage(image)}
                           editDisabled={editDisabled}
                         />
                       </Table.Cell>
@@ -233,18 +268,23 @@ export default function DocumentsTable({
           );
           onContentChanged();
         }}
-        onDeleted={(image) => {
-          setImages((prev) =>
-            prev.filter(
-              (img) =>
-                !(
-                  img.parent_slug === image.parent_slug &&
-                  img.filename === image.filename
-                ),
-            ),
-          );
-          onContentChanged();
-        }}
+      />
+
+      <ConfirmDeleteModal
+        open={!!deletingDoc}
+        itemLabel={
+          deletingDoc?.slug ? `document ${deletingDoc.slug}` : "this document"
+        }
+        details="Uploaded images attached to this document will also be deleted."
+        onConfirm={() => deleteDocument(deletingDoc)}
+        onClose={() => setDeletingDoc(null)}
+      />
+
+      <ConfirmDeleteModal
+        open={!!deletingImage}
+        itemLabel={`image ${deletingImage?.filename}`}
+        onConfirm={() => deleteImage(deletingImage)}
+        onClose={() => setDeletingImage(null)}
       />
     </>
   );
