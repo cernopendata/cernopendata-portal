@@ -23,6 +23,7 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """CERN Open Data Release utils."""
+
 import logging
 
 from flask import current_app

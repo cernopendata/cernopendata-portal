@@ -46,4 +46,3 @@ recursive-include sentry *.json
 recursive-include sentry *.py
 recursive-include sentry *.sh
 recursive-include sentry *.yml
-recursive-include docker *.repo

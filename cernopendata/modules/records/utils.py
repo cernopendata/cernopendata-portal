@@ -296,8 +296,7 @@ def add_experiment_header(record_args_index):
                     f"[{type(e)}] Failed to extract experiment from record: {e}"
                 )
 
-            finally:
-                return response
+            return response
 
         return _wrapper
 

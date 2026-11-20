@@ -1,8 +1,9 @@
 """Initialization of XRootD."""
 
+from importlib.metadata import PackageNotFoundError, distribution
+
 from invenio_files_rest.storage.pyfs import pyfs_storage_factory
 from invenio_xrootd import EOSFileStorage
-from pkg_resources import DistributionNotFound, get_distribution
 
 
 def cernopendata_eos_storage_factory(**kwargs):
@@ -13,11 +14,11 @@ def cernopendata_eos_storage_factory(**kwargs):
 try:
     # Import XRootDPyFS if available so opener gets registered on
     # PyFilesystem.
-    get_distribution("xrootdpyfs")
+    distribution("xrootdpyfs")
     import xrootdpyfs  # noqa
 
     XROOTD_ENABLED = True
-except DistributionNotFound:
+except PackageNotFoundError:
     XROOTD_ENABLED = False
     xrootdpyfs = None
 

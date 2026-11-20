@@ -79,6 +79,13 @@ install_requires = [
     "counter-robots>=2025.2",
     # General Invenio dependencies
     "invenio-app>=2.0.0,<3.0.0",
+    # invenio-app pins flask-limiter<3, and flask-limiter 2.4.0-2.9.2 require
+    # rich<13. The rest of the stack pulls rich>=13, so a resolver is free to
+    # satisfy that by dropping flask-limiter to 2.3.3 instead of holding rich
+    # back. 2.3.3 still reads flask._request_ctx_stack, removed in Flask 2.3,
+    # which makes every single request raise AttributeError. Pin the floor so
+    # rich is the package that gives way.
+    "flask-limiter>=2.9,<3",
     "invenio-base>=2.0.0,<3.0.0",
     "invenio-config>=1.0.3,<2.0.0",
     # Custom Invenio `base` bundle
@@ -119,8 +126,12 @@ install_requires = [
     # Webserver
     "uWSGI>=2.0.21",
     "uwsgitop>=0.11",
-    # Pin Celery due to worker runtime issues
-    "celery==5.2.7",
+    # Celery was pinned to 5.2.7 for worker runtime issues, but 5.2.7 cannot
+    # run on Python 3.12+: its CLI calls entry_points().get(), and
+    # importlib.metadata dropped that dict interface, so `celery` dies with
+    # "'EntryPoints' object has no attribute 'get'" before the worker starts.
+    # 5.3+ fixes it; invenio-celery caps celery at <5.5.
+    "celery>=5.4,<5.5",
     # Automatically pin XRootD consistently with Dockerfile
     "xrootd" + xrootd_version(),
     "gevent==25.8.2",
@@ -160,6 +171,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     platforms="any",
+    python_requires=">=3.14",
     entry_points={
         "console_scripts": [
             "cernopendata = cernopendata.cli:cli",
@@ -258,7 +270,7 @@ setup(
         "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.14",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python",
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",

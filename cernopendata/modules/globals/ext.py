@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+
 from counter_robots import is_robot_or_machine
 from flask import Flask, request
 
@@ -135,6 +136,7 @@ class FlaskHeaders:
 
         @app.after_request
         def add_requestor_header(response):
+            # Tagging the requestor must never break the response.
             try:
                 agent = request.user_agent.string
 
@@ -143,5 +145,7 @@ class FlaskHeaders:
                 else:
                     response.headers["X-User-Category"] = "user"
 
-            finally:
-                return response
+            except Exception:
+                app.logger.exception("Failed to set the X-User-Category header")
+
+            return response

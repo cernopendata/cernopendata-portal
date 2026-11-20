@@ -1,5 +1,6 @@
-import requests
 import xml.etree.ElementTree as ET
+
+import requests
 
 BASE_URL = "https://opendata.cern.ch/oai2d"
 NAME_SPACE = {"oai": "http://www.openarchives.org/OAI/2.0/"}
