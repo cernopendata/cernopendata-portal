@@ -12,6 +12,7 @@ export async function fetchJson(url, options) {
 export function usePagination(items, pageSize = 5) {
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  if (page > totalPages - 1) setPage(totalPages - 1);
   const visible = items.slice(page * pageSize, (page + 1) * pageSize);
   return { page, setPage, visible, totalPages };
 }
