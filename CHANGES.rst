@@ -15,6 +15,7 @@ Version 1.3.0 (released 2026-10-13)
 
 Version 1.2.1 (released 2026-08-11)
 ----------------------------
+- fix(records): convert LaTeX in page title to plain unicode (closes #404)
 - fix(mappings): map methodology.steps.note as an object
 - fix(datacite): fall back to the collaboration when authors is empty
 - fix(releases): strip the derived fields from records on import and export
