@@ -155,7 +155,9 @@ export default function EditRecordModal({
       <Modal.Header>
         {editAllMode
           ? "Edit all records"
-          : `Edit record ${editingRecord?.recid}`}
+          : editingRecord?.recid
+            ? `Edit record ${editingRecord.recid}`
+            : "Edit record"}
       </Modal.Header>
       <Modal.Content scrolling>
         {error && (
