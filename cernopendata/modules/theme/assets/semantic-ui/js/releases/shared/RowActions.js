@@ -4,6 +4,7 @@ import { Button } from "semantic-ui-react";
 export default function RowActions({
   onEdit,
   onView,
+  onDelete,
   editDisabled = false,
   viewDisabled = false,
   viewHref,
@@ -29,6 +30,9 @@ export default function RowActions({
         onClick={handleView}
       >
         View
+      </Button>
+      <Button color="red" disabled={editDisabled} onClick={onDelete}>
+        Delete
       </Button>
     </>
   );

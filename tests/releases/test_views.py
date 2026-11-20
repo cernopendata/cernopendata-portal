@@ -1817,3 +1817,120 @@ def test_download_release_strips_the_derived_fields(mock_get_release, client):
 
     assert resp.status_code == 200
     assert resp.get_json()["records"] == [{"recid": 1, "experiment": "CMS"}]
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_record_success(mock_get_release, logged_in_client):
+    mock_release = MagicMock(records=[{"recid": 2}])
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.delete("/releases/cms/1/records/0?recid=2")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok", "records": [{"recid": 2}]}
+    mock_release.remove_record.assert_called_once()
+    assert mock_release.remove_record.call_args[0][0] == 0
+    mock_get_release.assert_called_with(
+        "cms",
+        1,
+        status=[views.ReleaseStatus.DRAFT, views.ReleaseStatus.READY],
+        lock=views.ReleaseStatus.EDITING,
+    )
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_document_success(mock_get_release, logged_in_client):
+    mock_release = MagicMock(documents=[{"slug": "doc-b"}])
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.delete("/releases/cms/1/documents/0?slug=doc-b")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok", "documents": [{"slug": "doc-b"}]}
+    mock_release.remove_document.assert_called_once()
+    assert mock_release.remove_document.call_args[0][0] == 0
+
+
+@pytest.mark.parametrize("collection", ["records", "documents"])
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_item_out_of_range_returns_404_without_locking(
+    mock_get_release, collection, logged_in_client
+):
+    mock_release = MagicMock(records=[{"recid": 1}], documents=[{"slug": "doc-a"}])
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.delete(f"/releases/cms/1/{collection}/5")
+
+    assert response.status_code == 404
+    assert "No item at index 5" in response.get_json()["error"]
+    mock_get_release.assert_called_once_with(
+        "cms", 1, status=[views.ReleaseStatus.DRAFT, views.ReleaseStatus.READY]
+    )
+    mock_release.remove_record.assert_not_called()
+    mock_release.remove_document.assert_not_called()
+
+
+@pytest.mark.parametrize("collection", ["records", "documents"])
+def test_delete_item_rejects_locked_release(collection, logged_in_client):
+    with patch(
+        "cernopendata.modules.releases.views._get_release",
+        side_effect=lambda *_args, **_kwargs: abort(409),
+    ):
+        response = logged_in_client.delete(f"/releases/cms/1/{collection}/0")
+
+    assert response.status_code == 409
+
+
+@pytest.mark.parametrize(
+    "collection, query",
+    [
+        ("records", "?recid=1"),
+        ("records", ""),
+        ("documents", "?slug=doc-a"),
+        ("documents", ""),
+    ],
+)
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_item_identifier_mismatch_returns_409_without_locking(
+    mock_get_release, collection, query, logged_in_client
+):
+    mock_release = MagicMock(records=[{"recid": 2}], documents=[{"slug": "doc-b"}])
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.delete(f"/releases/cms/1/{collection}/0{query}")
+
+    assert response.status_code == 409
+    assert "Reload the page" in response.get_json()["error"]
+    mock_get_release.assert_called_once()
+    mock_release.remove_record.assert_not_called()
+    mock_release.remove_document.assert_not_called()
+
+
+@pytest.mark.parametrize("collection", ["records", "documents"])
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_item_with_identifier_rejects_item_without_one(
+    mock_get_release, collection, logged_in_client
+):
+    mock_release = MagicMock(records=[{"title": "x"}], documents=[{"title": "x"}])
+    mock_get_release.return_value = mock_release
+    identifier = "recid" if collection == "records" else "slug"
+
+    response = logged_in_client.delete(f"/releases/cms/1/{collection}/0?{identifier}=2")
+
+    assert response.status_code == 409
+    mock_release.remove_record.assert_not_called()
+    mock_release.remove_document.assert_not_called()
+
+
+@pytest.mark.parametrize("collection", ["records", "documents"])
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_item_without_identifier_matches_item_without_one(
+    mock_get_release, collection, logged_in_client
+):
+    mock_release = MagicMock(records=[{"title": "x"}], documents=[{"title": "x"}])
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.delete(f"/releases/cms/1/{collection}/0")
+
+    assert response.status_code == 200
+    assert mock_get_release.call_count == 2
