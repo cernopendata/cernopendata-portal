@@ -108,6 +108,7 @@ def default_config(instance_path):
         ACCOUNTS_SESSION_REDIS_URL=None,
         SESSION_REDIS_URL=None,
         CACHE_TYPE="simple",
+        RATELIMIT_ENABLED=False,
     )
 
 

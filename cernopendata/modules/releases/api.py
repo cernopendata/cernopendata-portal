@@ -29,7 +29,6 @@ import re
 import shutil
 from copy import deepcopy
 from datetime import datetime
-from pathlib import Path
 
 from deepdiff import DeepDiff
 from flask import current_app
@@ -60,6 +59,7 @@ from .models import (
     ReleaseStatus,
     ReleaseValidationMetadata,
 )
+from .utils import images_dir
 from .validations import VALIDATIONS
 from .validations.base import Validation
 
@@ -326,10 +326,13 @@ class Release:
         db.session.add(event)
         return event
 
-    def _delete_release_images(self):
-        """Remove the images for this release."""
-        images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-        release_dir = images_root / str(self._metadata.id)
+    def _delete_release_images(self, slug=None):
+        """Remove the images for this release, or only those of one document."""
+        try:
+            release_dir = images_dir(self._metadata.id, slug)
+        except ValueError as e:
+            current_app.logger.warning(f"Image directory not found: {e}")
+            return
         if release_dir.is_dir():
             try:
                 shutil.rmtree(release_dir)
@@ -389,6 +392,20 @@ class Release:
         self.validate(current_user)
         db.session.add(self._metadata)
         db.session.commit()
+
+    def remove_item(self, collection, index, current_user):
+        """Remove a record or a document from the release, and return the rest."""
+        items = self.records if collection == "records" else self.documents
+        removed = items.pop(index)
+        flag_modified(self._metadata, collection)
+        if collection == "documents":
+            self._metadata.num_docs = len(items)
+        self.validate(current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+        if collection == "documents" and removed.get("slug"):
+            self._delete_release_images(removed["slug"])
+        return items
 
     def update_document(self, slug, updated_doc, current_user):
         """Replace a document in the release identified by its slug."""

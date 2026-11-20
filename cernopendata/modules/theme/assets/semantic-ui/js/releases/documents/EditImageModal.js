@@ -8,7 +8,6 @@ export default function EditImageModal({
   experiment,
   releaseId,
   onRenamed,
-  onDeleted,
 }) {
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
@@ -17,21 +16,6 @@ export default function EditImageModal({
     if (image) setName(image.filename);
     setError(null);
   }, [image]);
-
-  const handleDelete = async () => {
-    if (!window.confirm(`Delete ${image.filename}?`)) return;
-    setError(null);
-    try {
-      await fetchJson(
-        `/releases/${experiment}/${releaseId}/images/${image.parent_slug}/${image.filename}`,
-        { method: "DELETE" },
-      );
-      onDeleted(image);
-      onClose();
-    } catch (e) {
-      setError(e.message);
-    }
-  };
 
   const handleRename = async () => {
     const newName = name.trim();
@@ -75,9 +59,6 @@ export default function EditImageModal({
         </Form>
       </Modal.Content>
       <Modal.Actions>
-        <Button floated="left" color="red" onClick={handleDelete}>
-          <Icon name="trash" /> Delete
-        </Button>
         <Button onClick={onClose}>Cancel</Button>
         <Button
           primary

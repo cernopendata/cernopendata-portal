@@ -48,7 +48,7 @@ from werkzeug.utils import secure_filename
 from .api import Release
 from .models import ReleaseStatus
 from .tasks import publish_release, rollback_release, stage_release
-from .utils import curator_experiments
+from .utils import curator_experiments, images_dir
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -639,11 +639,8 @@ def upload_image(experiment, release_id):
             400,
         )
 
-    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    release_dir = (images_root / str(release_id)).resolve()
-    target_dir = (release_dir / parent_slug).resolve()
     try:
-        target_dir.relative_to(release_dir)
+        target_dir = images_dir(release_id, parent_slug)
     except ValueError:
         return jsonify({"error": "Invalid parent_slug"}), 400
     try:
@@ -719,17 +716,14 @@ def upload_image(experiment, release_id):
 def list_images(experiment, release_id):
     """Return all uploaded images for a release, grouped by parent document slug."""
     release = _get_release(experiment, release_id)
-    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    release_dir = (images_root / str(release_id)).resolve()
 
     images = []
     for doc in release.documents:
         slug = doc.get("slug")
         if not slug:
             continue
-        doc_dir = (release_dir / slug).resolve()
         try:
-            doc_dir.relative_to(release_dir)
+            doc_dir = images_dir(release_id, slug)
         except ValueError:
             continue
         if not doc_dir.is_dir():
@@ -753,6 +747,40 @@ def list_images(experiment, release_id):
 
 
 @blueprint.route(
+    "/releases/<experiment>/<int:release_id>/<any(records,documents):collection>/<int:index>",
+    methods=["DELETE"],
+)
+@login_required
+def delete_item(experiment, release_id, collection, index):
+    """Delete a record or a document from a release."""
+    editable = [ReleaseStatus.DRAFT, ReleaseStatus.READY]
+    release = _get_release(experiment, release_id, status=editable)
+    items = release.records if collection == "records" else release.documents
+    if not 0 <= index < len(items):
+        return jsonify({"error": f"No item at index {index} in {collection}"}), 404
+    identifier = "recid" if collection == "records" else "slug"
+    expected = request.args.get(identifier) or None
+    actual = items[index].get(identifier)
+    if expected != (str(actual) if actual else None):
+        return (
+            jsonify(
+                {
+                    "error": f"The {collection} of this release have changed. "
+                    "Reload the page and try again."
+                }
+            ),
+            409,
+        )
+
+    release = _get_release(
+        experiment, release_id, status=editable, lock=ReleaseStatus.EDITING
+    )
+    items = release.remove_item(collection, index, current_user)
+
+    return jsonify({"status": "ok", collection: items})
+
+
+@blueprint.route(
     "/releases/<experiment>/<int:release_id>/images/<parent_slug>/<filename>",
     methods=["DELETE"],
 )
@@ -771,11 +799,8 @@ def delete_image(experiment, release_id, parent_slug, filename):
             404,
         )
 
-    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    release_dir = (images_root / str(release_id)).resolve()
-    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(release_dir)
+        slug_dir = images_dir(release_id, parent_slug)
     except ValueError:
         return jsonify({"error": "Invalid parent_slug"}), 400
 
@@ -831,11 +856,8 @@ def rename_image(experiment, release_id, parent_slug, filename):
             404,
         )
 
-    images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    release_dir = (images_root / str(release_id)).resolve()
-    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(release_dir)
+        slug_dir = images_dir(release_id, parent_slug)
     except ValueError:
         return jsonify({"error": "Invalid parent_slug"}), 400
 

@@ -1013,7 +1013,7 @@ def test_publish_commits_each_document(mocker):
 
 def test_delete_removes_uploaded_images(mocker, tmp_path):
     mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
-    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.utils.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
     release_dir = tmp_path / "1"
@@ -1039,7 +1039,8 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
 
 def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
-    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+    mock_utils_app = mocker.patch("cernopendata.modules.releases.utils.current_app")
+    mock_utils_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
     release_dir = tmp_path / "1"
     release_dir.mkdir()
@@ -1326,3 +1327,97 @@ def test_retry_doi_registration_keeps_the_still_failing_records(mocker):
     assert "DataCite still down" in errors[0]
     assert mock_update.call_count == 2
     assert release.failed_doi_records() == [{"recid": 3, "doi": "10.1234/C"}]
+
+
+def test_remove_item_removes_record_and_validates(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mock_flag_modified = mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": 1}, {"recid": 2}, {"recid": 3}]
+
+    release = Release(metadata)
+    mock_validate = mocker.patch.object(release, "validate")
+    mock_delete_images = mocker.patch.object(release, "_delete_release_images")
+    user = MagicMock()
+
+    remaining = release.remove_item("records", 1, user)
+
+    assert remaining == [{"recid": 1}, {"recid": 3}]
+    assert metadata.records == [{"recid": 1}, {"recid": 3}]
+    mock_flag_modified.assert_called_once_with(metadata, "records")
+    mock_validate.assert_called_once_with(user)
+    mock_session.commit.assert_called_once()
+    mock_delete_images.assert_not_called()
+
+
+def test_remove_item_removes_document_and_its_images(mocker, tmp_path):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.utils.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    (tmp_path / "1" / "doc-a").mkdir(parents=True)
+    (tmp_path / "1" / "doc-a" / "fig.png").write_bytes(b"a")
+    (tmp_path / "1" / "doc-b").mkdir()
+    (tmp_path / "1" / "doc-b" / "fig.png").write_bytes(b"b")
+
+    metadata = MagicMock()
+    metadata.id = 1
+    metadata.documents = [{"slug": "doc-a"}, {"slug": "doc-b"}]
+
+    release = Release(metadata)
+    mock_validate = mocker.patch.object(release, "validate")
+    user = MagicMock()
+
+    remaining = release.remove_item("documents", 0, user)
+
+    assert remaining == [{"slug": "doc-b"}]
+    assert metadata.documents == [{"slug": "doc-b"}]
+    assert metadata.num_docs == 1
+    mock_validate.assert_called_once_with(user)
+    mock_session.commit.assert_called_once()
+    assert not (tmp_path / "1" / "doc-a").exists()
+    assert (tmp_path / "1" / "doc-b" / "fig.png").exists()
+
+
+def test_remove_item_document_without_slug_keeps_release_images(mocker, tmp_path):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.utils.current_app")
+    mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    (tmp_path / "1" / "doc-a").mkdir(parents=True)
+    (tmp_path / "1" / "doc-a" / "fig.png").write_bytes(b"a")
+
+    metadata = MagicMock()
+    metadata.id = 1
+    metadata.documents = [{"title": "No slug"}, {"slug": "doc-a"}]
+
+    release = Release(metadata)
+    mocker.patch.object(release, "validate")
+
+    release.remove_item("documents", 0, MagicMock())
+
+    assert metadata.documents == [{"slug": "doc-a"}]
+    assert (tmp_path / "1" / "doc-a" / "fig.png").exists()
+
+
+def test_delete_release_images_rejects_slug_outside_release(mocker, tmp_path):
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_utils_app = mocker.patch("cernopendata.modules.releases.utils.current_app")
+    mock_utils_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
+
+    (tmp_path / "1").mkdir()
+    (tmp_path / "2").mkdir()
+
+    metadata = MagicMock()
+    metadata.id = 1
+
+    release = Release(metadata)
+    release._delete_release_images("../2")
+    release._delete_release_images(".")
+
+    assert (tmp_path / "1").exists()
+    assert (tmp_path / "2").exists()
+    assert mock_current_app.logger.warning.call_count == 2
