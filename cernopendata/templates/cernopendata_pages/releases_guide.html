@@ -1,0 +1,337 @@
+{%- extends config.BASE_TEMPLATE %}
+
+
+{%- block page_header %}
+{% include 'cernopendata_theme/header_index.html' %}
+{%- endblock page_header %}
+
+
+{%- block page_body %}
+<div class="ui container" style="padding-top: 1.5em; padding-bottom: 3em;">
+
+    <h1 class="ui header">
+        Releases guide
+        <div class="sub header">
+            How to prepare, check, and publish records and documents
+        </div>
+    </h1>
+
+    <p>
+        This guide is for experiment curators. A release is the bundle of
+        records and documents you check on the portal before they become
+        public.
+    </p>
+
+    <div class="ui info message">
+        <p>
+            Your CERN account needs a role whose name ends in
+            <code>-curator</code>, for example <code>cms-curator</code>.
+            After you log in, open the menu under your email address.
+            Each experiment you curate is listed there, such as
+            <strong>CMS releases</strong>. This guide is in the same menu.
+        </p>
+    </div>
+
+    <ul>
+        <li><a href="#releases-list">The releases list</a></li>
+        <li><a href="#creating-a-release">Creating a release</a></li>
+        <li><a href="#steps">Draft, staged, and published</a></li>
+        <li><a href="#records">Records</a></li>
+        <li><a href="#documents">Documents</a></li>
+        <li><a href="#checks">Checks</a></li>
+    </ul>
+
+    <h2 id="releases-list" class="ui header">The releases list</h2>
+    <p>
+        Open your experiment from the account menu. The page lists the
+        releases for that experiment.
+    </p>
+    <ul>
+        <li>Filter by name, or by step: Draft, Staged, or Published.</li>
+        <li>
+            <strong>Show published releases</strong> is ticked by default.
+            Clear it when you want the list limited to work still in progress.
+        </li>
+        <li>Click a column heading to sort.</li>
+        <li>
+            A red number beside the step is how many check errors that
+            release still has.
+        </li>
+        <li>
+            <strong>Open discussion</strong> leaves the portal and opens the
+            forum thread, when the release has one. Clicking the rest of the
+            row opens the release.
+        </li>
+    </ul>
+
+    <h2 id="creating-a-release" class="ui header">Creating a release</h2>
+    <p>
+        <strong>Create new release</strong> builds a release from JSON.
+        Choose <strong>Upload JSON file</strong> or <strong>Load from URL</strong>.
+        The address has to return JSON.
+    </p>
+    <p>The file can be any of these:</p>
+    <ul>
+        <li>one record, or a list of records</li>
+        <li>one document, or a list of documents</li>
+        <li>
+            one object with <code>records</code>, <code>documents</code>, or
+            both, plus an optional <code>name</code>, <code>description</code>,
+            and <code>discussion_url</code>
+        </li>
+    </ul>
+    <p>
+        A document is a JSON object with a <code>slug</code> or a
+        <code>body</code>, and without a <code>recid</code> or
+        <code>files</code>. Everything else is read as a record.
+        If you leave out <code>name</code>, the release takes the file name,
+        or the last part of the URL.
+    </p>
+    <pre class="ui segment">{
+  "name": "CMS 2024 open data",
+  "description": "Collision data and the notes that go with it.",
+  "discussion_url": "https://opendata-forum.cern.ch/t/example",
+  "records": [],
+  "documents": [
+    {
+      "slug": "cms-2024-notes",
+      "title": "CMS 2024 notes",
+      "body": {
+        "content": "# CMS 2024 notes\n\nWrite the guide here."
+      }
+    }
+  ]
+}</pre>
+    <p>
+        You can add further records and documents after the release exists.
+        <strong>Download release</strong> saves JSON in this same shape, so
+        you can edit it and upload it as a new release. Fields the portal
+        fills in for itself are omitted from that download.
+    </p>
+
+    <h2 id="steps" class="ui header">Draft, staged, and published</h2>
+    <p>
+        The bar at the top of a release shows three steps: Draft, Staged,
+        and Published.
+    </p>
+
+    <h3 class="ui header">Draft</h3>
+    <p>
+        This is the working copy. You can change records, documents, and the
+        release name, description, and discussion link. The step stays on
+        Draft in two situations. While checks are failing, the status shown
+        in parentheses is <code>DRAFT</code> and
+        <strong>Stage Release</strong> is disabled. When every enabled check
+        passes, the status becomes <code>READY</code> and
+        <strong>Stage Release</strong> can be used.
+    </p>
+    <p>
+        Saving can take a moment, and the page then says the release is
+        being edited. Staging, publishing, and returning to draft also run
+        in the background. The page refreshes until they finish. If that
+        message stays on the screen, the action failed and the release is
+        put back with an error you can read.
+    </p>
+
+    <h3 class="ui header">Staged</h3>
+    <p>
+        A staged release is locked, so you can review it as visitors will
+        see it. <strong>View</strong> on each row opens the record or
+        document. <strong>Return to Draft</strong> unlocks it when something
+        still needs to change. <strong>Publish</strong> makes the release
+        public. The button asks you to review it carefully before you
+        continue. While the release is staged you can also
+        <strong>Generate DOIs</strong> for records that do not have one yet.
+        A warning stays on the page until every record has a DOI.
+    </p>
+
+    <h3 class="ui header">Published</h3>
+    <p>
+        A published release stays locked. History and download still work.
+        If a DOI did not register with DataCite, <strong>Retry</strong> sends
+        those records again.
+    </p>
+
+    <p>The menu beside the release title holds the rest of the actions:</p>
+    <ul>
+        <li>
+            <strong>View History</strong> lists each status change, with the
+            time and the person who made it.
+        </li>
+        <li><strong>Download release</strong> saves the JSON described above.</li>
+        <li>
+            <strong>Edit metadata</strong> changes the name, the discussion
+            link, and the description.
+        </li>
+        <li>
+            <strong>Delete release</strong> is available while the release is
+            <code>DRAFT</code> or <code>READY</code>.
+        </li>
+    </ul>
+
+    <h2 id="records" class="ui header">Records</h2>
+    <p>The Records tab lists the recid, the DOI, and the title.</p>
+    <ul>
+        <li>
+            <strong>Add Records</strong> takes one JSON file, or a URL that
+            returns JSON. The file can hold one record or a list of them.
+        </li>
+        <li>
+            <strong>Edit Records</strong> opens every record together as
+            JSON, under the heading <strong>Edit all records</strong>.
+        </li>
+        <li>
+            <strong>Bulk Edit</strong> applies one change across many records.
+            Preview the difference first, then apply it. The preview shows
+            the first 10 records.
+        </li>
+        <li>
+            <strong>Edit</strong> on a row opens that record. The editor has
+            a form, the raw JSON, and a preview of the public page.
+        </li>
+        <li>
+            <strong>View</strong> works once the release is staged or
+            published, and opens the record page.
+        </li>
+    </ul>
+    <p>
+        A record id looks like <code>cms-1234</code>: the experiment name, a
+        hyphen, then digits. Each recid has to be unique, and it cannot
+        already be published. If a recid is missing or already taken,
+        <strong>Fix automatically</strong> can assign one. A newly assigned
+        id is marked in the table.
+    </p>
+
+    <h2 id="documents" class="ui header">Documents</h2>
+    <p>The Documents tab lists the slug, the title, and the type.</p>
+    <ul>
+        <li>
+            <strong>Add Document</strong> accepts JSON files, a folder of
+            them, or a URL. <code>body.content</code> has to be the markdown
+            text itself. A file name such as <code>guide.md</code> is
+            rejected. Files in the folder that are not JSON are skipped.
+        </li>
+        <li>
+            Write links to other documents as <code>/docs/their-slug</code>.
+            A bare slug is rewritten to that form when the target is already
+            in the release or already published.
+        </li>
+        <li>
+            <strong>Upload Images</strong> attaches pictures to a document.
+            Use PNG, JPG, JPEG, or GIF, up to 5&nbsp;MB each. If that file
+            name is already used for the document, rename it and upload
+            again. Copy the path from the image row when the markdown needs
+            to refer to it. You can edit or delete an image from that row.
+        </li>
+        <li>
+            <strong>Edit</strong> opens the document, including a preview of
+            the public page.
+        </li>
+        <li>
+            <strong>View</strong> opens <code>/docs/&lt;slug&gt;</code> once
+            the release is staged or published. On an image row it opens a
+            preview of the file.
+        </li>
+    </ul>
+
+    <h2 id="checks" class="ui header">Checks</h2>
+    <p>
+        The Validations panel sits above the Records and Documents tabs
+        while the release is still a draft. Failed checks are listed first,
+        then optional checks you have switched off, then checks that passed.
+        Beneath the list, the page shows up to 100 error lines and says how
+        many exist in total.
+    </p>
+    <p>
+        <strong>Stage Release</strong> stays disabled until every enabled
+        check passes. A check that only applies to records is hidden when
+        the release has no records, and the same is true for documents.
+        Experiment-specific checks appear only for that experiment.
+    </p>
+    <p>
+        Optional checks can be switched off for this release. A check marked
+        <strong>Auto-fixable</strong> can be cleared with
+        <strong>Fix automatically</strong>. The page then tells you what
+        passes now, what you still have to correct by hand, and whether any
+        record ids were assigned.
+    </p>
+    <p>The names in the panel mean the following.</p>
+    <ul>
+        <li>
+            <strong>Valid record schema</strong> and
+            <strong>Valid document schema</strong>. The JSON follows the
+            portal schema.
+        </li>
+        <li>
+            <strong>Valid recid</strong>. Each record has a unique recid of
+            the form <code>experiment-number</code>, and that id is free
+            to use.
+        </li>
+        <li>
+            <strong>Valid slug</strong>. Each document has a unique slug
+            that is free to use. A missing slug can be taken from the
+            source file name.
+        </li>
+        <li>
+            <strong>Valid experiment</strong>. <code>experiment</code> on
+            each record and document matches this release, for example
+            <code>CMS</code>.
+        </li>
+        <li>
+            <strong>Valid standard fields</strong>. Records carry the usual
+            publisher, <code>CERN Open Data Portal</code>, and license,
+            <code>CC0-1.0</code>. These can be filled in for you.
+        </li>
+        <li>
+            <strong>File metadata</strong>. Each file has a size and a
+            checksum written as <code>algorithm:value</code>.
+        </li>
+        <li>
+            <strong>Missing files</strong>. A record that says how many
+            files it has actually lists them. A record that points at a
+            Rucio dataset can omit the file list.
+        </li>
+        <li>
+            <strong>Duplicate files</strong>. File addresses in this release
+            are new to the portal.
+        </li>
+        <li>
+            <strong>Expand directories</strong>. A file path that ends in
+            <code>*</code> is a directory. It can be expanded into the files
+            inside it.
+        </li>
+        <li>
+            <strong>Valid DOI</strong>. A DOI that is present is well formed,
+            and its suffix is unique. On the production portal the prefix is
+            checked as well. A broken DOI can be replaced with a new one.
+            You can leave the DOI empty and generate it after staging.
+        </li>
+        <li>
+            <strong>Valid document links</strong>. A markdown link to
+            <code>/docs/...</code> points at a document in this release or
+            one already published. A bare slug that points at a known
+            document can be rewritten for you. A link to an unknown document
+            has to be corrected by hand.
+        </li>
+        <li>
+            <strong>Valid image references</strong>. An image cited in a
+            markdown document is available. Upload the missing image, or
+            correct the path.
+        </li>
+        <li>
+            <strong>CMS</strong>. On a CMS release, the collaboration is
+            <code>CMS Collaboration</code> and the accelerator is
+            <code>CERN-LHC</code>. These can be filled in for you.
+        </li>
+        <li>
+            <strong>CMS 2016 Simulated</strong>. An optional extra check for
+            CMS 2016 simulated records. You can switch it off.
+        </li>
+        <li>
+            <strong>Rucio datasets</strong>. An optional CMS check. A record
+            with a <code>rucio_dataset</code> and no file list can be
+            expanded into its files. You can switch the check off.
+        </li>
+    </ul>
+</div>
+{%- endblock %}

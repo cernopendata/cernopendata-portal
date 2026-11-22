@@ -51,6 +51,23 @@ def test_invalid_experiment(client):
     assert resp.status_code in (403, 404)
 
 
+def test_releases_guide_requires_login(client):
+    """Anonymous visitors are sent to log in before the curator guide."""
+    resp = client.get("/releases/docs")
+    assert resp.status_code == 302
+
+
+def test_releases_guide_for_curators(logged_in_client):
+    """A logged-in user can read the guide from the account menu."""
+    resp = logged_in_client.get("/releases/docs")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert "Releases guide" in html
+    assert 'href="/releases/docs"' in html
+    assert "Stage Release" in html
+    assert "Create new release" in html
+
+
 @patch("cernopendata.modules.releases.views.Release.create")
 @patch("cernopendata.modules.releases.views.curator_experiments")
 @patch("cernopendata.modules.releases.views.Release.validate_experiment")

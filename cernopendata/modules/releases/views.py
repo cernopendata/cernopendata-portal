@@ -212,6 +212,13 @@ def list_releases(experiment=None):
     )
 
 
+@blueprint.route("/releases/docs")
+@login_required
+def releases_guide():
+    """Curator documentation for the releases feature."""
+    return render_template("cernopendata_pages/releases_guide.html")
+
+
 @blueprint.route("/releases/<experiment>")
 @login_required
 def release_view(experiment=None):
