@@ -225,6 +225,10 @@
           },
           "type": "object"
         },
+        "file_indices": {
+          "enabled": false,
+          "type": "object"
+        },
         "keywords": {
           "type": "keyword"
         },
