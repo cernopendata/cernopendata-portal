@@ -42,14 +42,46 @@ from flask import (
     request,
 )
 from flask_login import current_user, login_required
+from invenio_db import db
 from werkzeug.utils import secure_filename
 
 from .api import Release
 from .models import ReleaseStatus
+from .tasks import publish_release, rollback_release, stage_release
 from .utils import curator_experiments
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+
+class URLFetchError(Exception):
+    """URL cannot be fetched or its response cannot be parsed as JSON."""
+
+    pass
+
+
+def _fetch_json(url):
+    """Fetch a URL and return the parsed JSON body, or raise URLFetchError."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        status = e.response.status_code
+        reason = e.response.reason
+        detail = f"{status} ({reason})" if reason else str(status)
+        raise URLFetchError(
+            f"The URL returned {detail}. Please check the URL and try again."
+        )
+    except requests.RequestException as e:
+        raise URLFetchError(f"Could not reach the URL: {e}")
+
+    try:
+        return response.json()
+    except ValueError:
+        raise URLFetchError(
+            "The URL did not return valid JSON. Please check the URL and try again."
+        )
+
 
 blueprint = Blueprint(
     "cernopendata_curate",
@@ -59,31 +91,80 @@ blueprint = Blueprint(
 )
 
 
+def _merge_index_files(record):
+    """Merge exported index_files into files."""
+    files = record.get("files") or []
+    for index_file in record.pop("index_files"):
+        uri = index_file.get("uri", "")
+        extension = uri.rsplit(".", 1)[-1] if "." in uri else "json"
+        index_file["type"] = f"index.{extension}"
+        files.append(index_file)
+    record["files"] = files
+
+
+def _strip_derived_fields(record):
+    """Return the record without the fields derived when it was created."""
+    if not isinstance(record, dict):
+        return record
+    derived_fields = (
+        "_availability_details",
+        "_bucket",
+        "_file_indices",
+        "_files",
+        "bucket",
+        "dataset",
+    )
+    return {
+        field: value for field, value in record.items() if field not in derived_fields
+    }
+
+
+def _normalise_record(record):
+    """Normalise a single exported record for release import."""
+    if not isinstance(record, dict):
+        return record
+    # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
+    if "metadata" in record:
+        record = record["metadata"]
+    record = _strip_derived_fields(record)
+    if "index_files" in record:
+        _merge_index_files(record)
+    return record
+
+
 def _normalise_payload(payload):
     """Normalise an uploaded JSON payload into a list of items."""
     if isinstance(payload, dict):
-        # In case we are reading from the cernopandata api, where the record is in the 'metadata' field
-        if "metadata" in payload:
-            for field in ("_files", "_bucket", "bucket", "_file_indices"):
-                payload["metadata"].pop(field, None)
-            return [payload["metadata"]]
-        return [payload]
-    return payload
+        items = [payload]
+    elif isinstance(payload, list):
+        items = payload
+    else:
+        return payload
+    return [_normalise_record(item) for item in items]
 
 
-def _detect_payload_type(items):
-    """Return 'documents' if items look like docs, 'records' otherwise."""
-    if not items:
-        return "records"
-    sample = items[0]
-    if (
-        isinstance(sample, dict)
-        and ("slug" in sample or "body" in sample)
-        and "recid" not in sample
-        and "files" not in sample
+def _split_payload(payload, source_filename):
+    """Return (records, documents) from an uploaded payload."""
+    if isinstance(payload, dict) and (
+        isinstance(payload.get("records"), list)
+        or isinstance(payload.get("documents"), list)
     ):
-        return "documents"
-    return "records"
+        records = _normalise_payload(payload.get("records") or [])
+        documents = payload.get("documents") or []
+    else:
+        items = _normalise_payload(payload)
+        sample = items[0] if items else None
+        is_documents = (
+            isinstance(sample, dict)
+            and ("slug" in sample or "body" in sample)
+            and "recid" not in sample
+            and "files" not in sample
+        )
+        records, documents = ([], items) if is_documents else (items, [])
+
+    for doc in documents:
+        doc.setdefault("_source_filename", source_filename)
+    return records, documents
 
 
 def _check_experiment(experiment):
@@ -157,35 +238,33 @@ def release_upload(experiment):
             payload = json.load(file)
         except Exception as e:
             return jsonify({"error": "Invalid JSON", "details": str(e)}), 400
-        release_name = file.filename.rsplit("/", 1)[-1]
+        source_filename = file.filename.rsplit("/", 1)[-1]
 
     elif source == "url":
         url = request.form.get("url")
         if not url:
-            abort(400, "Missing URL")
+            return jsonify({"error": "Missing URL"}), 400
 
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        payload = resp.json()
-        release_name = url.rsplit("/", 1)[-1]
+        try:
+            payload = _fetch_json(url)
+        except URLFetchError as e:
+            return jsonify({"error": str(e)}), 400
+        source_filename = url.rsplit("/", 1)[-1]
 
     else:
-        abort(400, "Invalid source")
+        return jsonify({"error": "Invalid source"}), 400
 
-    payload = _normalise_payload(payload)
-    payload_type = _detect_payload_type(payload)
-    if payload_type == "records":
-        create_dict = {"records": payload}
-    else:
-        for doc in payload:
-            doc.setdefault("_source_filename", release_name)
-        create_dict = {"documents": payload}
+    records, documents = _split_payload(payload, source_filename)
 
+    release_metadata = payload if isinstance(payload, dict) else {}
     release = Release.create(
         experiment=experiment,
         current_user=current_user,
-        name=release_name,
-        **create_dict,
+        name=release_metadata.get("name") or source_filename,
+        description=release_metadata.get("description"),
+        discussion_url=release_metadata.get("discussion_url"),
+        records=records,
+        documents=documents,
     )
 
     flash(f"Release {release._metadata.id} created.", "success")
@@ -193,6 +272,22 @@ def release_upload(experiment):
     return render_template(
         "cernopendata_pages/releases.html", experiment=experiment.upper()
     )
+
+
+def _release_state_payload(release):
+    """Validation results, errors and counters of a release."""
+    metadata = release._metadata
+    return {
+        "validations": [validation.to_dict() for validation in release.validations],
+        "errors": (metadata.errors or [])[:100],
+        "num_errors": metadata.num_errors or 0,
+        "counts": {
+            "num_records": metadata.num_records,
+            "num_file_indices": metadata.num_file_indices,
+            "num_files": metadata.num_files,
+            "num_docs": metadata.num_docs,
+        },
+    }
 
 
 @blueprint.route("/releases/<experiment>/<int:release_id>")
@@ -203,8 +298,17 @@ def release_detail(experiment, release_id):
         "cernopendata_pages/release_details.html",
         release=release,
         experiment=experiment,
+        release_state=_release_state_payload(release),
         current_year=datetime.utcnow().year,
     )
+
+
+@blueprint.route("/releases/<experiment>/<int:release_id>/state")
+@login_required
+def release_state(experiment, release_id):
+    """Get the validation state and counters of a release."""
+    release = _get_release(experiment, release_id)
+    return jsonify(_release_state_payload(release))
 
 
 @blueprint.route("/releases/<experiment>/<int:release_id>", methods=["PUT"])
@@ -218,39 +322,52 @@ def update_release(experiment, release_id):
     return jsonify(updated)
 
 
+def _release_download_filename(name, release_id):
+    """Build a safe download filename from the release name."""
+    base = secure_filename(name or "")
+    if base.lower().endswith(".json"):
+        base = base[: -len(".json")]
+    return f"{base or f'release-{release_id}'}.json"
+
+
 @blueprint.route("/releases/api/<experiment>/<int:release_id>")
 def release_json(experiment, release_id):
     """Get the release in json."""
     release = _get_release(experiment, release_id)
+    metadata = release._metadata
+    body = {
+        "name": metadata.name,
+        "description": metadata.description,
+        "discussion_url": metadata.discussion_url,
+        "records": [_strip_derived_fields(record) for record in metadata.records or []],
+        "documents": metadata.documents or [],
+    }
+    filename = _release_download_filename(metadata.name, release_id)
     return Response(
-        json.dumps({"records": release._metadata.records}, indent=2),
+        json.dumps(body, indent=2),
         mimetype="application/json",
-        headers={
-            "Content-Disposition": f"attachment; filename=release-{release_id}.json"
-        },
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
-# @blueprint.route(
-#    "/releases/<experiment>/<int:release_id>/generate_doi",
-#    methods=["POST"],
-# )
-# def generate_doi(experiment, release_id):
-#    """Generate DOI for the records inside a release. TODO."""
-#    release = _get_release(
-#        experiment, release_id, lock=True, status=ReleaseStatus.DRAFT
-#    )##
-#
-#    if release.valid_doi:
-#        abort(400, "RECIDs already generated")#
-#
-#    release.generate_doi()
-#    db.session.add(release)
-#    db.session.commit()
-#
-#    flash(f"Recid created for records in release {release.id}.", "success")
-#
-#    return redirect(f"/releases/{experiment}/{release_id}")
+@blueprint.route(
+    "/releases/<experiment>/<int:release_id>/generate_doi",
+    methods=["POST"],
+)
+@login_required
+def generate_doi(experiment, release_id):
+    """Mint DOIs for specified records in a staged release and validate them."""
+    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    recids = request.json.get("recids", [])
+    errors = release.generate_doi(recids)
+    db.session.commit()
+    return jsonify(
+        {
+            "status": "ok",
+            "records": release.records,
+            "errors": errors,
+        }
+    )
 
 
 @blueprint.route(
@@ -262,9 +379,11 @@ def delete_release(experiment, release_id):
     """Delete a release."""
     release = _get_release(experiment, release_id)
 
-    release.delete()
-
-    flash("Release deleted successfully.", "success")
+    try:
+        release.delete()
+        flash("Release deleted successfully.", "success")
+    except RuntimeError as exc:
+        flash(f"Error deleting the release: {exc}", "error")
 
     return redirect(f"/releases/{experiment}")
 
@@ -278,19 +397,18 @@ def update_records(experiment, release_id):
     """Update the records of a release."""
     # Get JSON string from form
 
-    data = request.get_json(silent=True)
-    if not data["records"]:
-        flash("No records provided", "error")
-        abort(400, "No records provided")
+    data = request.get_json(silent=True) or {}
+    records = data.get("records")
+    if not records:
+        return jsonify({"error": "No records provided"}), 400
 
-    if not isinstance(data["records"], list):
-        flash("Records must be a list", "error")
-        abort(400, "Records must be a list")
+    if not isinstance(records, list):
+        return jsonify({"error": "Records must be a list"}), 400
+
     release = _get_release(experiment, release_id, lock=ReleaseStatus.EDITING)
-    release.update_records(data["records"], current_user)
+    release.update_records(records, current_user)
 
-    flash("Records updated successfully.", "success")
-    return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify({"status": "ok"})
 
 
 @blueprint.route(
@@ -298,17 +416,19 @@ def update_records(experiment, release_id):
     methods=["POST"],
 )
 @login_required
-def stage_release(experiment, release_id):
+def stage(experiment, release_id):
     """Insert the objects defined in the release in the current system."""
     release = _get_release(
         experiment, release_id, status=ReleaseStatus.READY, lock=ReleaseStatus.STAGING
     )
-    try:
-        release.stage(current_user)
-        flash("Release staged successfully.", "success")
 
-    except Exception as e:
-        flash(f" :( Error staging the release {e}", "error")
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    stage_release.delay(experiment, release_id, current_user.id)
+    flash("Staging started. This may take a while for large releases.", "info")
 
     return redirect(f"/releases/{experiment}/{release_id}")
 
@@ -333,9 +453,20 @@ def _get_release(experiment, release_id, lock=False, status=None):
 @login_required
 def rollback(experiment, release_id):
     """Remove the records from the instance."""
-    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    release = _get_release(
+        experiment,
+        release_id,
+        status=ReleaseStatus.STAGED,
+        lock=ReleaseStatus.ROLLINGBACK,
+    )
 
-    release.rollback(current_user)
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    rollback_release.delay(experiment, release_id, current_user.id)
+    flash("Rollback started. This may take a while for large releases.", "info")
 
     return redirect(f"/releases/{experiment}/{release_id}")
 
@@ -344,11 +475,32 @@ def rollback(experiment, release_id):
 @login_required
 def publish(experiment, release_id):
     """Publish the records: put them in the search, and remove the box saying that they were work in progress."""
-    release = _get_release(experiment, release_id, status=ReleaseStatus.STAGED)
+    release = _get_release(
+        experiment,
+        release_id,
+        status=ReleaseStatus.STAGED,
+        lock=ReleaseStatus.PUBLISHING,
+    )
 
-    release.publish(current_user)
-    flash("Release published!")
+    release._metadata.errors = []
+    release._metadata.num_errors = 0
+    db.session.add(release._metadata)
+    db.session.commit()
+
+    publish_release.delay(experiment, release_id, current_user.id)
+    flash("Publishing started. This may take a while for large releases.", "info")
+
     return redirect(f"/releases/{experiment}/{release_id}")
+
+
+@blueprint.route("/releases/<experiment>/<int:release_id>/retry_dois", methods=["POST"])
+@login_required
+def retry_dois(experiment, release_id):
+    """Register again the DOIs of a published release that DataCite did not accept."""
+    release = _get_release(experiment, release_id, status=ReleaseStatus.PUBLISHED)
+    release.retry_doi_registration()
+
+    return jsonify({"status": "ok", **_release_state_payload(release)})
 
 
 @blueprint.route(
@@ -360,7 +512,7 @@ def add_documents(experiment, release_id):
     """Add documents to a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
 
     release = _get_release(experiment, release_id)
     source = data.get("source", "json")
@@ -368,19 +520,24 @@ def add_documents(experiment, release_id):
     if source == "urls":
         urls = data.get("urls", [])
         if not urls:
-            abort(400, "Missing URLs")
+            return jsonify({"error": "Missing URLs"}), 400
         json_docs = []
         for url in urls:
             clean_url = url.split("?")[0]
             if not clean_url.endswith(".json"):
-                return jsonify({"error": f"URL must point to a .json file: {url}"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "The URL must point to a .json file. Please check the URL and try again."
+                        }
+                    ),
+                    400,
+                )
             try:
-                resp = requests.get(url, timeout=10)
-                resp.raise_for_status()
-            except Exception as e:
-                return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
+                payload = _fetch_json(url)
+            except URLFetchError as e:
+                return jsonify({"error": str(e)}), 400
             filename = clean_url.rsplit("/", 1)[-1]
-            payload = resp.json()
             payload = payload if isinstance(payload, list) else [payload]
             for doc in payload:
                 doc.setdefault("_source_filename", filename)
@@ -389,7 +546,7 @@ def add_documents(experiment, release_id):
     else:
         docs = data.get("documents")
         if not docs or not isinstance(docs, list):
-            abort(400, "Missing or invalid documents")
+            return jsonify({"error": "Missing or invalid documents"}), 400
 
     for doc in docs:
         content = doc.get("body", {}).get("content", "")
@@ -420,7 +577,7 @@ def add_records(experiment, release_id):
     """Add records to a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
 
     release = _get_release(experiment, release_id)
     source = data.get("source", "json")
@@ -428,21 +585,19 @@ def add_records(experiment, release_id):
     if source == "url":
         url = data.get("url")
         if not url:
-            abort(400, "Missing URL")
+            return jsonify({"error": "Missing URL"}), 400
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-        except Exception as e:
-            return jsonify({"error": f"Failed to fetch {url}: {e}"}), 400
-        payload = resp.json()
+            payload = _fetch_json(url)
+        except URLFetchError as e:
+            return jsonify({"error": str(e)}), 400
     else:
         payload = data.get("records")
         if payload is None:
-            abort(400, "Missing records")
+            return jsonify({"error": "Missing records"}), 400
 
     records = _normalise_payload(payload)
     if not isinstance(records, list):
-        abort(400, "Records must be a list")
+        return jsonify({"error": "Records must be a list"}), 400
 
     release.add_records(records, current_user)
 
@@ -464,13 +619,13 @@ def upload_image(experiment, release_id):
     """Upload one or more images attached to a parent document."""
     parent_slug = request.form.get("parent_slug")
     if not parent_slug:
-        abort(400, "Missing parent_slug")
+        return jsonify({"error": "Missing parent_slug"}), 400
 
     files = [
         image for image in request.files.getlist("images") if image and image.filename
     ]
     if not files:
-        abort(400, "No image files provided")
+        return jsonify({"error": "No image files provided"}), 400
 
     release = _get_release(experiment, release_id)
 
@@ -479,23 +634,29 @@ def upload_image(experiment, release_id):
         None,
     )
     if not parent:
-        abort(400, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            400,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    target_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    target_dir = (release_dir / parent_slug).resolve()
     try:
-        target_dir.relative_to(images_root)
+        target_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    already_existing = {p.name for p in target_dir.iterdir()}
+        return jsonify({"error": "Invalid parent_slug"}), 400
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        already_existing = {p.name for p in target_dir.iterdir()}
+    except OSError as e:
+        return jsonify({"error": f"Could not prepare upload directory: {e}"}), 500
 
     images = []
     for file in files:
         filename = secure_filename(file.filename or "").lower()
         if not filename:
-            abort(400, "Invalid filename")
+            return jsonify({"error": "Invalid filename"}), 400
         extension = Path(filename).suffix.lower()
         if extension not in ALLOWED_IMAGE_EXTENSIONS:
             return (
@@ -521,7 +682,7 @@ def upload_image(experiment, release_id):
         try:
             target_path.relative_to(target_dir)
         except ValueError:
-            abort(400, "Invalid filename")
+            return jsonify({"error": "Invalid filename"}), 400
 
         if filename in already_existing:
             return (
@@ -535,12 +696,15 @@ def upload_image(experiment, release_id):
             )
         already_existing.add(filename)
 
-        file.save(str(target_path))
+        try:
+            file.save(str(target_path))
+        except OSError as e:
+            return jsonify({"error": f"Could not save image '{filename}': {e}"}), 500
         images.append(
             {
                 "filename": filename,
                 "parent_slug": parent_slug,
-                "url": f"/static/upload/{parent_slug}/{filename}",
+                "url": f"/static/upload/{release_id}/{parent_slug}/{filename}",
             }
         )
 
@@ -556,26 +720,32 @@ def list_images(experiment, release_id):
     """Return all uploaded images for a release, grouped by parent document slug."""
     release = _get_release(experiment, release_id)
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
 
     images = []
     for doc in release.documents:
         slug = doc.get("slug")
         if not slug:
             continue
-        doc_dir = (images_root / slug).resolve()
+        doc_dir = (release_dir / slug).resolve()
         try:
-            doc_dir.relative_to(images_root)
+            doc_dir.relative_to(release_dir)
         except ValueError:
             continue
         if not doc_dir.is_dir():
             continue
-        for entry in sorted(doc_dir.iterdir()):
+        try:
+            entries = sorted(doc_dir.iterdir())
+        except OSError:
+            current_app.logger.warning(f"Could not list images directory {doc_dir}")
+            continue
+        for entry in entries:
             if entry.is_file() and entry.suffix.lower() in ALLOWED_IMAGE_EXTENSIONS:
                 images.append(
                     {
                         "filename": entry.name,
                         "parent_slug": slug,
-                        "url": f"/static/upload/{slug}/{entry.name}",
+                        "url": f"/static/upload/{release_id}/{slug}/{entry.name}",
                     }
                 )
 
@@ -596,30 +766,43 @@ def delete_image(experiment, release_id, parent_slug, filename):
         None,
     )
     if not parent:
-        abort(404, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            404,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    slug_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(images_root)
+        slug_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
+        return jsonify({"error": "Invalid parent_slug"}), 400
 
     safe_filename = secure_filename(filename)
     if not safe_filename:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
     target_path = (slug_dir / safe_filename).resolve()
     try:
         target_path.relative_to(slug_dir)
     except ValueError:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     if not target_path.is_file():
-        abort(404, "Image not found")
+        return jsonify({"error": "Image not found"}), 404
 
-    target_path.unlink()
-    if slug_dir.is_dir() and not any(slug_dir.iterdir()):
-        slug_dir.rmdir()
+    try:
+        target_path.unlink()
+    except FileNotFoundError:
+        return jsonify({"error": "Image not found."}), 404
+    except OSError as e:
+        return jsonify({"error": f"Could not delete image: {e}"}), 500
+
+    try:
+        if slug_dir.is_dir() and not any(slug_dir.iterdir()):
+            slug_dir.rmdir()
+    except OSError:
+        current_app.logger.warning(f"Could not remove images directory {slug_dir}")
 
     return jsonify({"status": "ok"})
 
@@ -634,7 +817,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
     data = request.get_json(silent=True) or {}
     new_filename = data.get("filename")
     if not new_filename:
-        abort(400, "Missing filename")
+        return jsonify({"error": "Missing filename"}), 400
 
     release = _get_release(experiment, release_id)
 
@@ -643,19 +826,23 @@ def rename_image(experiment, release_id, parent_slug, filename):
         None,
     )
     if not parent:
-        abort(404, f"No document with slug '{parent_slug}' in release")
+        return (
+            jsonify({"error": f"No document with slug '{parent_slug}' in release"}),
+            404,
+        )
 
     images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-    slug_dir = (images_root / parent_slug).resolve()
+    release_dir = (images_root / str(release_id)).resolve()
+    slug_dir = (release_dir / parent_slug).resolve()
     try:
-        slug_dir.relative_to(images_root)
+        slug_dir.relative_to(release_dir)
     except ValueError:
-        abort(400, "Invalid parent_slug")
+        return jsonify({"error": "Invalid parent_slug"}), 400
 
     safe_old = secure_filename(filename).lower()
     safe_new = secure_filename(new_filename).lower()
     if not safe_old or not safe_new:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     new_extension = Path(safe_new).suffix.lower()
     if new_extension not in ALLOWED_IMAGE_EXTENSIONS:
@@ -670,10 +857,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
         source_path.relative_to(slug_dir)
         target_path.relative_to(slug_dir)
     except ValueError:
-        abort(400, "Invalid filename")
+        return jsonify({"error": "Invalid filename"}), 400
 
     if not source_path.is_file():
-        abort(404, "Image not found")
+        return jsonify({"error": "Image not found"}), 404
 
     if target_path == source_path:
         return jsonify(
@@ -682,7 +869,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
                 "image": {
                     "filename": safe_new,
                     "parent_slug": parent_slug,
-                    "url": f"/static/upload/{parent_slug}/{safe_new}",
+                    "url": f"/static/upload/{release_id}/{parent_slug}/{safe_new}",
                 },
             }
         )
@@ -698,7 +885,10 @@ def rename_image(experiment, release_id, parent_slug, filename):
             409,
         )
 
-    source_path.rename(target_path)
+    try:
+        source_path.rename(target_path)
+    except OSError as e:
+        return jsonify({"error": f"Could not rename image: {e}"}), 500
 
     return jsonify(
         {
@@ -706,7 +896,7 @@ def rename_image(experiment, release_id, parent_slug, filename):
             "image": {
                 "filename": safe_new,
                 "parent_slug": parent_slug,
-                "url": f"/static/upload/{parent_slug}/{safe_new}",
+                "url": f"/static/upload/{release_id}/{parent_slug}/{safe_new}",
             },
         }
     )
@@ -721,10 +911,10 @@ def update_document(experiment, release_id, slug):
     """Update a document in a release."""
     data = request.get_json(silent=True)
     if not data:
-        abort(400, "Missing request body")
+        return jsonify({"error": "Missing request body"}), 400
     updated_doc = data.get("document")
     if not updated_doc:
-        abort(400, "Missing document data")
+        return jsonify({"error": "Missing document data"}), 400
 
     release = _get_release(experiment, release_id)
     try:
@@ -761,31 +951,16 @@ def bulk_edit_records_preview(experiment, release_id):
 @login_required
 def bulk_edit_records_apply(experiment, release_id):
     """Perform a bulk update on all the records."""
-    updates = None
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        if "updates" in data:
-            updates = data["updates"]
-    elif "updates" in request.form:
-        try:
-            updates = json.loads(request.form["updates"])
-        except ValueError:
-            abort(400, "Invalid JSON in upload")
+    data = request.get_json(silent=True) or {}
+    updates = data.get("updates")
 
     if not updates:
-        abort(400, "Missing updates")
+        return jsonify({"error": "Missing updates"}), 400
 
     release = _get_release(experiment, release_id, lock=ReleaseStatus.EDITING)
     diff = release.bulk_update(updates, current_user)
 
-    flash(
-        f"Bulk edit applied to " f"{diff} records.",
-        "success",
-    )
-    if request.is_json:
-        return jsonify({"status": "ok"})
-    else:
-        return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify({"status": "ok", "updated": diff, "records": release.records})
 
 
 @blueprint.route(
@@ -801,9 +976,16 @@ def fix_checks(experiment, release_id):
         status=[ReleaseStatus.DRAFT, ReleaseStatus.READY],
         lock=ReleaseStatus.EDITING,
     )
-    release.fix_checks(current_user)
+    summary = release.fix_checks(current_user)
 
-    return redirect(f"/releases/{experiment}/{release_id}")
+    return jsonify(
+        {
+            "status": "ok",
+            **summary,
+            "records": release.records,
+            "documents": release.documents,
+        }
+    )
 
 
 @blueprint.route(
@@ -832,7 +1014,7 @@ def preview_record():
     """Preview a record."""
     data = request.json
     if not data or not isinstance(data, dict):
-        abort(400, description="Invalid JSON payload")
+        return jsonify({"error": "Invalid JSON payload"}), 400
     return {
         "html": render_template(
             [
@@ -851,7 +1033,7 @@ def preview_document():
     """Preview a document."""
     data = request.json
     if not data or not isinstance(data, dict):
-        abort(400, description="Invalid JSON payload")
+        return jsonify({"error": "Invalid JSON payload"}), 400
     return {
         "html": render_template(
             ["cernopendata_records_ui/docs/detail.html"],

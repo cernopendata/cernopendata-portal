@@ -58,4 +58,6 @@ def get_latest_news():
     </rss>
     """
 
-    return Response(rss_feed, mimetype="application/xml")
+    response = Response(rss_feed, mimetype="application/xml")
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response

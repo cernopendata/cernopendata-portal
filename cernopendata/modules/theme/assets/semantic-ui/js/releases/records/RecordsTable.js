@@ -1,21 +1,31 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Table, Button, Icon, Pagination } from "semantic-ui-react";
+import {
+  Table,
+  Button,
+  Icon,
+  Pagination,
+  Popup,
+  Message,
+} from "semantic-ui-react";
 import EditRecordModal from "./EditRecordModal";
 import BulkEditModal from "./BulkEditModal";
 import AddItemsModal from "../shared/AddItemsModal";
-import usePagination from "../shared/usePagination";
 import RowActions from "../shared/RowActions";
+import { fetchJson, usePagination } from "../shared/utils";
 
 export default function RecordsTable({
   experiment,
   releaseId,
-  initialRecords,
+  records,
+  setRecords,
+  assignedRecids,
   editDisabled = false,
   viewDisabled = false,
   releaseStatus = null,
+  onContentChanged,
 }) {
-  const [records, setRecords] = useState(initialRecords);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [editAllMode, setEditAllMode] = useState(false);
 
   const tableRef = useRef(null);
@@ -27,6 +37,37 @@ export default function RecordsTable({
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [doiLoading, setDoiLoading] = useState(false);
+  const [doiErrors, setDoiErrors] = useState([]);
+  const [error, setError] = useState(null);
+  const [bulkMessage, setBulkMessage] = useState(null);
+
+  const allHaveDoi =
+    records.length > 0 && records.every((record) => record.doi);
+
+  async function handleGenerateDoi() {
+    setDoiLoading(true);
+    setError(null);
+    const recidsWithoutDoi = records
+      .filter((record) => !record.doi)
+      .map((record) => record.recid);
+    try {
+      const data = await fetchJson(
+        `/releases/${experiment}/${releaseId}/generate_doi`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recids: recidsWithoutDoi }),
+        },
+      );
+      setRecords(data.records);
+      setDoiErrors(data.errors || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDoiLoading(false);
+    }
+  }
 
   function typesetMath() {
     if (window.MathJax && window.MathJax.Hub) {
@@ -44,26 +85,69 @@ export default function RecordsTable({
 
   const closeEditModal = () => {
     setEditingRecord(null);
+    setEditingIndex(null);
     setEditAllMode(false);
   };
 
   return (
     <>
+      {error && (
+        <Message negative>
+          <Icon name="warning circle" /> {error}
+        </Message>
+      )}
+      {bulkMessage && (
+        <Message positive onDismiss={() => setBulkMessage(null)}>
+          <Icon name="check circle" /> {bulkMessage}
+        </Message>
+      )}
+      {doiErrors.length > 0 && (
+        <div className="ui segment validation-segment">
+          <div className="validation-header">
+            <strong>
+              <i className="tasks icon"></i>DOI validation
+            </strong>
+            <div className="validation-header-labels">
+              <span className="ui red label">{doiErrors.length} failed</span>
+            </div>
+          </div>
+          {doiErrors.map((validationError, index) => (
+            <div
+              key={validationError.recid}
+              className={`validation-row${index < doiErrors.length - 1 ? " validation-row-bordered" : ""}`}
+            >
+              <div className="validation-row-icon">
+                <i className="times circle red icon"></i>
+              </div>
+              <div className="validation-row-body">
+                <b>
+                  recid {validationError.recid}: {validationError.error}
+                </b>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div>
         <div className="records-table-toolbar">
           {releaseStatus === "STAGED" && records.length > 0 && (
-            <div className="ui checkbox">
-              <input
-                type="checkbox"
-                name="generate_doi"
-                id="generate-doi-checkbox"
-                value="1"
-                form="primary-action-form"
-              />
-              <label htmlFor="generate-doi-checkbox">
-                Generate DOI for all entries
-              </label>
-            </div>
+            <Popup
+              content="All records already have DOIs"
+              disabled={!allHaveDoi}
+              position="top center"
+              trigger={
+                <span>
+                  <Button
+                    color="teal"
+                    disabled={allHaveDoi || doiLoading}
+                    loading={doiLoading}
+                    onClick={handleGenerateDoi}
+                  >
+                    <Icon name="id card" /> Generate DOIs
+                  </Button>
+                </span>
+              }
+            />
           )}
           <div className="records-table-toolbar-buttons">
             <Button
@@ -93,6 +177,7 @@ export default function RecordsTable({
           <Table celled compact>
             <Table.Header>
               <Table.Row>
+                <Table.HeaderCell collapsing>#</Table.HeaderCell>
                 <Table.HeaderCell>RecId</Table.HeaderCell>
                 <Table.HeaderCell>DOI</Table.HeaderCell>
                 <Table.HeaderCell>Title</Table.HeaderCell>
@@ -102,30 +187,45 @@ export default function RecordsTable({
             <Table.Body>
               {visible.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan="4" textAlign="center">
+                  <Table.Cell colSpan="5" textAlign="center">
                     No records in this release.
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                visible.map((record) => (
-                  <Table.Row key={record.recid}>
-                    <Table.Cell className="no-glossary">
-                      {record.recid}
-                    </Table.Cell>
-                    <Table.Cell className="no-glossary">
-                      {record.doi}
-                    </Table.Cell>
-                    <Table.Cell>{record.title || "—"}</Table.Cell>
-                    <Table.Cell collapsing>
-                      <RowActions
-                        onEdit={() => setEditingRecord(record)}
-                        editDisabled={editDisabled}
-                        viewDisabled={viewDisabled}
-                        viewHref={`/record/${record.recid}`}
-                      />
-                    </Table.Cell>
-                  </Table.Row>
-                ))
+                visible.map((record, i) => {
+                  const assigned = assignedRecids.has(record.recid);
+                  return (
+                    <Table.Row key={`record-${record.recid || i}`}>
+                      <Table.Cell collapsing>
+                        {records.indexOf(record) + 1}
+                      </Table.Cell>
+                      <Table.Cell
+                        className={`no-glossary${assigned ? " recid-assigned" : ""}`}
+                        data-tooltip={
+                          assigned ? "Assigned automatically" : undefined
+                        }
+                        data-position={assigned ? "top left" : undefined}
+                      >
+                        {record.recid}
+                      </Table.Cell>
+                      <Table.Cell className="no-glossary">
+                        {record.doi}
+                      </Table.Cell>
+                      <Table.Cell>{record.title || "—"}</Table.Cell>
+                      <Table.Cell collapsing>
+                        <RowActions
+                          onEdit={() => {
+                            setEditingRecord(record);
+                            setEditingIndex(records.indexOf(record));
+                          }}
+                          editDisabled={editDisabled}
+                          viewDisabled={viewDisabled}
+                          viewHref={`/record/${record.recid}`}
+                        />
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })
               )}
             </Table.Body>
           </Table>
@@ -144,12 +244,14 @@ export default function RecordsTable({
       <EditRecordModal
         editingRecord={editingRecord}
         setEditingRecord={setEditingRecord}
+        editingIndex={editingIndex}
         editAllMode={editAllMode}
         records={records}
         setRecords={setRecords}
         onClose={closeEditModal}
         experiment={experiment}
         releaseId={releaseId}
+        onSaved={onContentChanged}
       />
 
       <AddItemsModal
@@ -158,7 +260,10 @@ export default function RecordsTable({
         onClose={() => setAddModalOpen(false)}
         experiment={experiment}
         releaseId={releaseId}
-        onAdded={(newRecords) => setRecords((prev) => [...prev, ...newRecords])}
+        onAdded={(newRecords) => {
+          setRecords((prev) => [...prev, ...newRecords]);
+          onContentChanged();
+        }}
       />
 
       <BulkEditModal
@@ -166,6 +271,15 @@ export default function RecordsTable({
         onClose={() => setBulkModalOpen(false)}
         experiment={experiment}
         releaseId={releaseId}
+        onApplied={(data) => {
+          setRecords(data.records);
+          setBulkMessage(
+            `Bulk edit applied to ${data.updated} ${
+              data.updated === 1 ? "record" : "records"
+            }.`,
+          );
+          onContentChanged();
+        }}
       />
     </>
   );

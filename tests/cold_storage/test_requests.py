@@ -1,18 +1,29 @@
+import errno
 import json
 import logging
-from unittest.mock import patch
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
+import gfal2
 import pytest
 from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
 
+from cernopendata.api import RecordFilesWithIndex
 from cernopendata.cold_storage.api import Transfer
 from cernopendata.cold_storage.cli import cold
-from cernopendata.cold_storage.models import RequestMetadata
+from cernopendata.cold_storage.models import (
+    RequestMetadata,
+    RequestStatus,
+    TransferMetadata,
+)
+from cernopendata.cold_storage.schemas import TransferRequestSchema
+from cernopendata.cold_storage.service import RequestService
+from cernopendata.cold_storage.storage import Storage
+from cernopendata.cold_storage.tasks import check_transfers
+from cernopendata.cold_storage.transfer.fts import TransferManager as FtsTransferManager
 
 from .utils import run_command
-
-# from cernopendata.cold_storage.models import TransferMetadata
-
 
 SINGLE_FILE_RECORDS = [
     {
@@ -58,11 +69,40 @@ def test_requests(
             )
             assert result.status_code == 200
 
-    result = run_command(cli_runner, app, cold, ["process-requests"])
-    assert (
-        f"{len(record_data['file_specs'])} transfers have been submitted!"
-        in caplog.text
-    )
+    with patch.dict(
+        app.config,
+        {"COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD": len(record_data["file_specs"])},
+    ):
+        result = run_command(cli_runner, app, cold, ["process-requests"])
+        assert (
+            f"{len(record_data['file_specs'])} transfers have been submitted!"
+            in caplog.text
+        )
+
+        request = RequestMetadata.query.order_by(
+            RequestMetadata.created_at.desc()
+        ).first()
+        assert TransferRequestSchema().dump(request)["recid"] == recid
+        assert request.status == RequestStatus.SUBMITTING
+        assert request.num_transfers == len(record_data["file_specs"])
+        assert request.started_at is not None
+        started_at = request.started_at
+
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+        request = RequestMetadata.query.order_by(
+            RequestMetadata.created_at.desc()
+        ).first()
+        assert request.status == RequestStatus.SUBMITTING
+        assert request.num_transfers == len(record_data["file_specs"])
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.COMPLETED
+    assert request.completed_at is not None
+    assert request.started_at == started_at
 
 
 @patch(
@@ -95,16 +135,20 @@ def test_request_with_failed_transfer(
             )
             assert result.status_code == 200
 
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+
     failed_transfer = Transfer.create(
         {
             "action": "stage",
             "new_filename": "test-file",
             "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id,
             "file_id": "test-file-id",
             "method": "test",
         }
     )
     failed_transfer.status = "FAILED"
+    failed_transfer.finished = failed_transfer.submitted
     database.session.add(failed_transfer)
     database.session.commit()
 
@@ -112,3 +156,548 @@ def test_request_with_failed_transfer(
 
     request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
     assert request.num_failed_transfers == 1
+    assert request.status == RequestStatus.IN_PROGRESS
+    num_transfers = request.num_transfers
+
+    for active_transfer in TransferMetadata.query.filter(
+        TransferMetadata.request_id == request.id,
+        TransferMetadata.finished.is_(None),
+    ):
+        active_transfer.status = "FAILED"
+        active_transfer.finished = active_transfer.submitted
+        database.session.add(active_transfer)
+    database.session.commit()
+
+    with patch.dict(app.config, {"COLD_ACTIVE_STAGING_TRANSFERS_THRESHOLD": 0}):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers == num_transfers
+    assert request.status == RequestStatus.SUBMITTING
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers == num_transfers
+    assert request.status == RequestStatus.SUBMITTING
+    num_failed_transfers = request.num_failed_transfers
+
+    another_failed_transfer = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id,
+            "file_id": "another-test-file-id",
+            "method": "test",
+        }
+    )
+    another_failed_transfer.status = "FAILED"
+    another_failed_transfer.finished = another_failed_transfer.submitted
+    database.session.add(another_failed_transfer)
+    database.session.commit()
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_failed_transfers == num_failed_transfers + 1
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_transfers > num_transfers
+    assert request.status == RequestStatus.IN_PROGRESS
+    assert request.completed_at is None
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_ignores_other_failures(
+    mock_verify, client, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "1118",
+            "title": "Test Record with Other Failures",
+            "file_specs": [
+                {"name": "file3.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+
+    failed_transfer_of_another_request = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": PersistentIdentifier.get("recid", recid).object_uuid,
+            "request_id": request.id + 1000,
+            "file_id": "test-file-id",
+            "method": "test",
+        }
+    )
+    failed_transfer_of_another_request.status = "FAILED"
+    failed_transfer_of_another_request.finished = (
+        failed_transfer_of_another_request.submitted
+    )
+    database.session.add(failed_transfer_of_another_request)
+    database.session.commit()
+
+    result = run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.num_failed_transfers == 0
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_size_counts_only_completed_transfers(
+    mock_verify, client, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "1119",
+            "title": "Test Record with a Failed Transfer",
+            "file_specs": [
+                {"name": "file4.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    record_uuid = PersistentIdentifier.get("recid", recid).object_uuid
+
+    completed_transfer = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": record_uuid,
+            "request_id": request.id,
+            "file_id": "test-completed-file-id",
+            "method": "test",
+            "size": 1234,
+        }
+    )
+    completed_transfer.status = "DONE"
+    completed_transfer.finished = completed_transfer.submitted
+    database.session.add(completed_transfer)
+
+    failed_transfer = Transfer.create(
+        {
+            "action": "stage",
+            "new_filename": "test-file",
+            "record_uuid": record_uuid,
+            "request_id": request.id,
+            "file_id": "test-failed-file-id",
+            "method": "test",
+            "size": 5678,
+        }
+    )
+    failed_transfer.status = "FAILED"
+    failed_transfer.finished = failed_transfer.submitted
+    database.session.add(failed_transfer)
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.size == 1234
+    assert request.num_failed_transfers == 1
+
+
+def test_sort_by_successful_transfers(app, database, record_factory):
+    """Sort successful transfers column in transfer requests table."""
+    f1 = [{"name": "file5.txt", "content": b"dummy"}]
+    f2 = [{"name": "file6.txt", "content": b"dummy"}]
+    record1 = record_factory({"recid": "2101", "title": "R1", "file_specs": f1})
+    record2 = record_factory({"recid": "2102", "title": "R2", "file_specs": f2})
+
+    uuid1 = PersistentIdentifier.get("recid", record1["id"]).object_uuid
+    uuid2 = PersistentIdentifier.get("recid", record2["id"]).object_uuid
+
+    req1 = RequestMetadata(record_id=uuid1, num_transfers=10, num_failed_transfers=6)
+    req2 = RequestMetadata(record_id=uuid2, num_transfers=7, num_failed_transfers=0)
+    database.session.add_all([req1, req2])
+    database.session.commit()
+
+    kwargs = {"sort": "num_transfers", "page": 1, "per_page": 100}
+
+    # Fetch sorted request IDs filtered to the test records
+    def get_sorted_ids(direction):
+        result = RequestService.get_requests(direction=direction, **kwargs)
+        ids = []
+        for request in result.items:
+            if request.id in (req1.id, req2.id):
+                ids.append(request.id)
+        return ids
+
+    assert get_sorted_ids("desc") == [req2.id, req1.id]
+    assert get_sorted_ids("asc") == [req1.id, req2.id]
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_process_transfers_skips_record_that_fails_to_update(
+    mock_verify, app, database, cli_runner, record_factory, caplog
+):
+    """A failing transfer or record is skipped, without blocking the others."""
+    invalid_record = record_factory(
+        {
+            "recid": "2103",
+            "title": "Invalid",
+            "file_specs": [{"name": "file7.txt", "content": b"dummy"}],
+        }
+    )
+    valid_record = record_factory(
+        {
+            "recid": "2104",
+            "title": "Valid",
+            "file_specs": [{"name": "file8.txt", "content": b"dummy"}],
+        }
+    )
+    invalid_uuid = PersistentIdentifier.get("recid", invalid_record["id"]).object_uuid
+    valid_uuid = PersistentIdentifier.get("recid", valid_record["id"]).object_uuid
+
+    invalid_record_metadata = RecordMetadata.query.get(invalid_uuid)
+    invalid_record_metadata.json = {
+        **invalid_record_metadata.json,
+        "property_not_in_schema": True,
+    }
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["archive", invalid_record["id"], "--register"])
+    run_command(cli_runner, app, cold, ["archive", valid_record["id"], "--register"])
+
+    broken_transfer = Transfer.create(
+        {
+            "action": "archive",
+            "new_filename": "test-file",
+            "record_uuid": "00000000-0000-0000-0000-000000000000",
+            "file_id": "test-broken-file-id",
+            "method": "nonexistent_transfer_method",
+        }
+    )
+    broken_transfer.last_check = datetime(2000, 1, 1)
+    database.session.commit()
+    broken_transfer_id = broken_transfer.id
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+
+    broken_transfer = TransferMetadata.query.filter_by(id=broken_transfer_id).one()
+    assert broken_transfer.finished is None
+    assert f"Error checking transfer {broken_transfer_id}, skipping it" in caplog.text
+
+    invalid_record_file = RecordFilesWithIndex.get_record(invalid_uuid)["_files"][0]
+    valid_record_file = RecordFilesWithIndex.get_record(valid_uuid)["_files"][0]
+    assert "uri_cold" not in invalid_record_file.get("tags", {})
+    assert "uri_cold" in valid_record_file["tags"]
+
+    invalid_record_transfer = TransferMetadata.query.filter_by(
+        record_uuid=str(invalid_uuid)
+    ).one()
+    valid_record_transfer = TransferMetadata.query.filter_by(
+        record_uuid=str(valid_uuid)
+    ).one()
+    assert invalid_record_transfer.status == "DONE"
+    assert invalid_record_transfer.finished is not None
+    assert invalid_record_transfer.reason.startswith("Record not updated: ")
+    assert valid_record_transfer.status == "DONE"
+    assert valid_record_transfer.reason is None
+    assert f"Couldn't update '{invalid_uuid}', skipping it" in caplog.text
+
+
+def test_process_requests_skips_request_that_fails(
+    app, database, record_factory, caplog
+):
+    """Failing requests are skipped, and the other requests are still processed."""
+    invalid_record = record_factory(
+        {
+            "recid": "2105",
+            "title": "Invalid",
+            "file_specs": [{"name": "file9.txt", "content": b"dummy"}],
+        }
+    )
+    valid_record = record_factory(
+        {
+            "recid": "2106",
+            "title": "Valid",
+            "file_specs": [{"name": "file10.txt", "content": b"dummy"}],
+        }
+    )
+    invalid_uuid = PersistentIdentifier.get("recid", invalid_record["id"]).object_uuid
+    valid_uuid = PersistentIdentifier.get("recid", valid_record["id"]).object_uuid
+
+    invalid_record_metadata = RecordMetadata.query.get(invalid_uuid)
+    invalid_record_metadata.json = {
+        **invalid_record_metadata.json,
+        "property_not_in_schema": True,
+        "availability": "on demand",
+    }
+
+    waiting_requests = [
+        RequestMetadata(
+            record_id=valid_uuid, action="stage", status=RequestStatus.WAITING
+        ),
+        RequestMetadata(
+            record_id=valid_uuid, action="stage", status=RequestStatus.WAITING
+        ),
+    ]
+    invalid_record_in_progress_requests = [
+        RequestMetadata(
+            record_id=invalid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
+        ),
+        RequestMetadata(
+            record_id=invalid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
+        ),
+    ]
+    valid_record_in_progress_request = RequestMetadata(
+        record_id=valid_uuid, action="stage", status=RequestStatus.IN_PROGRESS
+    )
+    database.session.add_all(
+        waiting_requests
+        + invalid_record_in_progress_requests
+        + [valid_record_in_progress_request]
+    )
+    database.session.commit()
+    waiting_request_ids = [request.id for request in waiting_requests]
+    invalid_record_in_progress_request_ids = [
+        request.id for request in invalid_record_in_progress_requests
+    ]
+    valid_record_in_progress_request_id = valid_record_in_progress_request.id
+
+    with patch(
+        "cernopendata.cold_storage.service.ColdStorageManager.doOperation",
+        side_effect=Exception("Submission failure"),
+    ):
+        RequestService.process_requests()
+
+    for request_id in waiting_request_ids:
+        request = RequestMetadata.query.filter_by(id=request_id).one()
+        assert request.status == RequestStatus.WAITING
+        assert f"Error submitting request {request_id}, skipping it" in caplog.text
+    for request_id in invalid_record_in_progress_request_ids:
+        request = RequestMetadata.query.filter_by(id=request_id).one()
+        assert request.status == RequestStatus.IN_PROGRESS
+        assert f"Error checking request {request_id}, skipping it" in caplog.text
+    valid_record_in_progress_request = RequestMetadata.query.filter_by(
+        id=valid_record_in_progress_request_id
+    ).one()
+    assert valid_record_in_progress_request.status == RequestStatus.COMPLETED
+
+
+def test_check_transfers_processes_transfers_when_requests_fail(app, caplog):
+    """An error while processing the requests does not stop the transfers from being processed."""
+    with patch(
+        "cernopendata.cold_storage.tasks.RequestService.process_requests",
+        side_effect=Exception("Request failure"),
+    ), patch(
+        "cernopendata.cold_storage.tasks.TransferService.process_transfers"
+    ) as process_transfers_mock:
+        check_transfers.run.__wrapped__()
+
+    assert process_transfers_mock.called
+    assert "Error processing the requests" in caplog.text
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_request_without_issued_transfers_is_not_started(
+    mock_verify, client, app, database, cli_runner, record_factory, caplog
+):
+    record = record_factory(
+        {
+            "recid": "2107",
+            "title": "Test Record without Issued Transfers",
+            "file_specs": [
+                {"name": "file11.txt", "content": b"This is a dummy file for testing."}
+            ],
+        },
+    )
+    recid = record["id"]
+
+    run_command(cli_runner, app, cold, ["archive", recid, "--register"])
+    run_command(cli_runner, app, cold, ["process-transfers"])
+    run_command(cli_runner, app, cold, ["clear-hot", recid])
+
+    with patch("cernopendata.modules.records.utils.RecordIndexer"):
+        with patch("cernopendata.modules.records.utils.record_stage"):
+            result = client.post(
+                f"/record/{recid}/stage",
+                data=json.dumps({}),
+                content_type="application/json",
+            )
+            assert result.status_code == 200
+
+    with patch("cernopendata.cold_storage.storage.Storage.stage", return_value=[]):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_transfers == 0
+    assert request.started_at is None
+
+    with patch(
+        "cernopendata.cold_storage.manager.Storage.verify_file",
+        return_value=(None, "Could not check the file: Proxy expired!"),
+    ):
+        run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.SUBMITTING
+    assert request.num_transfers == 0
+    assert "since the destination could not be checked" in caplog.text
+
+    request.file = "missing-file.txt"
+    database.session.add(request)
+    database.session.commit()
+
+    run_command(cli_runner, app, cold, ["process-requests"])
+
+    request = RequestMetadata.query.order_by(RequestMetadata.created_at.desc()).first()
+    assert request.status == RequestStatus.COMPLETED
+    assert request.num_transfers == 0
+
+
+@patch(
+    "cernopendata.cold_storage.manager.Storage.verify_file", return_value=(False, None)
+)
+def test_process_transfers_retries_transfer_with_unknown_status(
+    mock_verify, app, database, cli_runner, record_factory
+):
+    record = record_factory(
+        {
+            "recid": "2108",
+            "title": "Test Record with Unknown Transfer Status",
+            "file_specs": [{"name": "file12.txt", "content": b"dummy"}],
+        }
+    )
+    record_uuid = PersistentIdentifier.get("recid", record["id"]).object_uuid
+    status_error = "Could not retrieve status from FTS: Proxy expired!"
+
+    with patch(
+        "cernopendata.cold_storage.transfer.cp.TransferManager.transfer_status",
+        return_value=(None, status_error),
+    ):
+        run_command(cli_runner, app, cold, ["archive", record["id"]])
+        run_command(cli_runner, app, cold, ["process-transfers"])
+
+    transfer = TransferMetadata.query.filter_by(record_uuid=str(record_uuid)).one()
+    assert transfer.status is None
+    assert transfer.finished is None
+    assert transfer.reason == status_error
+
+    run_command(cli_runner, app, cold, ["process-transfers"])
+
+    transfer = TransferMetadata.query.filter_by(record_uuid=str(record_uuid)).one()
+    assert transfer.status == "DONE"
+    assert transfer.finished is not None
+    assert transfer.reason is None
+
+
+@pytest.mark.parametrize(
+    "stat_error, expected_exists",
+    [
+        (gfal2.GError("No such file or directory", errno.ENOENT), False),
+        (gfal2.GError("Proxy expired!", errno.EACCES), None),
+        (ConnectionError("Connection refused"), None),
+    ],
+)
+def test_verify_file_distinguishes_missing_file_from_failed_check(
+    stat_error, expected_exists
+):
+    storage_context = MagicMock()
+    storage_context.stat.side_effect = stat_error
+
+    with patch(
+        "cernopendata.cold_storage.storage.gfal2.creat_context",
+        return_value=storage_context,
+    ):
+        exists, error = Storage.verify_file(
+            "root://eospublic.cern.ch//eos/opendata/file.root", 10, "adler32:1234"
+        )
+
+    assert exists is expected_exists
+    assert error
+
+
+@pytest.mark.parametrize(
+    "job_status, expected_status, expected_reason",
+    [
+        ({"job_state": "FINISHED"}, "DONE", None),
+        (
+            {
+                "job_state": "FAILED",
+                "reason": "One or more files failed.",
+                "files": [
+                    {"reason": ""},
+                    {"reason": "STAGING [42] Connection refused"},
+                ],
+            },
+            "FAILED",
+            "STAGING [42] Connection refused",
+        ),
+        (
+            {
+                "job_state": "FINISHEDDIRTY",
+                "reason": "One or more files failed.",
+                "files": [],
+            },
+            "FAILED",
+            "FINISHEDDIRTY: One or more files failed.",
+        ),
+        ({"job_state": "STAGING", "reason": None}, "STAGING", None),
+        ({}, None, "Could not retrieve status from FTS: empty response"),
+        (
+            Exception("Proxy expired!"),
+            None,
+            "Could not retrieve status from FTS: Proxy expired!",
+        ),
+    ],
+)
+def test_fts_transfer_status(monkeypatch, job_status, expected_status, expected_reason):
+    monkeypatch.setenv("INVENIO_FTS_ENDPOINT", "https://fts.example.org:8446")
+
+    with patch("cernopendata.cold_storage.transfer.fts.fts3.Context"), patch(
+        "cernopendata.cold_storage.transfer.fts.fts3.get_job_status",
+        side_effect=[job_status],
+    ):
+        status, reason = FtsTransferManager().transfer_status("job-id")
+
+    assert status == expected_status
+    assert reason == expected_reason

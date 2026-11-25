@@ -7,11 +7,18 @@ const ajv = new Ajv({
   strict: false,
 });
 
+class SchemaBridge extends JSONSchemaBridge {
+  getInitialModel() {
+    return {};
+  }
+}
+
 function stripUnsupported(schema) {
   if (!schema || typeof schema !== "object") return schema;
 
   const result = { ...schema };
 
+  delete result.$schema;
   delete result.additionalProperties;
   delete result.uniqueItems;
 
@@ -48,7 +55,7 @@ function createValidator(schema) {
 export default function createBridge(schema) {
   const cleanedSchema = stripUnsupported(schema);
   const validator = createValidator(cleanedSchema);
-  const bridge = new JSONSchemaBridge({
+  const bridge = new SchemaBridge({
     schema: cleanedSchema,
     validator: validator,
   });

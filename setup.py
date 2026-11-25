@@ -76,6 +76,7 @@ for reqs in extras_require.values():
     extras_require["all"].extend(reqs)
 
 install_requires = [
+    "beautifulsoup4==4.12.3",
     "counter-robots>=2025.2",
     # General Invenio dependencies
     "invenio-app>=2.0.0,<3.0.0",
@@ -154,8 +155,8 @@ setup(
     keywords="CERN Open Data",
     license="GPLv2",
     author="CERN",
-    author_email="info@inveniosoftware.org",
-    url="https://github.com/cernopendata/opendata.cern.ch",
+    author_email="opendata-support@cern.ch",
+    url="https://github.com/cernopendata/cernopendata-portal",
     packages=packages,
     zip_safe=False,
     include_package_data=True,
@@ -207,6 +208,9 @@ setup(
         "invenio_config.module": [
             "cernopendata = cernopendata.config",
         ],
+        "invenio_db.alembic": [
+            "cernopendata = cernopendata:alembic",
+        ],
         "invenio_pidstore.minters": [
             "cernopendata_recid_minter = "
             " cernopendata.modules.records.minters.recid:"
@@ -249,13 +253,13 @@ setup(
     extras_require=extras_require,
     install_requires=install_requires,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python",
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",

@@ -23,6 +23,7 @@ import itertools
 import json
 import sys
 from os.path import basename
+from pathlib import Path
 
 from flask import (
     Response,
@@ -44,7 +45,13 @@ from invenio_records_ui.utils import obj_or_import_string
 from invenio_xrootd import EOSFileStorage
 from werkzeug.utils import import_string
 
-from cernopendata.cold_storage.api import RecordAvailability, Request
+from cernopendata.cold_storage.api import (
+    ColdStorageActions,
+    RecordAvailability,
+    Request,
+)
+from cernopendata.cold_storage.catalog import Catalog
+from cernopendata.cold_storage.service import RequestService
 from cernopendata.cold_storage.stats.signals import record_stage
 
 
@@ -52,16 +59,33 @@ def stage(pid, record, **kwargs):
     """Stages all the files from a record."""
     data = request.get_json()  # Parse JSON data from request
     email = data.get("email", "").strip()
+    existing_request = Request.get_active(record.id, ColdStorageActions.STAGE)
+    if existing_request:
+        return (
+            jsonify(
+                {
+                    "error": "This record is already being staged",
+                    "transfer_id": existing_request.id,
+                }
+            ),
+            409,
+        )
+    file = data.get("file")
+    files = Catalog().get_files_from_record(record, file=file)
+    if not files:
+        return jsonify({"error": "No files found to stage"}), 400
+    if RequestService.are_all_files_hot(record, file=file):
+        return jsonify({"error": "All files are already available"}), 400
     try:
         id = Request.create(
             record.id,
             subscribers=[email] if email else None,
-            file=data.get("file"),
+            file=file,
             availability=record["_availability_details"],
             distribution=record["distribution"],
         )
     except ValueError as e:
-        return Response(f"Invalid email address: {str(e)}", status=400)
+        return jsonify({"error": f"Invalid email address: {str(e)}"}), 400
 
     record["availability"] = RecordAvailability.REQUESTED.value
     record.commit()
@@ -70,14 +94,7 @@ def stage(pid, record, **kwargs):
     print(f"Transfer requested {id}", file=sys.stderr)
     record_stage.send(current_app._get_current_object(), obj=record)
 
-    # try:
-    #    response = requests.get(purge_url)
-    #    response.raise_for_status()
-    # except Exception as e:
-    #    # Log error or fallback
-    #    print(f"Failed to purge cache: {e}", file=sys.stderr)
-    # print("AND CACHE PURGED!!!", file=sys.stderr)
-    return Response("OK", status=200)
+    return jsonify({"message": "OK"})
 
 
 def subscribe(pid, record, **kwargs):
@@ -88,10 +105,13 @@ def subscribe(pid, record, **kwargs):
     try:
         if Request.subscribe(transfer_id, email):
             db.session.commit()
-            return Response(f"{email} subscribed successfully", status=200)
-        return Response(f"{email} is already subscribed", status=403)
+            return jsonify({"message": f"{email} subscribed successfully"})
+        return jsonify({"error": f"{email} is already subscribed"}), 403
     except ValueError as e:
-        return Response(f"{email} is not a valid email address: {str(e)}", status=400)
+        return (
+            jsonify({"error": f"{email} is not a valid email address: {str(e)}"}),
+            400,
+        )
 
 
 def get_file_index(pid, record, file_index, **kwargs):
@@ -197,14 +217,13 @@ def eos_file_download_ui(pid, record, _record_file_factory=None, **kwargs):
 
 def eos_send_file_or_404(file_path=""):
     """File download for a given EOS uri."""
-    storage = EOSFileStorage(
-        "root://eospublic.cern.ch//eos/opendata/" + file_path,
-        # create_dir=False
-    )
+    file_url = "root://eospublic.cern.ch//eos/opendata/" + file_path
 
     filename = file_path.split("/")[-1:]
 
     try:
+        size = Path("/eos/opendata/" + file_path).stat().st_size
+        storage = EOSFileStorage(file_url, size=size)
         return storage.send_file(filename[0])
     except Exception:
         abort(404)
@@ -385,6 +404,9 @@ def export_json_view(pid, record, template=None, **kwargs):
             data = serializer.serialize(pid, record)
             data = json.loads(data)
         except Exception:
+            current_app.logger.exception(
+                "JSON export failed for record {}.".format(str(record.id))
+            )
             data = {}
 
         return jsonify(data)

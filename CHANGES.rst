@@ -1,5 +1,68 @@
 Changes
 =======
+
+Version 1.3.0 (released 2026-10-13)
+----------------------------
+- feat(curation): add new experiment OPAL and MCNet
+- feat(cold): improve verbosity options for cold storage commands
+- fix(cold): ensure staging requests are allowed; fix information displayed and the sorting in the transfer requests table
+- fix(releases): ensure editor does not add empty fields
+- fix(oai-pmh): ensure next results can be viewed without causing errors
+- fix(news): add CORS headers to news endpoint
+- build(nginx): upgrade to nginx version 1.30 and use a redirect to eospublic, instead of reading from the fuse mount point
+- build: update xrootd version
+- docs: update contribution guidelines and add an AI policy
+
+Version 1.2.1 (released 2026-08-11)
+----------------------------
+- fix(mappings): map methodology.steps.note as an object
+- fix(datacite): fall back to the collaboration when authors is empty
+- fix(releases): strip the derived fields from records on import and export
+- fix(fixtures): keep the record files when updating with skip_files
+- fix(releases): stop long release names overflowing the releases table
+
+Version 1.2.0 (released 2026-08-10)
+----------------------------
+- feat(releases): redesign the releases page; update release details view, including displaying validation feedback; redesign the form editor and add it for documents
+- feat(releases): allow retrying registering dois on published releases
+- perf(releases): move rolling back a release into a celery task
+- fix(releases): ensure file checksums have a prefix
+- refactor(releases): improve display of error messages
+- fix(theme): center footer content and pin it to the bottom
+- fix(cold): send transfer notifications individually
+- fix(schema): fix the links object inside a note
+- fix(facets): increase the number of entries for the file type to 100
+- fix(template): render methodology steps correctly
+
+Version 1.1.0 (released 2026-07-02)
+----------------------------
+- feat(datacite): Add more fields to the datacite exporter: keywords, usage, methodology and language
+- fix(releases): ensure export json feature works for creating release
+- fix(schema): add filename
+- fix(releases): include release metadata in download and creation
+- fix(releases): staging and publishing a release into a celery task
+- build: update xrootd and rabbitmq version
+- fix(releases): ensure recid can be edited via the edit record modal
+- fix(releases): Add margin to the button. Add information messages to the validation.
+- fix(record): Print all the date_created of a record
+- feat(releases): ensure backwards compability for new format of recids
+- feat(releases): add DOI validation
+
+Version 1.0.2 (releaesd 2026-06-22)
+----------------------------
+- fix(oidc): Get the name of the OIDC from an environmental variable
+
+Version 1.0.1 (released 2026-06-22)
+----------------------------
+- fix(ui): Remove the column of error of the releases. Add icons to distinguish between draft/staged/published. Adding margins to elements.
+- fix(releases): add validator to ensure files are provided
+- fix(releases): ensure json export works for records in a release
+
+Version 1.0.0 (released 2026-06-18)
+----------------------------
+- feature: interface for curators to upload release metadata
+- schema: add linter for javascript and json
+
 Version 0.14.0 (released 2026-04-14)
 ----------------------------
 - ui: more improvements to accessibility

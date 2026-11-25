@@ -28,14 +28,14 @@ from datetime import datetime
 
 from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from cernopendata.api import RecordFilesWithIndex
 
 from .api import ColdStorageActions, RecordAvailability, Request, Transfer
 from .catalog import Catalog
 from .manager import ColdStorageManager
-from .models import RequestMetadata, TransferMetadata
+from .models import RequestMetadata, RequestStatus, TransferMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -51,36 +51,61 @@ class TransferService:
         now = datetime.utcnow()
         all_status = {}
         summary = {}
+        finished_transfers = []
         for transfer in Transfer.get_ongoing_transfers(now):
             id = transfer.id
-            transfer.last_check = datetime.utcnow()
-            transfer.status, error = Transfer.load_class(
-                f"{transfer.method}.TransferManager"
-            ).transfer_status(transfer.method_id)
+            try:
+                transfer.last_check = datetime.utcnow()
+                status, error = Transfer.load_class(
+                    f"{transfer.method}.TransferManager"
+                ).transfer_status(transfer.method_id)
+                if status is None:
+                    logger.error(
+                        f"Transfer {id}: could not retrieve its status, retrying in the next run: {error}"
+                    )
+                    transfer.reason = error
+                    db.session.add(transfer)
+                    db.session.commit()
+                    all_status[id] = None
+                    summary["STATUS_UNKNOWN"] = summary.get("STATUS_UNKNOWN", 0) + 1
+                    continue
+                transfer.status = status
+                if transfer.status == "DONE":
+                    logger.debug(f"Transfer {id}: finished, updating the catalog")
+                    transfer.finished = datetime.now()
+                    catalog.add_copy(
+                        transfer.record_uuid,
+                        transfer.file_id,
+                        transfer.action,
+                        transfer.new_filename,
+                    )
+                if transfer.status == "FAILED":
+                    logger.error(f"Transfer {id}: failed: {error}")
+                    transfer.reason = error
+                    transfer.finished = datetime.now()
+                else:
+                    transfer.reason = None
+                    logger.debug(f"Transfer {id}: status {transfer.status}")
+                db.session.add(transfer)
+                db.session.commit()
+            except Exception as e:
+                logger.exception(f"Error checking transfer {id}, skipping it: {e}")
+                db.session.rollback()
+                continue
+            if transfer.status == "DONE":
+                finished_transfers.append(transfer)
             all_status[id] = transfer.status
             if transfer.status not in summary:
                 summary[transfer.status] = 0
             summary[transfer.status] += 1
-            if transfer.status == "DONE":
-                logger.debug(
-                    f"Transfer {id}: just finished! Let's update the catalog and mark it as done"
+        failed_records = catalog.reindex_entries()
+        for transfer in finished_transfers:
+            if transfer.record_uuid in failed_records:
+                transfer.reason = (
+                    f"Record not updated: {failed_records[transfer.record_uuid]}"
                 )
-                transfer.finished = datetime.now()
-                catalog.add_copy(
-                    transfer.record_uuid,
-                    transfer.file_id,
-                    transfer.action,
-                    transfer.new_filename,
-                )
-            if transfer.status == "FAILED" or not transfer.status:
-                logger.error(f"The transfer {id} failed :(")
-                transfer.reason = error
-                transfer.finished = datetime.now()
-            else:
-                logger.debug(f"Transfer {id} is in status {transfer.status}")
-            db.session.add(transfer)
-            db.session.commit()
-        catalog.reindex_entries()
+                db.session.add(transfer)
+        db.session.commit()
         logger.info(f"Summary: {summary}")
         return all_status
 
@@ -91,16 +116,12 @@ class RequestService:
     @staticmethod
     def process_requests():
         """Check the active requests."""
-        # The requests would go through these stages
-        # SUBMITTED ->  STARTED -> COMPLETED
-        RequestService.check_submitted()
-
-        # Now, let's look at the ones that 'started'
+        RequestService.submit_transfers()
         RequestService.check_running()
 
     @staticmethod
-    def check_submitted():
-        """Check if there are any new transfers submitted."""
+    def submit_transfers():
+        """Issue the transfers of the waiting and submitting requests."""
         manager = ColdStorageManager()
         for action in ColdStorageActions:
             active_transfers_count = TransferMetadata.query.filter(
@@ -119,85 +140,110 @@ class RequestService:
                 f"Checking if we can {action.value} more records: active {active_transfers_count}/{threshold}"
             )
 
-            submitted = 0
             max_transfers = threshold - active_transfers_count
-            if max_transfers > 0:
-                transfers = RequestMetadata.query.filter_by(
-                    status="submitted", action=action.value
-                ).all()
+            if max_transfers <= 0:
+                continue
 
-                for transfer in transfers:
-                    info = manager.doOperation(
-                        action,
-                        transfer.record_id,
-                        limit=None,
-                        register=True,
-                        force=False,
-                        dry=False,
-                        max_transfers=max_transfers - submitted,
-                        file=transfer.file,
+            submitted_count = 0
+            requests = (
+                RequestMetadata.query.filter(
+                    RequestMetadata.status.in_(
+                        (RequestStatus.WAITING, RequestStatus.SUBMITTING)
+                    ),
+                    RequestMetadata.action == action.value,
+                )
+                .order_by(RequestMetadata.created_at)
+                .all()
+            )
+
+            for request in requests:
+                try:
+                    submitted_transfers = RequestService._submit_request_transfers(
+                        manager, action, request, max_transfers - submitted_count
                     )
-                    logger.debug(f"Got {info}")
-                    if info:
-                        submitted += len(info)
-                        transfer.num_transfers += len(info)
-                        transfer.size += sum(item.size for item in info)
-                    transfer.started_at = datetime.utcnow()
+                    Request.update_transfer_counts(request)
+                    submitted_count += len(submitted_transfers)
                     logger.info(
-                        f"THE LIMIT WAS {max_transfers}, AND WE SUBMITTED {submitted}"
+                        f"Request {request.id}: {submitted_count}/{max_transfers} transfers submitted"
                     )
-                    if max_transfers == submitted:
-                        logger.info(
-                            f"Reached the threshold of {threshold} transfers. There might be more in this record"
-                            f"({submitted + active_transfers_count}). Let's wait before continuing"
-                        )
+                    if submitted_transfers and not request.started_at:
+                        request.started_at = datetime.utcnow()
+                    if submitted_count < max_transfers:
+                        request.status = RequestStatus.IN_PROGRESS
                     else:
-                        transfer.status = "started"
-                    db.session.add(transfer)
+                        request.status = RequestStatus.SUBMITTING
+                    db.session.add(request)
                     db.session.commit()
-                    if max_transfers - submitted <= 0:
-                        logger.info("We have submitted enough. Stopping")
+                    if submitted_count >= max_transfers:
+                        logger.info(
+                            f"Request {request.id}: reached the threshold of {threshold}"
+                            " transfers, continuing in the next run"
+                        )
                         break
-            if submitted:
-                logger.info(f"{submitted} transfers have been submitted!")
+                except Exception as e:
+                    logger.exception(
+                        f"Error submitting request {request.id}, skipping it: {e}"
+                    )
+                    db.session.rollback()
+            if submitted_count:
+                logger.info(f"{submitted_count} transfers have been submitted!")
 
     @staticmethod
     def check_running():
-        """Check the records that are being archived."""
+        """Complete the requests in progress whose transfers have finished."""
         for action in ColdStorageActions:
             requests = RequestMetadata.query.filter_by(
-                status="started", action=action.value
+                status=RequestStatus.IN_PROGRESS, action=action.value
             ).all()
             logger.debug(f"Checking the {len(requests)} {action.value} requests")
             completed = 0
             for request in requests:
-                record = RecordFilesWithIndex.get_record(request.record_id)
-                request.num_failed_transfers = Transfer.get_failed_transfers_count(
-                    request.record_id
-                )
-                db.session.add(request)
-                if action == ColdStorageActions.STAGE:
-                    if record["availability"] != RecordAvailability.ONLINE.value:
-                        logger.info("Let's check the availability just in case...")
-                        Catalog().save_record_availability(record)
-                        if record["availability"] == RecordAvailability.REQUESTED.value:
-                            logger.info("The transfer is still waiting")
+                try:
+                    record = RecordFilesWithIndex.get_record(request.record_id)
+                    Request.update_transfer_counts(request)
+                    if action == ColdStorageActions.STAGE:
+                        if not RequestService.are_all_files_hot(
+                            record, file=request.file
+                        ):
+                            if RequestService._has_active_transfers(request):
+                                logger.info(
+                                    f"Request {request.id}: transfers still in progress"
+                                )
+                                continue
+                            request.status = RequestStatus.SUBMITTING
+                            db.session.add(request)
+                            db.session.commit()
+                            logger.warning(f"Request {request.id}: resubmitting")
                             continue
-                elif action == ColdStorageActions.ARCHIVE:
-                    files = (f for index in record.file_indices for f in index["files"])
-                    missing = next(
-                        (
-                            f
-                            for f in files
-                            if "tags" not in f or "uri_cold" not in f["tags"]
-                        ),
-                        None,
+                        if record["availability"] != RecordAvailability.ONLINE.value:
+                            logger.info(
+                                f"Request {request.id}: rechecking availability"
+                            )
+                            Catalog().save_record_availability(record)
+                    elif action == ColdStorageActions.ARCHIVE:
+                        files = (
+                            f for index in record.file_indices for f in index["files"]
+                        )
+                        missing_file = next(
+                            (
+                                f
+                                for f in files
+                                if "tags" not in f or "uri_cold" not in f["tags"]
+                            ),
+                            None,
+                        )
+                        if missing_file:
+                            logger.debug(
+                                f"Request {request.id}: file {missing_file['key']} not on tape yet"
+                            )
+                            continue
+                    Request.mark_as_completed(request)
+                    completed += 1
+                except Exception as e:
+                    logger.exception(
+                        f"Error checking request {request.id}, skipping it: {e}"
                     )
-                    if missing:
-                        logger.debug(f"The file {missing['key']} is not in tape yet...")
-                        continue
-                completed += 1
-                Request.mark_as_completed(request)
+                    db.session.rollback()
             db.session.commit()
             logger.info(f"{completed}/{len(requests)} requests have finished")
 
@@ -242,12 +288,18 @@ class RequestService:
             ).all()
 
         if sort:
-            column = getattr(RequestMetadata, sort, None)
-            if column is not None:
-                if direction == "desc":
-                    query = query.order_by(column.desc())
-                else:
-                    query = query.order_by(column.asc())
+            # Sort by successful transfers (total - failed, clamped to 0) or by column
+            if sort == "num_transfers":
+                total = func.coalesce(RequestMetadata.num_transfers, 0)
+                failed = func.coalesce(RequestMetadata.num_failed_transfers, 0)
+                successful = total - failed
+                sort_expr = case((successful < 0, 0), else_=successful)
+            else:
+                sort_expr = getattr(RequestMetadata, sort, None)
+
+            if sort_expr is not None:
+                order = sort_expr.desc() if direction == "desc" else sort_expr.asc()
+                query = query.order_by(order)
         else:
             query = query.order_by(RequestMetadata.created_at.desc())
 
@@ -255,3 +307,38 @@ class RequestService:
             result = query.paginate(page=page, per_page=per_page, error_out=False)
 
         return result
+
+    @staticmethod
+    def are_all_files_hot(record, file=None):
+        """Check if all the files of a record, or of one of its files, have a hot copy."""
+        files = Catalog().get_files_from_record(record, file=file)
+        return all("hot_deleted" not in file.get("tags", {}) for file in files)
+
+    @staticmethod
+    def _has_active_transfers(request):
+        """Check if a request has transfers that have not finished."""
+        return (
+            TransferMetadata.query.filter(
+                TransferMetadata.request_id == request.id,
+                TransferMetadata.finished.is_(None),
+            ).count()
+            > 0
+        )
+
+    @staticmethod
+    def _submit_request_transfers(manager, action, request, max_transfers):
+        """Issue transfers for the cold files of a request."""
+        submitted_transfers = manager.doOperation(
+            action,
+            request.record_id,
+            limit=None,
+            register=True,
+            force=False,
+            dry=False,
+            max_transfers=max_transfers,
+            file=request.file,
+            request_id=request.id,
+        )
+        if submitted_transfers:
+            request.num_transfers += len(submitted_transfers)
+        return submitted_transfers or []

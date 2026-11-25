@@ -139,6 +139,7 @@ curate = WebpackThemeBundle(
         "semantic-ui": dict(
             entry={
                 "cernopendata_curate": "./js/releases/CurateApp.js",
+                "cernopendata_curate_css": "./scss/releases.scss",
             },
             dependencies={
                 "react": "^16.13.0",

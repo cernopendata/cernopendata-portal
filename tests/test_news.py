@@ -4,6 +4,7 @@ import pytest
 from bs4 import BeautifulSoup
 from invenio_indexer.api import RecordIndexer
 
+from cernopendata.modules.api.news import get_latest_news
 from cernopendata.modules.fixtures.cli import create_doc
 from cernopendata.modules.pages.views import index
 
@@ -29,3 +30,8 @@ def test_news(app, database, search):
         news = soup.find_all("div", class_="news-card")
         assert len(news) == 1
         assert news[0].h4.a["href"] == "/docs/dummy_news"
+
+    with app.test_request_context("/api/news.xml"):
+        response = get_latest_news()
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+        assert "DUMMY TEST NEWS" in response.get_data(as_text=True)

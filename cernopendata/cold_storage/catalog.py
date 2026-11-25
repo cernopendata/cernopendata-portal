@@ -62,10 +62,15 @@ class Catalog:
         if record:
             if "_files" in record:
                 if file:
-                    if file in record["_files"]:
-                        files = record["_files"][file]
-                    else:
-                        possible_files += record["_files"]
+                    files = [
+                        record_file
+                        for record_file in record["_files"]
+                        if record_file["key"] == file
+                    ]
+                    if not files:
+                        possible_files += [
+                            record_file["key"] for record_file in record["_files"]
+                        ]
                 else:
                     files = record["_files"]
             if "_file_indices" in record:
@@ -119,6 +124,7 @@ class Catalog:
 
     def reindex_entries(self):
         """Reindexes all the entries that have been modified."""
+        failed_records = {}
         while len(self._reindex_queue) > 0:
             record_uuid = self._reindex_queue.pop(0)
             logger.info(f"Ready to reindex {record_uuid}")
@@ -127,9 +133,14 @@ class Catalog:
                 logger.error(f"Couldn't find that record '{record_uuid}'")
                 continue
             logger.debug("Got the object from the database")
-            record.files.flush()
-            record.flush_indices()
-            record.commit()
+            try:
+                record.files.flush()
+                record.flush_indices()
+                record.commit()
+            except Exception as e:
+                logger.exception(f"Couldn't update '{record_uuid}', skipping it: {e}")
+                failed_records[record_uuid] = str(e)
+                continue
             try:
                 self._indexer.index(record)
             except Exception as e:
@@ -141,6 +152,7 @@ class Catalog:
                 except Exception as e:
                     logger.error(f"Doing it again did not help :( {e}")
         db.session.commit()
+        return failed_records
 
     def add_copy(self, record_uuid, file_id, action, new_filename):
         """Adds a copy to a particular file. It reindexes the record."""

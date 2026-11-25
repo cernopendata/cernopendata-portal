@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from invenio_files_rest.models import Location
+from invenio_files_rest.models import Location, ObjectVersionTag
 
 from cernopendata.cold_storage.cli import location
 from cernopendata.modules.fixtures.cli import create_record
@@ -100,6 +100,10 @@ def staged_record(app, database):
         },
     }
     record = create_record(data, False)
+    for record_file in record.files:
+        ObjectVersionTag.create(record_file.obj.version_id, "hot_deleted", "true")
+    record.files.flush()
+    record.commit()
     database.session.commit()
     data.update({"record_id": record.id})
     return data

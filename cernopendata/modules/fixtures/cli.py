@@ -87,9 +87,8 @@ def _handle_record_files(record, data, logger=None):
     """Handles record files."""
     # let's make a copy of files, since we might change it
     logger = logging.getLogger(__name__) if not logger else logger
-    verbose = logger.getEffectiveLevel() == logging.DEBUG
     real_files = []
-    if "files" not in data:
+    if "files" not in data and "file_indices" not in data:
         if "distribution" in record and "availability" in record["distribution"]:
             record["availability"] = record["distribution"]["availability"]
         else:
@@ -98,45 +97,64 @@ def _handle_record_files(record, data, logger=None):
         return
     data["_file_indices"] = []
     record["_file_indices"] = []
-    if data["files"] and verbose:
+    if "files" in data:
         logger.info(f"  -> Detected {len(data['files'])} files")
-    for file in data["files"]:
-        assert "uri" in file
-        assert "size" in file
-        assert "checksum" in file
-        f = FileInstance.create()
-        filename = file.get("uri").split("/")[-1:][0]
-        f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
-        if "type" in file and file["type"] == "index.json":
-            # We don't need to store the index
+        for file in data["files"]:
+            assert "uri" in file
+            assert "size" in file
+            assert "checksum" in file
+            if "type" in file and file["type"] == "index.json":
+                logger.warning(
+                    f"{file['uri']} is a file_index; moving it to file_indices"
+                )
+                if "file_indices" not in data:
+                    data["file_indices"] = []
+                    record["file_indices"] = []
+                data["file_indices"].append(file)
+                record["file_indices"].append(file)
+            elif "type" in file and file["type"] == "index.txt":
+                logger.warning(f"{file['uri']} is a txt file index; ignoring it")
+            else:
+                logger.info(f"  -> Detected direct file {file.get('uri')}")
+                f = FileInstance.create()
+                filename = file.get("uri").split("/")[-1:][0]
+                f.set_uri(file.get("uri"), file.get("size"), file.get("checksum"))
+
+                real_files.append(file)
+                try:
+                    obj = MultiURIFileObject.create_version(
+                        record.bucket, filename, f.id
+                    )
+                    file_info = {
+                        "bucket": str(obj.bucket_id),
+                        "checksum": obj.file.checksum,
+                        "key": obj.key,
+                        "version_id": str(obj.version_id),
+                        "availability": "online",
+                    }
+                    file.update(file_info)
+                except Exception as e:
+                    logger.error(
+                        f"  -> Recid {data.get('recid')} file {filename} could not be loaded due to {str(e)}."
+                    )
+    if "file_indices" in data:
+        logger.info(f"  -> Detected {len(data['file_indices'])} file indices")
+        for file_index in data["file_indices"]:
+            f = FileInstance.create()
+            filename = file_index.get("uri").split("/")[-1:][0]
+            f.set_uri(
+                file_index.get("uri"),
+                file_index.get("size"),
+                file_index.get("checksum"),
+            )
             FileIndexMetadata.create(
                 record,
                 f,
-                description=file.get("description", filename),
+                description=file_index.get("description", filename),
                 logger=logger,
             )
             f.delete()
-        elif "type" in file and file["type"] == "index.txt":
-            # The txt indexes should be ignored. Just delete the file
-            f.delete()
-        else:
-            if verbose:
-                logger.info(f"  -> Detected direct file {file.get('uri')}")
-            real_files.append(file)
-            try:
-                obj = MultiURIFileObject.create_version(record.bucket, filename, f.id)
-                file_info = {
-                    "bucket": str(obj.bucket_id),
-                    "checksum": obj.file.checksum,
-                    "key": obj.key,
-                    "version_id": str(obj.version_id),
-                    "availability": "online",
-                }
-                file.update(file_info)
-            except Exception as e:
-                logger.error(
-                    f"  -> Recid {data.get('recid')} file {filename} could not be loaded due to {str(e)}."
-                )
+
     record["files"] = real_files
     data["files"] = real_files
     if record.files:
@@ -161,6 +179,7 @@ def create_record(data, skip_files, logger=None):
 def update_record(pid, data, skip_files, logger=None):
     """Updates the given record."""
     record = RecordFilesWithIndex.get_record(pid.object_uuid)
+    file_keys = ["files", "_files", "file_indices", "_file_indices"]
     if not skip_files:
         for o in ObjectVersion.get_by_bucket(record.bucket).all():
             o.remove()
@@ -171,10 +190,13 @@ def update_record(pid, data, skip_files, logger=None):
     for k in list(record.keys()):
         if k in ["_bucket", "pids"]:
             continue
-        if skip_files and k in ["files", "_files", "file_indices", "_file_indices"]:
+        if skip_files and k in file_keys:
             continue
         del record[k]
-    record.update(data)
+    if skip_files:
+        record.update({k: v for k, v in data.items() if k not in file_keys})
+    else:
+        record.update(data)
     if not skip_files:
         _handle_record_files(record, data, logger)
         record.update(data)
@@ -192,14 +214,24 @@ def delete_record(pid, pid_field, logger=None):
         FileIndexMetadata.delete_by_record(record=record)
         record.delete()
     except NoResultFound:
-        logger.error(
-            "The record does not exist (even if the pid does!). Removing the pid"
-        )
+        if logger:
+            logger.warning(
+                f"No record found for {pid_field} '{pid.pid_value}'; "
+                "removing the orphaned PID."
+            )
 
     pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
     db.session.delete(pid)
-    pid2 = PersistentIdentifier.get("oai", f"oai:cernopendata.cern:{pid.pid_value}")
-    db.session.delete(pid2)
+    try:
+        oai_pid = PersistentIdentifier.get(
+            "oai", f"oai:cernopendata.cern:{pid.pid_value}"
+        )
+        db.session.delete(oai_pid)
+    except PIDDoesNotExistError:
+        if logger:
+            logger.warning(
+                f"No OAI PID found for {pid_field} '{pid.pid_value}'; nothing to remove."
+            )
     return None
 
 
@@ -224,8 +256,16 @@ def update_doc_or_glossary(pid, data, skip_files, logger=None):
 
 def delete_doc_or_glossary(pid, pid_field, logger=None):
     """Deletes a document or a glossary term."""
-    record = Record.get_record(pid.object_uuid)
-    record.delete()
+    try:
+        record = Record.get_record(pid.object_uuid)
+        record.delete()
+    except NoResultFound:
+        if logger:
+            logger.warning(
+                f"No record found for {pid_field} '{pid.pid_value}'; "
+                "removing the orphaned PID."
+            )
+
     pid = PersistentIdentifier.get(pid_field, str(pid.pid_value))
     db.session.delete(pid)
 

@@ -28,6 +28,8 @@ from flask import request
 from lxml import etree
 from marshmallow import Schema, fields
 
+from bs4 import BeautifulSoup
+
 
 def datacite_etree(pid, record):
     """Datacite XML format for OAI-PMH.
@@ -36,13 +38,16 @@ def datacite_etree(pid, record):
     """
     # TODO: Ditto. See https://github.com/inveniosoftware/flask-resources/issues/117
     data_dict = DataCiteSerializer().dump(record["_source"])
+    if not data_dict["identifiers"]:
+        data_dict.pop("identifiers")
     f = schema43.dump_etree(data_dict)
 
     if f.find("identifier") is None:
-        identifier = etree.SubElement(f, "identifierType", identifierType="URL")
+        identifier = etree.Element("identifier", identifierType="URL")
         identifier.text = (
             f"https://{request.host}/record/{record['_source'].get('recid')}"
         )
+        f.insert(0, identifier)
     return f
 
 
@@ -57,17 +62,53 @@ class DataCiteSerializer(Schema):
     types = fields.Method("get_resourcetype")
     rightsList = fields.Method("get_rights")
     descriptions = fields.Method("get_description")
+    language = fields.Method("get_language")
+    subjects = fields.Method("get_subjects")
+
+    def get_language(self, obj):
+        """Get the language. Hardcoded to english."""
+        return "en"
+
+    def get_subjects(self, obj):
+        """Get the keywords, based on the accelerator and experiment."""
+        subjects = []
+        for field in ["accelerator", "experiment"]:
+            value = obj.get(field)
+            if not value:
+                continue
+
+            if isinstance(value, str):
+                values = [value]
+            else:
+                values = value  # assume list-like
+
+            for v in values:
+                if v:  # avoid empty strings / None
+                    subjects.append({"subject": v})
+        return subjects
 
     def get_description(self, obj):
         """Get the description of the object."""
         descriptions = []
-        if "abstract" in obj and "description" in obj["abstract"]:
+        if obj.get("abstract") and obj.get("abstract").get("description"):
             descriptions.append(
                 {
                     "descriptionType": "Abstract",
-                    "description": obj["abstract"]["description"],
+                    "description": obj.get("abstract").get("description"),
                 }
             )
+        if obj.get("methodology") and obj.get("methodology").get("description"):
+            desc = BeautifulSoup(
+                obj.get("methodology").get("description"), "html.parser"
+            ).get_text()
+            descriptions.append({"descriptionType": "Methods", "description": desc})
+
+        if obj.get("usage") and obj.get("usage").get("description"):
+            usage = BeautifulSoup(
+                obj.get("usage").get("description"), "html.parser"
+            ).get_text()
+            descriptions.append({"descriptionType": "Other", "description": usage})
+
         return descriptions
 
     def get_rights(self, obj):
@@ -83,7 +124,11 @@ class DataCiteSerializer(Schema):
 
     def get_creator(self, obj):
         """Get creators based on authors or collaboration field."""
-        authors = obj.get("authors", [obj.get("collaboration", None)])
+        authors = obj.get("authors") or []
+        if not authors:
+            collaboration = obj.get("collaboration") or {}
+            if collaboration.get("name"):
+                authors = [collaboration]
         creators = [
             {
                 "name": author["name"],
@@ -100,6 +145,7 @@ class DataCiteSerializer(Schema):
                 ),
             }
             for author in authors
+            if author.get("name")
         ]
         return creators
 

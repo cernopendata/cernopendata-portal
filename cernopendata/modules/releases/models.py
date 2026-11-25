@@ -40,6 +40,8 @@ class ReleaseStatus(str, Enum):
     STAGED = "STAGED"
     STAGING = "STAGING"
     PUBLISHED = "PUBLISHED"
+    PUBLISHING = "PUBLISHING"
+    ROLLINGBACK = "ROLLINGBACK"
 
 
 class ReleaseValidationMetadata(db.Model):

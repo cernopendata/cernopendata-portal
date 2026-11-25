@@ -23,9 +23,12 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 """Cold Storage storage interface."""
+
+import errno
 import logging
 import os
 import re
+import zlib
 import gfal2
 
 from invenio_db import db
@@ -137,8 +140,29 @@ class Storage:
                     return False, "different checksum"
                 return True, None
             except Exception as e:
-                return False, "File does not exist"
+                if isinstance(e, gfal2.GError) and e.code == errno.ENOENT:
+                    return False, "File does not exist"
+                return None, f"Could not check {filename}: {e}"
         elif parsed.scheme == "" or parsed.scheme == "file":
             return cls._verify_file(parsed.path, size, checksum)
         else:
             raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")
+
+    @classmethod
+    def _verify_file(cls, path: str, size: int, checksum: str) -> (bool, str):
+        """Check if a file on a local filesystem exists and has the given size and checksum."""
+        logger.debug(f"Checking if the local file {path} exists")
+        if not os.path.exists(path):
+            return False, "File does not exist"
+        if os.path.getsize(path) != size:
+            return False, "different size"
+        file_checksum = 1
+        with open(path, "rb") as local_file:
+            while True:
+                block = local_file.read(1024 * 1024)
+                if not block:
+                    break
+                file_checksum = zlib.adler32(block, file_checksum)
+        if checksum != f"adler32:{file_checksum:08x}":
+            return False, "different checksum"
+        return True, None

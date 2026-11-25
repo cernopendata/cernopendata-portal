@@ -398,6 +398,48 @@
           },
           "version_id": {
             "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "file_indices": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "availability": {
+            "type": "string"
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
           }
         }
       }
@@ -624,17 +666,15 @@
         },
         "links": {
           "type": "array",
-          "items": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "recid": {
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            }
-          ]
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "recid": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
         }
       },
       "type": "object"

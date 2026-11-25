@@ -2,14 +2,11 @@
  CERN Open Data portal
 =======================
 
-.. image:: https://github.com/cernopendata/opendata.cern.ch/workflows/CI/badge.svg
-   :target: https://github.com/cernopendata/opendata.cern.ch/actions
+.. image:: https://github.com/cernopendata/cernopendata-portal/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/cernopendata/cernopendata-portal/actions
 
 .. image:: https://img.shields.io/badge/licence-GPL_2-green.svg?style=flat
-   :target: https://raw.githubusercontent.com/cernopendata/opendata.cern.ch/master/LICENSE
-
-.. image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/cernopendata/opendata.cern.ch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
+   :target: https://raw.githubusercontent.com/cernopendata/cernopendata-portal/main/LICENSE
 
 About
 -----
@@ -34,8 +31,7 @@ information.
 Support
 -------
 
-You can ask questions at our `Forum <https://opendata-forum.cern.ch/>`_ or get
-in touch via our `Chatroom <https://gitter.im/cernopendata/opendata.cern.ch>`_.
+You can ask questions at our `Forum <https://opendata-forum.cern.ch/>`_.
 
 Authors
 -------

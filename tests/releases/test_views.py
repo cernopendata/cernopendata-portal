@@ -3,12 +3,10 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import abort
 
 from cernopendata.modules.releases import views
-from cernopendata.modules.releases.api import Release
-from cernopendata.modules.releases.models import ReleaseStatus
-from cernopendata.modules.releases.views import _detect_payload_type, _normalise_payload
+from cernopendata.modules.releases.views import _normalise_payload, _split_payload
 
 
 @pytest.fixture
@@ -53,22 +51,35 @@ def test_invalid_experiment(client):
     assert resp.status_code in (403, 404)
 
 
-def test_upload_url(client, monkeypatch):
-    class FakeResp:
-        def json(self):
-            return {"x": 1}
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.curator_experiments")
+@patch("cernopendata.modules.releases.views.Release.validate_experiment")
+def test_upload_url(
+    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client, monkeypatch
+):
+    mock_validate_exp.return_value = True
+    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
+    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
 
-        def raise_for_status(self):
-            return None
+    records = [{"recid": 1, "experiment": "CMS", "files": []}]
+    monkeypatch.setattr(
+        views.requests,
+        "get",
+        lambda *a, **k: MagicMock(
+            json=lambda: {"records": records},
+            raise_for_status=lambda: None,
+        ),
+    )
 
-    monkeypatch.setattr(views.requests, "get", lambda *a, **k: FakeResp())
-
-    resp = client.post(
+    resp = logged_in_client.post(
         "/releases/cms",
         data={"source": "url", "url": "http://example.com/file.json"},
     )
 
-    assert resp.status_code == 302
+    assert resp.status_code == 200
+    _, kwargs = mock_create.call_args
+    assert kwargs.get("records") == records
+    assert kwargs.get("name") == "file.json"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -123,7 +134,9 @@ def test_add_documents_urls_fetch_failure(
     monkeypatch.setattr(
         views.requests,
         "get",
-        lambda *a, **k: (_ for _ in ()).throw(Exception("refused")),
+        lambda *a, **k: (_ for _ in ()).throw(
+            views.requests.RequestException("refused")
+        ),
     )
 
     resp = logged_in_client.post(
@@ -132,7 +145,7 @@ def test_add_documents_urls_fetch_failure(
     )
 
     assert resp.status_code == 400
-    assert "Failed to fetch" in resp.get_json()["error"]
+    assert "Could not reach the URL" in resp.get_json()["error"]
 
 
 @patch("cernopendata.modules.releases.views._get_release", return_value=MagicMock())
@@ -295,7 +308,9 @@ def test_add_records_url_fetch_failure(mock_get_release, logged_in_client, monke
     monkeypatch.setattr(
         views.requests,
         "get",
-        lambda *a, **k: (_ for _ in ()).throw(Exception("refused")),
+        lambda *a, **k: (_ for _ in ()).throw(
+            views.requests.RequestException("refused")
+        ),
     )
 
     resp = logged_in_client.post(
@@ -304,7 +319,7 @@ def test_add_records_url_fetch_failure(mock_get_release, logged_in_client, monke
     )
 
     assert resp.status_code == 400
-    assert "Failed to fetch" in resp.get_json()["error"]
+    assert "Could not reach the URL" in resp.get_json()["error"]
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -438,26 +453,52 @@ def test_update_document_missing_body(logged_in_client):
     assert resp.status_code == 400
 
 
+@patch("cernopendata.modules.releases.views.stage_release")
+@patch("cernopendata.modules.releases.views.db")
 @patch("cernopendata.modules.releases.views._get_release")
-def test_stage_release_calls_stage(mock_get_release, logged_in_client):
+def test_stage_release_dispatches_task(
+    mock_get_release, mock_db, mock_stage_release, logged_in_client
+):
     mock_release = MagicMock()
     mock_get_release.return_value = mock_release
 
     resp = logged_in_client.post("/releases/cms/1/stage")
 
     assert resp.status_code == 302
-    mock_release.stage.assert_called_once()
+    mock_stage_release.delay.assert_called_once()
+    mock_release.stage.assert_not_called()
 
 
 @patch("cernopendata.modules.releases.views._get_release")
-def test_stage_release_swallows_exception(mock_get_release, logged_in_client):
+def test_update_records_success(mock_get_release, logged_in_client):
     mock_release = MagicMock()
-    mock_release.stage.side_effect = RuntimeError("boom")
     mock_get_release.return_value = mock_release
 
-    resp = logged_in_client.post("/releases/cms/1/stage")
+    resp = logged_in_client.post(
+        "/releases/cms/1/update_records",
+        json={"records": [{"recid": 1}, {"recid": 2}]},
+    )
 
-    assert resp.status_code == 302
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "ok"
+    mock_release.update_records.assert_called_once()
+    updated = mock_release.update_records.call_args[0][0]
+    assert updated == [{"recid": 1}, {"recid": 2}]
+
+
+def test_update_records_missing_records(logged_in_client):
+    resp = logged_in_client.post("/releases/cms/1/update_records", json={})
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "No records provided"
+
+
+def test_update_records_rejects_non_list(logged_in_client):
+    resp = logged_in_client.post(
+        "/releases/cms/1/update_records",
+        json={"records": {"recid": 1}},
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"] == "Records must be a list"
 
 
 @patch("cernopendata.modules.releases.views._get_release", return_value=MagicMock())
@@ -486,70 +527,79 @@ def test_update_document_slug_not_found(mock_get_release, logged_in_client):
     assert "not found" in resp.get_json()["error"]
 
 
-def test_detect_payload_kind_empty():
-    assert _detect_payload_type([]) == "records"
-
-
-def test_detect_payload_kind_record():
-    assert (
-        _detect_payload_type([{"recid": 1, "files": [], "experiment": "CMS"}])
-        == "records"
-    )
-
-
-def test_detect_payload_kind_document_with_slug():
-    assert (
-        _detect_payload_type(
-            [{"slug": "test-document", "body": {"content": "# Hi", "format": "md"}}]
-        )
-        == "documents"
-    )
-
-
-def test_detect_payload_kind_document_with_body_only():
-    assert (
-        _detect_payload_type(
-            [{"title": "X", "body": {"content": "text", "format": "md"}}]
-        )
-        == "documents"
-    )
-
-
-def test_detect_payload_kind_slug_plus_recid_is_records():
-    assert _detect_payload_type([{"slug": "x", "recid": 1}]) == "records"
+@pytest.mark.parametrize(
+    "payload, expected_records, expected_documents",
+    [
+        ([], [], []),
+        ([{"recid": 1, "files": []}], [{"recid": 1, "files": []}], []),
+        ([{"slug": "x", "recid": 1}], [{"slug": "x", "recid": 1}], []),
+        (
+            [{"slug": "doc-1", "body": {"content": "hi", "format": "md"}}],
+            [],
+            [
+                {
+                    "slug": "doc-1",
+                    "body": {"content": "hi", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        (
+            [{"title": "X", "body": {"content": "text", "format": "md"}}],
+            [],
+            [
+                {
+                    "title": "X",
+                    "body": {"content": "text", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        (
+            {
+                "records": [{"recid": 1, "files": []}],
+                "documents": [
+                    {"slug": "doc-1", "body": {"content": "hi", "format": "md"}}
+                ],
+            },
+            [{"recid": 1, "files": []}],
+            [
+                {
+                    "slug": "doc-1",
+                    "body": {"content": "hi", "format": "md"},
+                    "_source_filename": "f.json",
+                }
+            ],
+        ),
+        ({"records": [{"recid": 1, "files": []}]}, [{"recid": 1, "files": []}], []),
+        (
+            {
+                "records": [
+                    {
+                        "recid": 1,
+                        "files": [],
+                        "_files": [],
+                        "_bucket": "abc",
+                        "bucket": "def",
+                        "_file_indices": [],
+                        "_availability_details": {},
+                        "dataset": {},
+                    }
+                ]
+            },
+            [{"recid": 1, "files": []}],
+            [],
+        ),
+    ],
+)
+def test_split_payload(payload, expected_records, expected_documents):
+    assert _split_payload(payload, "f.json") == (expected_records, expected_documents)
 
 
 @patch("cernopendata.modules.releases.views.Release.create")
 @patch("cernopendata.modules.releases.views.curator_experiments")
 @patch("cernopendata.modules.releases.views.Release.validate_experiment")
-def test_upload_file_documents_payload_routes_to_create_documents(
-    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
-):
-    mock_validate_exp.return_value = True
-    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
-    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
-
-    doc = {"slug": "test-document", "body": {"content": "# About", "format": "md"}}
-    resp = logged_in_client.post(
-        "/releases/cms",
-        data={
-            "source": "file",
-            "file": (BytesIO(json.dumps(doc).encode()), "test-document.json"),
-        },
-        content_type="multipart/form-data",
-    )
-
-    assert resp.status_code == 200
-    _, kwargs = mock_create.call_args
-    assert kwargs.get("documents")[0]["slug"] == "test-document"
-    assert kwargs.get("documents")[0]["_source_filename"] == "test-document.json"
-    assert "records" not in kwargs
-
-
-@patch("cernopendata.modules.releases.views.Release.create")
-@patch("cernopendata.modules.releases.views.curator_experiments")
-@patch("cernopendata.modules.releases.views.Release.validate_experiment")
-def test_upload_file_records_payload_routes_to_create_records(
+def test_upload_file_creates_release_with_records_and_documents(
     mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
 ):
     mock_validate_exp.return_value = True
@@ -557,11 +607,19 @@ def test_upload_file_records_payload_routes_to_create_records(
     mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
 
     records = [{"recid": 1, "experiment": "CMS", "files": []}]
+    docs = [{"slug": "test-document", "body": {"content": "# About", "format": "md"}}]
+    payload = {
+        "name": "CMS 2016 collision data",
+        "description": "Primary datasets",
+        "discussion_url": "https://example.com/discussion",
+        "records": records,
+        "documents": docs,
+    }
     resp = logged_in_client.post(
         "/releases/cms",
         data={
             "source": "file",
-            "file": (BytesIO(json.dumps(records).encode()), "cms-release.json"),
+            "file": (BytesIO(json.dumps(payload).encode()), "release-1.json"),
         },
         content_type="multipart/form-data",
     )
@@ -569,7 +627,64 @@ def test_upload_file_records_payload_routes_to_create_records(
     assert resp.status_code == 200
     _, kwargs = mock_create.call_args
     assert kwargs.get("records") == records
-    assert "documents" not in kwargs
+    assert kwargs.get("documents")[0]["slug"] == "test-document"
+    assert kwargs.get("documents")[0]["_source_filename"] == "release-1.json"
+    assert kwargs.get("name") == "CMS 2016 collision data"
+    assert kwargs.get("description") == "Primary datasets"
+    assert kwargs.get("discussion_url") == "https://example.com/discussion"
+
+
+@patch("cernopendata.modules.releases.views.Release.create")
+@patch("cernopendata.modules.releases.views.curator_experiments")
+@patch("cernopendata.modules.releases.views.Release.validate_experiment")
+def test_upload_file_without_name_falls_back_to_filename(
+    mock_validate_exp, mock_curator_exps, mock_create, logged_in_client
+):
+    mock_validate_exp.return_value = True
+    mock_curator_exps.return_value = {"curator_experiments": ["cms"]}
+    mock_create.return_value = MagicMock(_metadata=MagicMock(id=99))
+
+    payload = {"records": [{"recid": 1, "experiment": "CMS", "files": []}]}
+    resp = logged_in_client.post(
+        "/releases/cms",
+        data={
+            "source": "file",
+            "file": (BytesIO(json.dumps(payload).encode()), "release-1.json"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 200
+    _, kwargs = mock_create.call_args
+    assert kwargs.get("name") == "release-1.json"
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_download_release_includes_records_and_documents(mock_get_release, client):
+    records = [{"recid": 1, "experiment": "CMS"}]
+    docs = [{"slug": "doc-1", "body": {"content": "hi", "format": "md"}}]
+    metadata = MagicMock(
+        description="Primary datasets",
+        discussion_url="https://example.com/discussion",
+        records=records,
+        documents=docs,
+    )
+    metadata.name = "CMS 2016 collision data"
+    mock_get_release.return_value = MagicMock(_metadata=metadata)
+
+    resp = client.get("/releases/api/cms/1")
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["name"] == "CMS 2016 collision data"
+    assert body["description"] == "Primary datasets"
+    assert body["discussion_url"] == "https://example.com/discussion"
+    assert body["records"] == records
+    assert body["documents"] == docs
+    assert (
+        resp.headers["Content-Disposition"]
+        == "attachment; filename=CMS_2016_collision_data.json"
+    )
 
 
 @pytest.fixture
@@ -599,10 +714,10 @@ def test_upload_image_success(mock_get_release, logged_in_client, images_path):
         {
             "filename": "figure1.png",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/figure1.png",
+            "url": "/static/upload/1/alice-doc/figure1.png",
         }
     ]
-    written = images_path / "alice-doc" / "figure1.png"
+    written = images_path / "1" / "alice-doc" / "figure1.png"
     assert written.is_file()
     assert written.read_bytes() == b"fake-png-bytes"
 
@@ -626,8 +741,8 @@ def test_upload_image_multiple_files(mock_get_release, logged_in_client, images_
     assert resp.status_code == 200
     filenames = [img["filename"] for img in resp.get_json()["images"]]
     assert filenames == ["a.png", "b.jpg"]
-    assert (images_path / "alice-doc" / "a.png").is_file()
-    assert (images_path / "alice-doc" / "b.jpg").is_file()
+    assert (images_path / "1" / "alice-doc" / "a.png").is_file()
+    assert (images_path / "1" / "alice-doc" / "b.jpg").is_file()
 
 
 def test_upload_image_missing_parent_slug(logged_in_client, images_path):
@@ -698,7 +813,7 @@ def test_upload_image_rejects_oversized_file(
         content_type="multipart/form-data",
     )
     assert resp.status_code == 400
-    assert not (images_path / "alice-doc" / "big.png").exists()
+    assert not (images_path / "1" / "alice-doc" / "big.png").exists()
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -723,8 +838,8 @@ def test_upload_image_rejects_collision_with_existing_file(
     mock_get_release, logged_in_client, images_path
 ):
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
-    (images_path / "alice-doc").mkdir()
-    (images_path / "alice-doc" / "figure1.png").write_bytes(b"original")
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
+    (images_path / "1" / "alice-doc" / "figure1.png").write_bytes(b"original")
 
     resp = logged_in_client.post(
         "/releases/cms/1/upload_image",
@@ -737,7 +852,7 @@ def test_upload_image_rejects_collision_with_existing_file(
 
     assert resp.status_code == 409
     assert "already exists" in resp.get_json()["error"]
-    assert (images_path / "alice-doc" / "figure1.png").read_bytes() == b"original"
+    assert (images_path / "1" / "alice-doc" / "figure1.png").read_bytes() == b"original"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
@@ -759,17 +874,17 @@ def test_upload_image_rejects_collision_within_batch(
     )
 
     assert resp.status_code == 409
-    assert (images_path / "alice-doc" / "figure1.png").read_bytes() == b"first"
+    assert (images_path / "1" / "alice-doc" / "figure1.png").read_bytes() == b"first"
 
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_list_images_returns_images_on_disk(
     mock_get_release, logged_in_client, images_path
 ):
-    (images_path / "alice-doc").mkdir()
-    (images_path / "alice-doc" / "a.png").write_bytes(b"a")
-    (images_path / "alice-doc" / "b.jpg").write_bytes(b"b")
-    (images_path / "alice-doc" / "ignored.txt").write_bytes(b"x")
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
+    (images_path / "1" / "alice-doc" / "a.png").write_bytes(b"a")
+    (images_path / "1" / "alice-doc" / "b.jpg").write_bytes(b"b")
+    (images_path / "1" / "alice-doc" / "ignored.txt").write_bytes(b"x")
     mock_get_release.return_value = MagicMock(
         documents=[{"slug": "alice-doc"}, {"slug": "no-images-doc"}]
     )
@@ -783,12 +898,12 @@ def test_list_images_returns_images_on_disk(
         {
             "filename": "a.png",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/a.png",
+            "url": "/static/upload/1/alice-doc/a.png",
         },
         {
             "filename": "b.jpg",
             "parent_slug": "alice-doc",
-            "url": "/static/upload/alice-doc/b.jpg",
+            "url": "/static/upload/1/alice-doc/b.jpg",
         },
     ]
 
@@ -821,8 +936,8 @@ def test_list_images_when_no_directory_exists(
 def test_delete_image_success_and_removes_empty_dir(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -838,8 +953,8 @@ def test_delete_image_success_and_removes_empty_dir(
 def test_delete_image_keeps_non_empty_dir(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "a.png").write_bytes(b"a")
     (slug_dir / "b.png").write_bytes(b"b")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
@@ -871,8 +986,8 @@ def test_delete_image_file_not_found(mock_get_release, logged_in_client, images_
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_rename_image_success(mock_get_release, logged_in_client, images_path):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -887,7 +1002,7 @@ def test_rename_image_success(mock_get_release, logged_in_client, images_path):
     assert body["image"] == {
         "filename": "new.png",
         "parent_slug": "alice-doc",
-        "url": "/static/upload/alice-doc/new.png",
+        "url": "/static/upload/1/alice-doc/new.png",
     }
     assert not (slug_dir / "old.png").exists()
     assert (slug_dir / "new.png").is_file()
@@ -897,8 +1012,8 @@ def test_rename_image_success(mock_get_release, logged_in_client, images_path):
 def test_rename_image_same_name_is_noop(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "same.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -915,8 +1030,8 @@ def test_rename_image_same_name_is_noop(
 def test_rename_image_conflict_when_target_exists(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     (slug_dir / "new.png").write_bytes(b"b")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
@@ -933,7 +1048,7 @@ def test_rename_image_conflict_when_target_exists(
 
 @patch("cernopendata.modules.releases.views._get_release")
 def test_rename_image_source_not_found(mock_get_release, logged_in_client, images_path):
-    (images_path / "alice-doc").mkdir()
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
     resp = logged_in_client.put(
@@ -960,8 +1075,8 @@ def test_rename_image_missing_new_filename(
 def test_rename_image_rejects_unsupported_extension(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1061,7 +1176,7 @@ def test_delete_image_rejects_filename_that_sanitizes_to_empty(
 def test_delete_image_rejects_target_path_escape(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    (images_path / "alice-doc").mkdir()
+    (images_path / "1" / "alice-doc").mkdir(parents=True)
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
     monkeypatch.setattr(views, "secure_filename", lambda _: "../escape.png")
 
@@ -1086,8 +1201,8 @@ def test_rename_image_rejects_parent_slug_path_traversal(
 def test_rename_image_rejects_target_path_escape(
     mock_get_release, logged_in_client, images_path, monkeypatch
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
     monkeypatch.setattr(views, "secure_filename", lambda _: "../escape.png")
@@ -1104,8 +1219,8 @@ def test_rename_image_rejects_target_path_escape(
 def test_rename_image_rejects_new_filename_that_sanitizes_to_empty(
     mock_get_release, logged_in_client, images_path
 ):
-    slug_dir = images_path / "alice-doc"
-    slug_dir.mkdir()
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
     (slug_dir / "old.png").write_bytes(b"a")
     mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
 
@@ -1115,6 +1230,116 @@ def test_rename_image_rejects_new_filename_that_sanitizes_to_empty(
     )
     assert resp.status_code == 400
     assert (slug_dir / "old.png").is_file()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_upload_image_mkdir_oserror_returns_500(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+    monkeypatch.setattr(
+        "cernopendata.modules.releases.views.Path.mkdir",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")),
+    )
+
+    resp = logged_in_client.post(
+        "/releases/cms/1/upload_image",
+        data={
+            "parent_slug": "alice-doc",
+            "images": (BytesIO(b"img"), "photo.png"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 500
+    assert "Could not prepare upload directory" in resp.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_upload_image_save_oserror_returns_500(
+    mock_get_release, logged_in_client, images_path
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.parent.mkdir()
+    slug_dir.mkdir(mode=0o444)  # read-only: file.save() will raise OSError
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    resp = logged_in_client.post(
+        "/releases/cms/1/upload_image",
+        data={
+            "parent_slug": "alice-doc",
+            "images": (BytesIO(b"img"), "photo.png"),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert resp.status_code == 500
+    assert "Could not save image" in resp.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_list_images_iterdir_oserror_skips_directory(
+    mock_get_release, logged_in_client, images_path
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "ok.png").write_bytes(b"x")
+
+    mock_get_release.return_value = MagicMock(
+        documents=[{"slug": "alice-doc"}, {"slug": "other-doc"}]
+    )
+
+    resp = logged_in_client.get("/releases/cms/1/images")
+
+    assert resp.status_code == 200
+    images = resp.get_json()["images"]
+    assert len(images) == 1
+    assert images[0]["filename"] == "ok.png"
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_image_unlink_oserror_returns_500(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "a.png").write_bytes(b"x")
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    monkeypatch.setattr(
+        type(slug_dir / "a.png"),
+        "unlink",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
+    )
+
+    resp = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
+
+    assert resp.status_code == 500
+    assert "Could not delete image" in resp.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_rename_image_oserror_returns_500(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "old.png").write_bytes(b"x")
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    monkeypatch.setattr(
+        type(slug_dir / "old.png"),
+        "rename",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
+    )
+
+    resp = logged_in_client.put(
+        "/releases/cms/1/images/alice-doc/old.png",
+        json={"filename": "new.png"},
+    )
+
+    assert resp.status_code == 500
+    assert "Could not rename image" in resp.get_json()["error"]
 
 
 def test_preview_requires_json(client, logged_in_client):
@@ -1205,3 +1430,390 @@ def test_preview_document_renders_doc(client, logged_in_client):
 
     assert "My test document" in html
     assert "Hello" in html
+
+
+def test_fetch_json_http_error_raises_url_fetch_error(monkeypatch):
+    response = MagicMock(status_code=404, reason="Not Found")
+    error = views.requests.HTTPError(response=response)
+
+    def raise_for_status():
+        raise error
+
+    monkeypatch.setattr(
+        views.requests,
+        "get",
+        lambda *a, **k: MagicMock(raise_for_status=raise_for_status),
+    )
+
+    with pytest.raises(views.URLFetchError) as exc_info:
+        views._fetch_json("http://example.com/file.json")
+    assert "404" in str(exc_info.value)
+    assert "Not Found" in str(exc_info.value)
+
+
+def test_fetch_json_invalid_json_raises_url_fetch_error(monkeypatch):
+    def json_raises():
+        raise ValueError("not json")
+
+    monkeypatch.setattr(
+        views.requests,
+        "get",
+        lambda *a, **k: MagicMock(
+            raise_for_status=lambda: None,
+            json=json_raises,
+        ),
+    )
+
+    with pytest.raises(views.URLFetchError) as exc_info:
+        views._fetch_json("http://example.com/file.json")
+    assert "valid JSON" in str(exc_info.value)
+
+
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+@patch(
+    "cernopendata.modules.releases.views.Release.validate_experiment",
+    return_value=True,
+)
+def test_release_upload_url_source_missing_url(
+    mock_validate, mock_curator, logged_in_client
+):
+    response = logged_in_client.post("/releases/cms", data={"source": "url"})
+    assert response.status_code == 400
+
+
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+@patch(
+    "cernopendata.modules.releases.views.Release.validate_experiment",
+    return_value=True,
+)
+def test_release_upload_url_source_fetch_failure(
+    mock_validate, mock_curator, logged_in_client, monkeypatch
+):
+    monkeypatch.setattr(
+        views.requests,
+        "get",
+        lambda *a, **k: (_ for _ in ()).throw(
+            views.requests.RequestException("refused")
+        ),
+    )
+
+    response = logged_in_client.post(
+        "/releases/cms",
+        data={"source": "url", "url": "http://example.com/file.json"},
+    )
+
+    assert response.status_code == 400
+    assert "Could not reach the URL" in response.get_json()["error"]
+
+
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+@patch(
+    "cernopendata.modules.releases.views.Release.validate_experiment",
+    return_value=True,
+)
+def test_release_upload_invalid_source(mock_validate, mock_curator, logged_in_client):
+    response = logged_in_client.post("/releases/cms", data={"source": "bogus"})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid source"
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_list_images_iterdir_raising_oserror_logs_and_skips(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "ok.png").write_bytes(b"x")
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    monkeypatch.setattr(
+        "cernopendata.modules.releases.views.Path.iterdir",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("permission denied")),
+    )
+
+    response = logged_in_client.get("/releases/cms/1/images")
+
+    assert response.status_code == 200
+    assert response.get_json()["images"] == []
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_image_unlink_file_not_found_returns_404(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "a.png").write_bytes(b"x")
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    monkeypatch.setattr(
+        type(slug_dir / "a.png"),
+        "unlink",
+        lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("gone")),
+    )
+
+    response = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
+
+    assert response.status_code == 404
+    assert "Image not found" in response.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_delete_image_rmdir_oserror_still_returns_ok(
+    mock_get_release, logged_in_client, images_path, monkeypatch
+):
+    slug_dir = images_path / "1" / "alice-doc"
+    slug_dir.mkdir(parents=True)
+    (slug_dir / "a.png").write_bytes(b"x")
+    mock_get_release.return_value = MagicMock(documents=[{"slug": "alice-doc"}])
+
+    monkeypatch.setattr(
+        type(slug_dir),
+        "rmdir",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("not empty")),
+    )
+
+    response = logged_in_client.delete("/releases/cms/1/images/alice-doc/a.png")
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "ok"
+    assert not (slug_dir / "a.png").exists()
+
+
+@patch("cernopendata.modules.releases.views.db")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_generate_doi_endpoint_returns_records_and_errors(
+    mock_get_release, mock_db, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_release.generate_doi.return_value = [{"recid": 1, "error": "bad field"}]
+    mock_release.records = [{"recid": 1, "doi": ""}]
+    mock_get_release.return_value = mock_release
+
+    response = logged_in_client.post(
+        "/releases/cms/1/generate_doi", json={"recids": [1]}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["records"] == [{"recid": 1, "doi": ""}]
+    assert data["errors"] == [{"recid": 1, "error": "bad field"}]
+    mock_release.generate_doi.assert_called_once_with([1])
+    mock_db.session.commit.assert_called_once()
+
+
+def test_generate_doi_endpoint_rejects_non_staged(logged_in_client):
+    with patch(
+        "cernopendata.modules.releases.views._get_release",
+        side_effect=lambda *_args, **_kwargs: abort(409),
+    ):
+        response = logged_in_client.post("/releases/cms/1/generate_doi")
+
+    assert response.status_code == 409
+
+
+@patch("cernopendata.modules.releases.views.publish_release")
+@patch("cernopendata.modules.releases.views.db")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_publish_dispatches_task(
+    mock_get_release, mock_db, mock_publish_release, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/publish")
+
+    assert resp.status_code == 302
+    mock_publish_release.delay.assert_called_once()
+    mock_release.publish.assert_not_called()
+
+
+@patch("cernopendata.modules.releases.views.rollback_release")
+@patch("cernopendata.modules.releases.views.db")
+@patch("cernopendata.modules.releases.views._get_release")
+def test_rollback_dispatches_task(
+    mock_get_release, mock_db, mock_rollback_release, logged_in_client
+):
+    mock_release = MagicMock()
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/rollback")
+
+    assert resp.status_code == 302
+    mock_rollback_release.delay.assert_called_once()
+    mock_release.rollback.assert_not_called()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_bulk_edit_apply(mock_get_release, logged_in_client):
+    mock_release = MagicMock()
+    mock_release.bulk_update.return_value = 2
+    mock_release.records = [{"recid": "cms-1"}, {"recid": "cms-2"}]
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post(
+        "/releases/cms/1/bulk_records/apply",
+        json={"updates": {"set": {"experiment": "CMS"}}},
+    )
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "ok"
+    assert data["updated"] == 2
+    assert data["records"] == [{"recid": "cms-1"}, {"recid": "cms-2"}]
+    assert mock_release.bulk_update.call_args[0][0] == {"set": {"experiment": "CMS"}}
+
+
+def test_bulk_edit_apply_missing_updates(logged_in_client):
+    resp = logged_in_client.post(
+        "/releases/cms/1/bulk_records/apply",
+        json={},
+    )
+    assert resp.status_code == 400
+    assert "Missing updates" in resp.get_json()["error"]
+
+
+@patch("cernopendata.modules.releases.views.Release.get", return_value=None)
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+def test_release_detail_not_found(mock_curator_experiments, mock_get, logged_in_client):
+    resp = logged_in_client.get("/releases/cms/999999")
+
+    assert resp.status_code == 404
+
+
+@patch("cernopendata.modules.releases.views.Release.get", return_value=None)
+@patch(
+    "cernopendata.modules.releases.views.curator_experiments",
+    return_value={"curator_experiments": ["cms"]},
+)
+def test_release_stage_not_found(mock_curator_experiments, mock_get, logged_in_client):
+    resp = logged_in_client.post("/releases/cms/999999/stage")
+
+    assert resp.status_code == 404
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_release_state(mock_get_release, logged_in_client):
+    validation = MagicMock()
+    validation.to_dict.return_value = {"name": "Valid recid", "status": False}
+
+    mock_get_release.return_value = MagicMock(
+        validations=[validation],
+        _metadata=MagicMock(
+            errors=["Entry 1: missing recid"],
+            num_errors=1,
+            num_records=4,
+            num_file_indices=1,
+            num_files=12,
+            num_docs=2,
+        ),
+    )
+
+    resp = logged_in_client.get("/releases/cms/1/state")
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {
+        "validations": [{"name": "Valid recid", "status": False}],
+        "errors": ["Entry 1: missing recid"],
+        "num_errors": 1,
+        "counts": {
+            "num_records": 4,
+            "num_file_indices": 1,
+            "num_files": 12,
+            "num_docs": 2,
+        },
+    }
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_fix_checks_returns_summary(mock_get_release, logged_in_client):
+    mock_release = MagicMock(
+        records=[{"recid": "cms-1"}],
+        documents=[{"slug": "cms-doc"}],
+    )
+    mock_release.fix_checks.return_value = {
+        "fixed": ["Valid recid"],
+        "remaining": ["File metadata"],
+        "assigned_recids": ["cms-1"],
+    }
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/fix_checks")
+
+    assert resp.status_code == 200
+    assert resp.get_json() == {
+        "status": "ok",
+        "fixed": ["Valid recid"],
+        "remaining": ["File metadata"],
+        "assigned_recids": ["cms-1"],
+        "records": [{"recid": "cms-1"}],
+        "documents": [{"slug": "cms-doc"}],
+    }
+    mock_release.fix_checks.assert_called_once()
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_retry_dois_registers_the_pending_dois(mock_get_release, logged_in_client):
+    mock_release = MagicMock(
+        validations=[],
+        _metadata=MagicMock(
+            errors=[],
+            num_errors=0,
+            num_records=4,
+            num_file_indices=1,
+            num_files=12,
+            num_docs=2,
+        ),
+    )
+    mock_release.retry_doi_registration.return_value = []
+    mock_get_release.return_value = mock_release
+
+    resp = logged_in_client.post("/releases/cms/1/retry_dois")
+
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "ok"
+    mock_release.retry_doi_registration.assert_called_once_with()
+    mock_get_release.assert_called_once_with(
+        "cms", 1, status=views.ReleaseStatus.PUBLISHED
+    )
+
+
+@patch("cernopendata.modules.releases.views._get_release")
+def test_download_release_strips_the_derived_fields(mock_get_release, client):
+    metadata = MagicMock(
+        description=None,
+        discussion_url=None,
+        records=[
+            {
+                "recid": 1,
+                "experiment": "CMS",
+                "_files": [{"key": "f.root"}],
+                "_file_indices": [],
+                "_availability_details": {"online": 1},
+                "_bucket": "abc",
+                "bucket": "def",
+                "dataset": {},
+            }
+        ],
+        documents=[],
+    )
+    metadata.name = "release-1.json"
+    mock_get_release.return_value = MagicMock(_metadata=metadata)
+
+    resp = client.get("/releases/api/cms/1")
+
+    assert resp.status_code == 200
+    assert resp.get_json()["records"] == [{"recid": 1, "experiment": "CMS"}]

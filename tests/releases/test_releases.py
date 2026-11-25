@@ -116,7 +116,7 @@ def test_lock_success(mocker):
 
     metadata = MagicMock()
     metadata.id = 1
-    metadata.status = "DRAFT"
+    metadata.status = ReleaseStatus.DRAFT.value
 
     r = Release(metadata)
 
@@ -155,11 +155,23 @@ def test_delete(mocker):
 
     metadata = MagicMock()
     r = Release(metadata)
-
+    metadata.status = ReleaseStatus.DRAFT.value
     r.delete()
 
     mock_session.delete.assert_called_once_with(metadata)
     mock_session.commit.assert_called_once()
+
+
+def test_failed_delete(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    metadata.status = "PUBLISHED"
+    with pytest.raises(
+        RuntimeError, match="Releases can be deleted only if they are in DRAFT or READY"
+    ):
+        r.delete()
 
 
 def test_validate(mocker):
@@ -259,13 +271,19 @@ def test_stage_success(mocker):
     mock_record.commit.assert_called()
 
 
-def test_stage_wrong_status(mocker):
+def test_stage_publish_or_rollback_wrong_status(mocker):
     r = Release(MagicMock())
 
     mocker.patch.object(r, "is_status", return_value=False)
 
     with pytest.raises(RuntimeError):
         r.stage(MagicMock())
+
+    with pytest.raises(RuntimeError):
+        r.publish(MagicMock())
+
+    with pytest.raises(RuntimeError):
+        r.rollback(MagicMock())
 
 
 def test_publish(mocker):
@@ -718,6 +736,50 @@ def test_stage_with_errors_commits_draft_status(mocker):
     mock_session.commit.assert_called_once()
 
 
+def test_mark_staging_failed_records_error_and_reverts_to_ready(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    mock_change = mocker.patch.object(r, "change_status")
+
+    user = MagicMock()
+    r.mark_staging_failed("Broken release", user)
+
+    assert metadata.errors == ["Staging failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.READY, user)
+    mock_session.commit.assert_called_once()
+
+
+def test_mark_publishing_or_rollback_failed_records_error_and_reverts_to_staged(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    r = Release(metadata)
+    mock_change = mocker.patch.object(r, "change_status")
+
+    user = MagicMock()
+    r.mark_publishing_failed("Broken release", user)
+
+    assert metadata.errors == ["Publishing failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.STAGED, user)
+    mock_session.commit.assert_called_once()
+
+    mock_change.reset_mock()
+    mock_session.reset_mock()
+
+    r.mark_rollback_failed("Broken release", user)
+
+    assert metadata.errors == ["Rollback failed: Broken release"]
+    assert metadata.num_errors == 1
+    mock_change.assert_called_once_with(ReleaseStatus.STAGED, user)
+    mock_session.commit.assert_called_once()
+
+
 def test_publish_preserves_schema_on_each_record(mocker):
     mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
     mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
@@ -738,6 +800,33 @@ def test_publish_preserves_schema_on_each_record(mocker):
     r.publish(MagicMock())
 
     assert all(rec["$schema"] == "schema-url" for rec in metadata.records)
+
+
+def test_validate_catches_validator_crash_and_records_synthetic_error(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = []
+
+    r = Release(metadata)
+
+    crashing_validation = MagicMock(enabled=True)
+    crashing_validation.name = "BrokenValidator"
+    crashing_validation.validate.side_effect = RuntimeError("unexpected crash")
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [crashing_validation]
+
+    mock_change = mocker.patch.object(r, "change_status")
+
+    r.validate(MagicMock())
+
+    mock_current_app.logger.error.assert_called_once()
+    assert any("BrokenValidator" in e for e in metadata.errors)
+    assert any("unexpected error" in e for e in metadata.errors)
+    mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
 
 
 def test_validate_with_errors_sets_status_draft(mocker):
@@ -761,6 +850,107 @@ def test_validate_with_errors_sets_status_draft(mocker):
     r.validate(MagicMock())
 
     mock_change.assert_called_once_with(ReleaseStatus.DRAFT, mocker.ANY)
+
+
+def _failing_validation(name, fixable=True):
+    """Build a validation mock that is enabled and currently failing."""
+    validation = MagicMock(enabled=True, status=False, fixable=fixable)
+    validation.name = name
+    validation.fix.return_value = []
+    return validation
+
+
+def test_fix_checks_summarises_what_changed(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": None}, {"recid": "cms-7"}]
+
+    release = Release(metadata)
+
+    recid_validation = _failing_validation("Valid recid")
+    files_validation = _failing_validation("File metadata", fixable=False)
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [recid_validation, files_validation]
+
+    def fake_validate(current_user):
+        metadata.records[0]["recid"] = "cms-1"
+        recid_validation.status = True
+
+    mocker.patch.object(release, "validate", side_effect=fake_validate)
+
+    summary = release.fix_checks(MagicMock())
+
+    assert summary["fixed"] == ["Valid recid"]
+    assert summary["remaining"] == ["File metadata"]
+    assert summary["assigned_recids"] == ["cms-1"]
+    recid_validation.fix.assert_called_once()
+    files_validation.fix.assert_not_called()
+
+
+def test_fix_checks_reports_errors_raised_by_a_fix(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    metadata = MagicMock()
+    metadata.records = [{"recid": None}]
+    metadata.errors = ["Entry 1: Missing slug"]
+
+    release = Release(metadata)
+
+    slug_validation = _failing_validation("Valid slug")
+    slug_validation.fix.return_value = ["Entry 1: Cannot auto-fix slug"]
+    mocker.patch.object(
+        Release, "validations", new_callable=mocker.PropertyMock
+    ).return_value = [slug_validation]
+
+    mock_validate = mocker.patch.object(release, "validate")
+    current_user = MagicMock()
+
+    summary = release.fix_checks(current_user)
+
+    mock_validate.assert_called_once_with(current_user)
+    assert metadata.errors == [
+        "Entry 1: Missing slug",
+        "Entry 1: Cannot auto-fix slug",
+    ]
+    assert metadata.num_errors == 2
+    assert summary["fixed"] == []
+    assert summary["remaining"] == ["Valid slug"]
+    assert summary["assigned_recids"] == []
+
+
+def test_enable_validation(mocker):
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    optional_validation = MagicMock(optional=True)
+    mocker.patch.object(ReleaseValidation, "get", return_value=optional_validation)
+
+    release = Release(MagicMock())
+    mock_validate = mocker.patch.object(release, "validate")
+
+    release.enable_validation(1, True, MagicMock())
+
+    assert optional_validation._metadata.enabled is True
+    mock_validate.assert_called_once()
+    mock_session.commit.assert_called_once()
+
+
+def test_enable_validation_rejects_mandatory_validation(mocker):
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+
+    mandatory_validation = MagicMock(optional=False)
+    mandatory_validation.name = "Valid recid"
+    mocker.patch.object(ReleaseValidation, "get", return_value=mandatory_validation)
+
+    release = Release(MagicMock())
+
+    with pytest.raises(RuntimeError, match="can't be disabled"):
+        release.enable_validation(1, False, MagicMock())
 
 
 def test_publish_raises_when_document_missing_slug(mocker):
@@ -826,52 +1016,57 @@ def test_delete_removes_uploaded_images(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
-    (tmp_path / "doc-a").mkdir()
-    (tmp_path / "doc-a" / "fig.png").write_bytes(b"a")
-    (tmp_path / "doc-b").mkdir()
-    (tmp_path / "doc-b" / "fig.png").write_bytes(b"b")
-    (tmp_path / "unrelated").mkdir()
-    (tmp_path / "unrelated" / "fig.png").write_bytes(b"x")
+    release_dir = tmp_path / "1"
+    (release_dir / "doc-a").mkdir(parents=True)
+    (release_dir / "doc-a" / "fig.png").write_bytes(b"a")
+    (release_dir / "doc-b").mkdir()
+    (release_dir / "doc-b" / "fig.png").write_bytes(b"b")
+    (tmp_path / "2" / "doc-a").mkdir(parents=True)
+    (tmp_path / "2" / "doc-a" / "fig.png").write_bytes(b"other-release")
 
     metadata = MagicMock()
-    metadata.documents = [{"slug": "doc-a"}, {"slug": "doc-b"}, {"title": "no slug"}]
+    metadata.id = 1
+    metadata.status = ReleaseStatus.DRAFT.value
 
     r = Release(metadata)
     r.delete()
 
-    assert not (tmp_path / "doc-a").exists()
-    assert not (tmp_path / "doc-b").exists()
-    assert (tmp_path / "unrelated" / "fig.png").exists()
+    assert not release_dir.exists()
+    assert (tmp_path / "2" / "doc-a" / "fig.png").exists()
     mock_session.delete.assert_called_once_with(metadata)
     mock_session.commit.assert_called_once()
 
 
-def test_delete_documents_images_skips_traversal_slugs(mocker, tmp_path):
+def test_delete_release_images_oserror_logs_and_continues(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
-    sibling = tmp_path.parent / "sibling"
-    sibling.mkdir(exist_ok=True)
-    (sibling / "fig.png").write_bytes(b"x")
+    release_dir = tmp_path / "1"
+    release_dir.mkdir()
+
+    mocker.patch(
+        "cernopendata.modules.releases.api.shutil.rmtree", side_effect=OSError("locked")
+    )
 
     metadata = MagicMock()
-    metadata.documents = [{"slug": "../sibling"}]
+    metadata.id = 1
 
     r = Release(metadata)
-    r._delete_documents_images()
+    r._delete_release_images()
 
-    assert (sibling / "fig.png").exists()
+    mock_current_app.logger.warning.assert_called_once()
+    assert release_dir.exists()
 
 
-def test_delete_documents_images_no_documents_does_nothing(mocker, tmp_path):
+def test_delete_release_images_no_directory_does_nothing(mocker, tmp_path):
     mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
     mock_current_app.config = {"CERNOPENDATA_IMAGES_PATH": str(tmp_path)}
 
     metadata = MagicMock()
-    metadata.documents = None
+    metadata.id = 1
 
     r = Release(metadata)
-    r._delete_documents_images()
+    r._delete_release_images()
 
 
 def test_add_records_triggers_validate(mocker):
@@ -965,3 +1160,169 @@ def test_add_records_to_release_with_no_records(mocker):
     r.add_records([{"recid": 1}], MagicMock())
 
     assert metadata.records == [{"recid": 1, "$schema": "schema-url"}]
+
+
+def test_generate_doi_mints_missing_dois(mocker):
+    mock_mint = mocker.patch(
+        "cernopendata.modules.releases.api.mint_doi", return_value="10.1234/NEW"
+    )
+    mocker.patch("cernopendata.modules.releases.api.validate_datacite_record")
+    mock_flag = mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {"PIDSTORE_DATACITE_DOI_PREFIX": "10.1234"}
+
+    metadata = MagicMock()
+    metadata.experiment = "CMS"
+    metadata.records = [
+        {"recid": 1},
+        {"recid": 2, "doi": "10.1234/EXISTING"},
+        {"recid": 3},
+    ]
+
+    release = Release(metadata)
+    errors = release.generate_doi([1, 2])
+
+    assert metadata.records[0]["doi"] == "10.1234/NEW"
+    assert metadata.records[1]["doi"] == "10.1234/EXISTING"
+    assert "doi" not in metadata.records[2]
+    mock_mint.assert_called_once_with("10.1234", "CMS")
+    mock_flag.assert_called_once_with(metadata, "records")
+    assert errors == []
+
+
+def test_generate_doi_returns_validation_errors(mocker):
+    mocker.patch("cernopendata.modules.releases.api.mint_doi")
+    mock_validate = mocker.patch(
+        "cernopendata.modules.releases.api.validate_datacite_record"
+    )
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mock_current_app = mocker.patch("cernopendata.modules.releases.api.current_app")
+    mock_current_app.config = {}
+
+    mock_validate.side_effect = [None, ValueError("bad field")]
+
+    metadata = MagicMock()
+    metadata.experiment = "CMS"
+    metadata.records = [
+        {"recid": 1},
+        {"recid": 2},
+    ]
+
+    release = Release(metadata)
+    errors = release.generate_doi([1, 2])
+
+    assert len(errors) == 1
+    assert errors[0]["recid"] == 2
+    assert "bad field" in errors[0]["error"]
+    assert "doi" not in metadata.records[1]
+
+
+def test_publish_collects_datacite_errors(mocker):
+    mocker.patch("cernopendata.modules.releases.api.RecordIndexer")
+    mocker.patch("cernopendata.modules.releases.api.PersistentIdentifier.get")
+    mocker.patch("cernopendata.modules.releases.api.update_record")
+    mock_register = mocker.patch(
+        "cernopendata.modules.releases.api.register_record_doi"
+    )
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    mock_register.side_effect = [None, RuntimeError("DataCite down")]
+
+    metadata = MagicMock()
+    metadata.records = [
+        {"recid": 1, "doi": "10.1234/A"},
+        {"recid": 2, "doi": "10.1234/B"},
+        {"recid": 3},
+    ]
+    metadata.documents = []
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+    mocker.patch.object(release, "change_status")
+
+    errors = release.publish(MagicMock())
+
+    assert len(errors) == 1
+    assert "recid 2" in errors[0]
+    assert "DataCite down" in errors[0]
+    assert mock_register.call_count == 2
+    mock_session.commit.assert_called_once()
+    assert release.failed_doi_records() == [{"recid": 2, "doi": "10.1234/B"}]
+
+
+def test_get_release(mocker):
+    metadata = MagicMock()
+    mock_query = mocker.patch("cernopendata.modules.releases.api.ReleaseMetadata.query")
+    mock_query.filter_by.return_value.first.return_value = metadata
+
+    release = Release.get("cms", 1)
+
+    assert release._metadata is metadata
+    mock_query.filter_by.assert_called_once_with(id=1, experiment="cms")
+
+    mock_query.filter_by.return_value.first.return_value = None
+
+    assert Release.get("cms", 999999) is None
+
+
+def test_retry_doi_registration_updates_only_the_failed_records(mocker):
+    mock_update = mocker.patch("cernopendata.modules.releases.api.update_record_doi")
+    mock_session = mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+
+    metadata = MagicMock()
+    metadata.errors = [
+        "Entry 1: missing recid",
+        "DataCite registration failed for recid 2: DataCite down",
+    ]
+    metadata.records = [
+        {"recid": 1, "doi": "10.1234/A"},
+        {"recid": 2, "doi": "10.1234/B"},
+    ]
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+
+    errors = release.retry_doi_registration()
+
+    assert errors == []
+    assert metadata.errors == []
+    assert metadata.num_errors == 0
+    mock_update.assert_called_once_with({"recid": 2, "doi": "10.1234/B"})
+    mock_session.commit.assert_called_once()
+
+    mocker.patch.object(release, "is_status", return_value=False)
+
+    with pytest.raises(RuntimeError, match="not PUBLISHED"):
+        release.retry_doi_registration()
+
+
+def test_retry_doi_registration_keeps_the_still_failing_records(mocker):
+    mock_update = mocker.patch("cernopendata.modules.releases.api.update_record_doi")
+    mocker.patch("cernopendata.modules.releases.api.db.session")
+    mocker.patch("cernopendata.modules.releases.api.flag_modified")
+    mocker.patch("cernopendata.modules.releases.api.current_app")
+
+    mock_update.side_effect = [None, RuntimeError("DataCite still down")]
+
+    metadata = MagicMock()
+    metadata.errors = [
+        "DataCite registration failed for recid 2: DataCite down",
+        "DataCite registration failed for recid 3: DataCite down",
+    ]
+    metadata.records = [
+        {"recid": 2, "doi": "10.1234/B"},
+        {"recid": 3, "doi": "10.1234/C"},
+    ]
+
+    release = Release(metadata)
+    mocker.patch.object(release, "is_status", return_value=True)
+
+    errors = release.retry_doi_registration()
+
+    assert len(errors) == 1
+    assert "recid 3" in errors[0]
+    assert "DataCite still down" in errors[0]
+    assert mock_update.call_count == 2
+    assert release.failed_doi_records() == [{"recid": 3, "doi": "10.1234/C"}]

@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 
 import ReleasesTable from "./ReleasesTable";
 import ReleaseContent from "./ReleaseContent";
-import ValidationToggle from "./ValidationToggle";
+import ReleaseStats from "./ReleaseStats";
 
 const container = document.getElementById("releases-react-root");
 
@@ -12,9 +12,12 @@ if (container) {
   const experiment = container.dataset.experiment || null;
   ReactDOM.render(<ReleasesTable experiment={experiment} />, container);
 
-  $(".ui.checkbox").checkbox();
+  $("#create-release-modal .ui.checkbox").checkbox();
 
   $("#open-create-release").on("click", () => {
+    $("#create-release-form")[0].reset();
+    $("#create-release-error").hide().text("");
+    updateSource();
     $("#create-release-modal").modal("show");
   });
 
@@ -49,7 +52,48 @@ if (container) {
   $('input[name="file"], input[name="url"]').on("input change", validateForm);
 
   updateSource();
+
+  $("#create-release-form").on("submit", async function (e) {
+    e.preventDefault();
+    const $btn = $("#uploadButton");
+    const $error = $("#create-release-error");
+    $error.hide().text("");
+    $btn.addClass("loading disabled");
+    try {
+      const response = await fetch(window.location.pathname, {
+        method: "POST",
+        body: new FormData(this),
+      });
+      if (response.ok) {
+        window.location.reload();
+        return;
+      }
+      const contentType = response.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        $error.text(data.error || "An error occurred.").show();
+      } else {
+        $error.text("An unexpected error occurred.").show();
+      }
+    } catch (err) {
+      $error.text("Network error: " + err.message).show();
+    } finally {
+      $btn.removeClass("loading disabled");
+      validateForm();
+    }
+  });
 }
+
+const releaseStats = document.getElementById("release-stats-root");
+
+function renderStats(counts) {
+  ReactDOM.render(<ReleaseStats counts={counts} />, releaseStats);
+}
+
+if (releaseStats) {
+  renderStats(JSON.parse(releaseStats.dataset.counts));
+}
+
 const releaseContent = document.getElementById("release-content-root");
 if (releaseContent) {
   ReactDOM.render(
@@ -58,28 +102,22 @@ if (releaseContent) {
       releaseId={releaseContent.dataset.releaseId}
       initialRecords={JSON.parse(releaseContent.dataset.records)}
       initialDocuments={JSON.parse(releaseContent.dataset.documents || "[]")}
+      initialState={JSON.parse(releaseContent.dataset.releaseState)}
       editDisabled={releaseContent.dataset.editDisabled === "true"}
       viewDisabled={releaseContent.dataset.viewDisabled === "true"}
       releaseStatus={releaseContent.dataset.releaseStatus}
+      onCountsChanged={renderStats}
     />,
     releaseContent,
   );
 }
 
-document.querySelectorAll(".validation-toggle-root").forEach((el) => {
-  const validation = JSON.parse(el.dataset.validation);
-
-  ReactDOM.render(
-    <ValidationToggle
-      validation={validation}
-      onToggle={(id, enabled) => window.location.reload()}
-    />,
-    el,
-  );
-});
-
 $(document).on("click", "#history-button", function () {
   $("#history-modal").modal("show");
+});
+
+$("#delete-release-action").on("click", function () {
+  $("#delete-release-form").submit();
 });
 
 $("#edit-metadata-action").on("click", function () {
@@ -102,8 +140,11 @@ $("#save-metadata").on("click", function () {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
-    .then((res) => {
-      if (!res.ok) throw new Error("Update failed");
+    .then(async (res) => {
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Could not save changes");
+      }
       return res.json();
     })
     .then((updated) => {
@@ -120,6 +161,6 @@ $("#save-metadata").on("click", function () {
     })
     .catch((err) => {
       console.error(err);
-      alert("Could not save changes");
+      alert(err.message);
     });
 });

@@ -6,6 +6,8 @@
 'READY': 'DRAFT',
 'STAGING': 'DRAFT',
 'STAGED': 'STAGED',
+'ROLLINGBACK': 'STAGED',
+'PUBLISHING': 'STAGED',
 'PUBLISHED': 'PUBLISHED'
 } %}
 
@@ -23,7 +25,9 @@
 'DRAFT': 'This release has unresolved issues.',
 'STAGED': 'You are about to publish this release publicly. Please review carefully before proceeding.',
 'EDITING': 'The release is being edited at the moment.',
-'STAGING': 'The release is being staged.'
+'STAGING': 'The release is being staged.',
+'ROLLINGBACK': 'The release is being returned to draft.',
+'PUBLISHING': 'The release is being published.'
 }[release_status] %}
 
 <div class="ui fluid top attached ordered steps">
@@ -37,7 +41,7 @@
         <div class="content">
             <div class="title">
                 {{ step }}
-                {% if step == "DRAFT" and release_status != "DRAFT" %}
+                {% if step == "DRAFT" and release_status != "DRAFT" and current_step == "DRAFT" %}
                 <span>({{ release_status }})</span>
                 {% endif %}
             </div>
@@ -46,13 +50,27 @@
     {% endfor %}
 </div>
 
+{% if release_status == 'STAGED' %}
+<form id="rollback-form" method="post" action="/releases/{{ experiment }}/{{ release._metadata.id }}/rollback"></form>
+{% endif %}
+
 <form id="primary-action-form"
       method="post"
       action="{% if next_action %}/releases/{{ experiment }}/{{ release._metadata.id }}/{{ next_action }}{% endif %}">
     <div class="ui bottom attached segment release-navigation-actions">
 
+        {% if release_status == 'STAGED' %}
+        <button type="submit" form="rollback-form" class="ui tiny basic button release-navigation-rollback-btn">
+            <i class="undo icon"></i> Return to Draft
+        </button>
+        <div class="release-navigation-status-text">
+            <i class="lock icon"></i>
+            <span>This release is staged and read-only. To modify it, go back to DRAFT.</span>
+        </div>
+        {% endif %}
+
         <div class="release-navigation-actions-button"
-             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING'] %}
+             {% if release_status in ['DRAFT', 'STAGED', 'EDITING', 'STAGING', 'ROLLINGBACK', 'PUBLISHING'] %}
              data-tooltip="{{ next_tooltip }}"
              data-position="top center"
              {% endif %}>

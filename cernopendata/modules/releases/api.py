@@ -25,6 +25,7 @@
 """CERN Open Data Release api."""
 
 import json
+import re
 import shutil
 from copy import deepcopy
 from datetime import datetime
@@ -39,6 +40,11 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
+from cernopendata.modules.datacite.utils import generate_doi as mint_doi
+from cernopendata.modules.datacite.utils import register_record_doi, update_record_doi
+from cernopendata.modules.datacite.utils import (
+    validate_record as validate_datacite_record,
+)
 from cernopendata.modules.fixtures.cli import (
     create_doc,
     create_record,
@@ -112,15 +118,6 @@ class ReleaseValidation:
         """Return if the validation is enabled for this particular release."""
         return self._metadata.enabled
 
-    @classmethod
-    def get(cls, release_id, name):
-        """Get a particular validation from the release and validation name."""
-        metadata = ReleaseValidationMetadata.query.filter_by(
-            id=release_id, name=name
-        ).first()
-
-        return cls(metadata)
-
     def validate(self):
         """Run the validation."""
         if not self.validator:
@@ -141,6 +138,9 @@ class ReleaseValidation:
             "status": self.status,
             "error_message": self.error_message,
             "release_id": self._metadata.release_id,
+            "fixable": self.fixable,
+            "is_document_validation": self.is_document_validation,
+            "is_record_validation": self.is_record_validation,
         }
 
     @classmethod
@@ -182,7 +182,7 @@ class Release:
     @property
     def records(self):
         """Records of the release."""
-        return self._metadata.records
+        return self._metadata.records or []
 
     @property
     def documents(self):
@@ -203,6 +203,7 @@ class Release:
         records=None,
         documents=None,
         name=None,
+        description=None,
         discussion_url=None,
     ):
         """Create a new draft release."""
@@ -220,6 +221,7 @@ class Release:
                 doc["$schema"] = doc_schema
         release = ReleaseMetadata(
             name=name,
+            description=description,
             discussion_url=discussion_url,
             experiment=experiment,
             records=records,
@@ -271,7 +273,16 @@ class Release:
     @classmethod
     def validate_experiment(cls, experiment):
         """Ensure that the requested experiment exists."""
-        return experiment in {"lhcb", "opera", "alice", "atlas", "cms", "delphi"}
+        return experiment in {
+            "alice",
+            "atlas",
+            "cms",
+            "delphi",
+            "lhcb",
+            "mcnet",
+            "opal",
+            "opera",
+        }
 
     @classmethod
     def get(cls, experiment, release_id):
@@ -280,7 +291,7 @@ class Release:
             id=release_id, experiment=experiment
         ).first()
 
-        return cls(metadata)
+        return cls(metadata) if metadata else None
 
     def is_status(self, status):
         """Check if the release is in a particular status."""
@@ -315,24 +326,27 @@ class Release:
         db.session.add(event)
         return event
 
-    def _delete_documents_images(self):
-        """Remove all uploaded images for every document in this release."""
+    def _delete_release_images(self):
+        """Remove the images for this release."""
         images_root = Path(current_app.config["CERNOPENDATA_IMAGES_PATH"]).resolve()
-        for doc in self._metadata.documents or []:
-            slug = doc.get("slug")
-            if not slug:
-                continue
-            slug_path = (images_root / slug).resolve()
+        release_dir = images_root / str(self._metadata.id)
+        if release_dir.is_dir():
             try:
-                slug_path.relative_to(images_root)
-            except ValueError:
-                continue
-            if slug_path.is_dir():
-                shutil.rmtree(slug_path)
+                shutil.rmtree(release_dir)
+            except OSError:
+                current_app.logger.warning(
+                    f"Could not delete images directory {release_dir}"
+                )
 
     def delete(self):
         """Delete a release."""
-        self._delete_documents_images()
+        if not self.is_status(ReleaseStatus.DRAFT) and not self.is_status(
+            ReleaseStatus.READY
+        ):
+            raise RuntimeError(
+                "Releases can be deleted only if they are in DRAFT or READY"
+            )
+        self._delete_release_images()
         db.session.delete(self._metadata)
         db.session.commit()
 
@@ -414,7 +428,15 @@ class Release:
 
         for validation in self.validations:
             if validation.enabled:
-                errors = validation.validate()
+                try:
+                    errors = validation.validate()
+                except Exception as e:
+                    current_app.logger.error(
+                        f"Validator {validation.name} crashed: {e}"
+                    )
+                    errors = [
+                        f"Validator '{validation.name}' encountered an unexpected error."
+                    ]
                 if errors:
                     self._metadata.errors.extend(errors)
                 validation.set_status(len(errors) == 0)
@@ -472,17 +494,48 @@ class Release:
         db.session.add(self._metadata)
         db.session.commit()
 
+    def _mark_failed(self, action, message, revert_status, current_user):
+        """Record a failed transition and revert the release to a prior status."""
+        self._metadata.errors = [f"{action} failed: {message}"]
+        self._metadata.num_errors = 1
+        flag_modified(self._metadata, "errors")
+        self.change_status(revert_status, current_user)
+        db.session.add(self._metadata)
+        db.session.commit()
+
+    def mark_staging_failed(self, message, current_user):
+        """Record a staging failure and revert the release to READY."""
+        self._mark_failed("Staging", message, ReleaseStatus.READY, current_user)
+
+    def mark_publishing_failed(self, message, current_user):
+        """Record a publishing failure and revert the release to STAGED."""
+        self._mark_failed("Publishing", message, ReleaseStatus.STAGED, current_user)
+
+    def mark_rollback_failed(self, message, current_user):
+        """Record a rollback failure and revert the release to STAGED."""
+        self._mark_failed("Rollback", message, ReleaseStatus.STAGED, current_user)
+
     def publish(self, current_user):
         """Publish a release."""
-        if not self.is_status(ReleaseStatus.STAGED):
-            raise RuntimeError("Release is not STAGED")
+        if not self.is_status(ReleaseStatus.PUBLISHING):
+            raise RuntimeError("Release is not PUBLISHING")
 
         indexer = RecordIndexer()
+        errors = []
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
             record = update_record(pid_object, record_data, True)
             record.commit()
             indexer.index(record)
+            if record_data.get("doi"):
+                try:
+                    register_record_doi(record_data)
+                except Exception as error:
+                    current_app.logger.exception("DataCite registration failed")
+                    errors.append(
+                        f"DataCite registration failed for recid "
+                        f"{record_data['recid']}: {error}"
+                    )
 
         for i, doc_data in enumerate(self._metadata.documents or []):
             slug = doc_data.get("slug")
@@ -496,24 +549,63 @@ class Release:
             doc.commit()
             indexer.index(doc)
 
+        self._metadata.errors = errors
+        self._metadata.num_errors = len(errors)
+        flag_modified(self._metadata, "errors")
         self.change_status(ReleaseStatus.PUBLISHED, current_user)
         db.session.add(self._metadata)
         db.session.commit()
+        return errors
+
+    def failed_doi_records(self):
+        """Records of the release whose DOI registration failed when publishing."""
+        pattern = re.compile(r"^DataCite registration failed for recid (\S+): ")
+
+        recids = set()
+        for error in self._metadata.errors or []:
+            match = pattern.match(error)
+            if match:
+                recids.add(match.group(1))
+
+        return [record for record in self.records if str(record.get("recid")) in recids]
+
+    def retry_doi_registration(self):
+        """Register again the DOIs that DataCite did not accept when publishing."""
+        if not self.is_status(ReleaseStatus.PUBLISHED):
+            raise RuntimeError("Release is not PUBLISHED")
+
+        errors = []
+        for record_data in self.failed_doi_records():
+            try:
+                update_record_doi(record_data)
+            except Exception as error:
+                current_app.logger.exception("DataCite registration failed")
+                errors.append(
+                    f"DataCite registration failed for recid "
+                    f"{record_data['recid']}: {error}"
+                )
+
+        self._metadata.errors = errors
+        self._metadata.num_errors = len(errors)
+        flag_modified(self._metadata, "errors")
+        db.session.add(self._metadata)
+        db.session.commit()
+        return errors
 
     def rollback(self, current_user):
         """Remove the STAGED entries of a release."""
-        if not self.is_status(ReleaseStatus.STAGED):
-            raise RuntimeError("Release is not STAGED")
+        if not self.is_status(ReleaseStatus.ROLLINGBACK):
+            raise RuntimeError("Release is not ROLLINGBACK")
 
         for record_data in self._metadata.records:
             pid_object = PersistentIdentifier.get("recid", record_data["recid"])
-            delete_record(pid_object, "recid")
+            delete_record(pid_object, "recid", logger=current_app.logger)
 
         for doc_data in self._metadata.documents or []:
             slug = doc_data.get("slug")
             if slug:
                 pid_object = PersistentIdentifier.get("docid", slug)
-                delete_doc_or_glossary(pid_object, "docid")
+                delete_doc_or_glossary(pid_object, "docid", logger=current_app.logger)
 
         self.change_status(ReleaseStatus.READY, current_user)
         db.session.add(self._metadata)
@@ -586,46 +678,97 @@ class Release:
 
         return records_modified
 
-    def generate_doi(self):
-        """
-        Assign RECIDs to all records in the release.
+    def generate_doi(self, recids):
+        """Mint DOIs for specified records, validate them, return per-record errors."""
+        prefix = current_app.config.get("PIDSTORE_DATACITE_DOI_PREFIX")
+        experiment = self._metadata.experiment
 
-        RECID format: <experiment>-<counter>
-        """
-        if self.valid_doi:
-            raise RuntimeError("RECIDs already generated")
+        errors = []
+        for record in self._metadata.records:
+            if record.get("recid") not in recids:
+                continue
+            if record.get("doi"):
+                continue
+            record["doi"] = mint_doi(prefix, experiment)
+            try:
+                validate_datacite_record(record)
+            except Exception as error:
+                del record["doi"]
+                errors.append({"recid": record.get("recid"), "error": str(error)})
 
-        for record in self.records:
-            if "doi" not in record:
-                record["doi"] = f"FAKE DOI FOR  {self.experiment}"
-                # This is to tell alchemy that the field has been modified
-                flag_modified(self, "records")
-        self.validate()
+        flag_modified(self._metadata, "records")
+
+        return errors
+
+    def failing_validations(self):
+        """Names of the enabled validations that are currently failing."""
+        return [
+            validation.name
+            for validation in self.validations
+            if validation.enabled and not validation.status
+        ]
 
     def fix_checks(self, current_user):
         """Fix all the validations that can be fixed automatically."""
-        errors = []
+        validation_errors = {}
+        failing_before = self.failing_validations()
+        recids_before = [record.get("recid") for record in self.records]
+        current_app.logger.info("Fixing the validations")
         for validation in self.validations:
             if not validation.status:
                 if validation.enabled and validation.fixable:
-                    errors.extend(validation.fix())
+                    current_app.logger.info(
+                        f"Ready to fix the validation of {validation.name}"
+                    )
+                    try:
+                        fix_errors = validation.fix()
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Fix for {validation.name} crashed: {e}"
+                        )
+                        fix_errors = [
+                            f"Fix for '{validation.name}' encountered an unexpected error."
+                        ]
+                    if fix_errors:
+                        current_app.logger.warning(
+                            f"Fixing {validation.name} returned {len(fix_errors)} error(s), "
+                            f"first ones: {fix_errors[:5]}"
+                        )
+                        validation_errors[validation.name] = fix_errors
+        current_app.logger.info("Fixes have been done")
 
-        if errors:
-            self._metadata.errors = errors
-            self.change_status(ReleaseStatus.DRAFT, current_user)
-        else:
-            self.validate(current_user)
-        flag_modified(self._metadata, "records")
-        flag_modified(self._metadata, "documents")
+        self.validate(current_user)
+        failing_after = self.failing_validations()
+        for validation in failing_after:
+            for error in validation_errors.get(validation, []):
+                if error not in self._metadata.errors:
+                    self._metadata.errors.append(error)
+        self._metadata.num_errors = len(self._metadata.errors)
+        flag_modified(self._metadata, "errors")
+
+        if self._metadata.records:
+            flag_modified(self._metadata, "records")
+        if self._metadata.documents:
+            flag_modified(self._metadata, "documents")
         db.session.add(self._metadata)
         db.session.commit()
+
+        return {
+            "fixed": [name for name in failing_before if name not in failing_after],
+            "remaining": failing_after,
+            "assigned_recids": [
+                record.get("recid")
+                for record, previous in zip(self.records, recids_before)
+                if record.get("recid") != previous
+            ],
+        }
 
     def enable_validation(self, validation_id, enabled, current_user):
         """Enables or disables a partircular validation."""
         validation = ReleaseValidation.get(validation_id)
 
         if not validation.optional:
-            raise RunTimeError(f"The validation {validation.name} can't be disabled")
+            raise RuntimeError(f"The validation {validation.name} can't be disabled")
         validation._metadata.enabled = enabled
         self.validate(current_user)
         db.session.add(validation._metadata)

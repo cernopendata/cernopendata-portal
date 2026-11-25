@@ -53,13 +53,16 @@ class CheckExpandDirectories(ValidFiles):
 
         for entry in entries:
             full_uri = f"{base_uri}/{entry}"
-            isDir, size, checksum = self._get_entry_details(ctx, f"{http_uri}/{entry}")
+            is_dir, size, checksum = self._get_entry_details(ctx, f"{http_uri}/{entry}")
 
-            # If it’s a directory, recurse
-            if isDir:
+            # If it's a directory, recurse
+            if is_dir:
                 yield from self._walk(ctx, full_uri)
             else:
-                yield {"uri": full_uri, "size": size, "checksum": checksum}
+                file = {"uri": full_uri, "size": size}
+                if checksum:
+                    file["checksum"] = checksum
+                yield file
 
     def validate(self, release):
         """Check if there are any directories as input for a record."""

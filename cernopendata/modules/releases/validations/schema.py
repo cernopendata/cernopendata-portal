@@ -26,8 +26,11 @@ class SchemaValidation(Validation):
             )
             + f"/{self.schema_file}"
         )
-        with open(schema_path) as f:
-            schema = json.load(f)
+        try:
+            with open(schema_path) as f:
+                schema = json.load(f)
+        except (OSError, ValueError) as e:
+            return [f"Could not load validation schema '{self.schema_file}': {e}"]
 
         items = getattr(release, self.items_attr) or []
         if not items:

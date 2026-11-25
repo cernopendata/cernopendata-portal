@@ -26,6 +26,7 @@
 
 import importlib
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 
@@ -34,10 +35,12 @@ from flask import current_app
 from flask_mail import Message
 from invenio_db import db
 from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
+from invenio_pidstore.models import PersistentIdentifier
+from invenio_records.models import RecordMetadata
 from invenio_records_files.api import FileObject, Record
 from sqlalchemy import func
 
-from .models import RequestMetadata, TransferMetadata
+from .models import RequestMetadata, RequestStatus, TransferMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +113,7 @@ class Transfer:
             action=entry["action"],
             new_filename=entry["new_filename"],
             record_uuid=entry["record_uuid"],
+            request_id=entry.get("request_id"),
             file_id=entry["file_id"],
             method=entry["method"],
             method_id=entry.get("method_id", ""),
@@ -164,12 +168,24 @@ class Transfer:
             return current_app.config["COLD_ACTIVE_ARCHIVING_TRANSFERS_THRESHOLD"]
 
     @staticmethod
-    def get_failed_transfers_count(record_id):
+    def get_failed_transfers_count(request):
         """Get number of failed transfers."""
         return TransferMetadata.query.filter(
-            TransferMetadata.record_uuid == str(record_id),
+            TransferMetadata.request_id == request.id,
             TransferMetadata.status == "FAILED",
         ).count()
+
+    @staticmethod
+    def get_completed_transfers_size(request):
+        """Get the total size of the completed transfers."""
+        return (
+            db.session.query(func.coalesce(func.sum(TransferMetadata.size), 0))
+            .filter(
+                TransferMetadata.request_id == request.id,
+                TransferMetadata.status == "DONE",
+            )
+            .scalar()
+        )
 
 
 class Request:
@@ -178,17 +194,52 @@ class Request:
     @staticmethod
     def send_email(req, emails):
         """Send an email notification using Invenio's mail system."""
-        subject = f"Transfer {req.id} Completed"
-        body = f"Hello,\n\nYour transfer with ID {req.id} has been completed successfully.\n\nBest regards."
-        msg = Message(
-            subject, sender="opendata-noreply@cern.ch", recipients=emails, body=body
+        pid = PersistentIdentifier.query.filter_by(
+            object_uuid=req.record_id, pid_type="recid"
+        ).first()
+        recid = pid.pid_value if pid else ""
+        record_metadata = RecordMetadata.query.get(req.record_id)
+        title = (record_metadata.json or {}).get("title") if record_metadata else None
+        title = title or f"Record {recid}"
+        record_url = (
+            os.path.join(current_app.config["PIDSTORE_LANDING_BASE_URL"], recid)
+            if recid
+            else ""
         )
-        # Use InvenioMail's send_email function with a simple text template
-        try:
-            current_app.extensions["mail"].send(msg)
-            logger.info(f"Email sent to {emails}")
-        except Exception as e:
-            logger.error(f"Failed to send email to {emails}: {e}")
+
+        date_format = "%d %B %Y %H:%M"
+        requested_on = req.created_at.strftime(date_format) if req.created_at else "-"
+        completed_on = (
+            req.completed_at.strftime(date_format) if req.completed_at else "-"
+        )
+
+        subject = f"[CERN Open Data] Files for record {recid} are ready to download"
+        body = (
+            "Dear user,\n\n"
+            "The files you requested from the CERN Open Data portal are now "
+            "available for download:\n\n"
+            f"{title}: {record_url}\n\n"
+            f"The request was submitted on {requested_on} "
+            f"and completed on {completed_on}.\n\n"
+            "You are receiving this message because this email address was "
+            "subscribed to notifications for this request. It may have been "
+            "subscribed by someone else; if you do not recognise it, you can "
+            "safely ignore this message.\n\n"
+            "Best regards,\n"
+            "The CERN Open Data team"
+        )
+        for subscriber in emails:
+            msg = Message(
+                subject,
+                sender="opendata-noreply@cern.ch",
+                recipients=[subscriber],
+                body=body,
+            )
+            try:
+                current_app.extensions["mail"].send(msg)
+                logger.info(f"Email sent to {subscriber}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {subscriber}: {e}")
 
     @staticmethod
     def create(
@@ -213,27 +264,38 @@ class Request:
         return rb
 
     @staticmethod
-    def mark_as_started(req, num_transfers, size):
-        """Mark a request as started."""
-        logger.info(f"The transfer {req.id} has started")
-        req.started_at = datetime.utcnow()
-        req.status = "started"
-        req.num_transfers = num_transfers
-        req.size = size
-        db.session.add(req)
+    def get_active(record_id, action):
+        """Get the request for the record that has not finished yet."""
+        return RequestMetadata.query.filter(
+            RequestMetadata.record_id == record_id,
+            RequestMetadata.action == action.value,
+            RequestMetadata.status.in_(
+                (
+                    RequestStatus.WAITING,
+                    RequestStatus.SUBMITTING,
+                    RequestStatus.IN_PROGRESS,
+                )
+            ),
+        ).first()
 
     @staticmethod
     def mark_as_completed(req):
         """Mark the request as DONE and notify subscribers."""
-        req.status = "completed"
+        req.status = RequestStatus.COMPLETED
         req.completed_at = datetime.utcnow()
         db.session.add(req)
         if req.subscribers:
-            print("Sending emails")
             # Notify subscribers
             Request.send_email(req, req.subscribers)
         db.session.commit()
         return True
+
+    @staticmethod
+    def update_transfer_counts(request):
+        """Update the number of failed transfers and the completed size of a request."""
+        request.num_failed_transfers = Transfer.get_failed_transfers_count(request)
+        request.size = Transfer.get_completed_transfers_size(request)
+        db.session.add(request)
 
     @staticmethod
     def subscribe(transfer_id, email):
@@ -289,7 +351,9 @@ class ColdRecord(Record):
             db.session.query(func.count())
             .filter(
                 RequestMetadata.record_id == str(self.id),
-                RequestMetadata.status == "submitted",
+                RequestMetadata.status.in_(
+                    (RequestStatus.WAITING, RequestStatus.SUBMITTING)
+                ),
                 RequestMetadata.action == ColdStorageActions.STAGE.value,
             )
             .scalar()

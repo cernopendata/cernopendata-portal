@@ -6,15 +6,16 @@
             Back to releases
         </a>
         <h1 class="release-page-title">
-            {% if release._metadata.discussion_url %}
-            <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url" rel="noopener noreferrer" target="_blank">
-                <span id="release-name">{{ release._metadata.name }}</span>
-            </a>
-            {% else %}
             <span id="release-name">{{ release._metadata.name }}</span>
-            {% endif %}
             <span class="ui small blue label">{{ experiment|upper }}</span>
         </h1>
+        {% if release._metadata.discussion_url %}
+        <a href="{{ release._metadata.discussion_url }}" id="release-discussion-url"
+           rel="noopener noreferrer" target="_blank"
+           class="ui small basic button">
+            <i class="linkify icon"></i> Open discussion
+        </a>
+        {% endif %}
         <div class="ui dropdown icon button">
             <i class="ellipsis vertical icon"></i>
             <div class="menu">
@@ -23,41 +24,32 @@
                 </div>
                 <a class="item"
                    href="/releases/api/{{ release._metadata.experiment }}/{{ release._metadata.id }}">
-                    Download release definition
+                    Download release
                 </a>
                 <div class="item" id="edit-metadata-action">
                     Edit metadata
                 </div>
+                <div class="item release-delete-item {% if release._metadata.status not in ['READY', 'DRAFT'] %}disabled{% endif %}"
+                     id="delete-release-action">
+                    <b>Delete release</b>
+                </div>
+                <form id="delete-release-form" method="POST"
+                      action="/releases/{{ release._metadata.experiment }}/{{ release._metadata.id }}/delete"></form>
             </div>
         </div>
     </div>
     <div id="release-description">{{ release._metadata.description or '' }}</div>
 </div>
 
-{% set stats = [
-{"label": "Records", "value": release._metadata.num_records},
-{"label": "File indices", "value": release._metadata.num_file_indices},
-{"label": "Files", "value": release._metadata.num_files},
-{"label": "Documents", "value": release._metadata.num_docs},
-] %}
-
 <div class="ui segment release-summary-segment">
-    <div class="ui four statistics">
-        {% for stat in stats %}
-        <div class="statistic">
-            <div class="value">{{ stat.value }}</div>
-            <div class="label">{{ stat.label }}</div>
-        </div>
-        {% endfor %}
-    </div>
-
+    <div id="release-stats-root" data-counts='{{ release_state.counts | tojson }}'></div>
 </div>
 
 <div class="ui modal" id="history-modal">
     <i class="close icon"></i>
 
     <div class="header">
-        Release History
+        Release history
     </div>
 
     <div class="scrolling content">
@@ -113,6 +105,9 @@
 
     <div class="actions">
         <div class="ui cancel button">Cancel</div>
-        <div class="ui primary button" id="save-metadata">Save</div>
+        <div class="ui primary button" id="save-metadata">
+            <i class="save icon"></i>
+            Save
+        </div>
     </div>
 </div>

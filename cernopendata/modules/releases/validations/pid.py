@@ -12,6 +12,7 @@ class PIDValidation(Validation):
     abstract = True
 
     items_attr = None
+    label = None
     id_field = None
     pid_type = None
 
@@ -24,13 +25,13 @@ class PIDValidation(Validation):
             value = item.get(self.id_field)
             if not value:
                 errors.append(
-                    f"Entry {i + 1}: Missing or empty required field '{self.id_field}'"
+                    f"{self.label} {i + 1}: Missing or empty required field '{self.id_field}'"
                 )
                 continue
             if value in seen:
                 errors.append(
-                    f"Entry {i + 1}: Duplicate {self.id_field} '{value}' "
-                    f"(also used by entry {seen[value] + 1})"
+                    f"{self.label} {i + 1}: Duplicate {self.id_field} '{value}' "
+                    f"(also used by {self.label.lower()} {seen[value] + 1})"
                 )
             else:
                 seen[value] = i

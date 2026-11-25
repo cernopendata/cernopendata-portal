@@ -19,6 +19,7 @@ const DetailedTable = ({
   openSubscribeModal,
   formatBytes,
   abbreviateNumber,
+  formatStatus,
   initialRecordFilter = "",
   statusFilters,
   setStatusFilters,
@@ -57,7 +58,7 @@ const DetailedTable = ({
 
   const getSuccessfulTransferCount = (item) => {
     if (item.num_failed_transfers !== null) {
-      return item.num_transfers - item.num_failed_transfers;
+      return Math.max(0, item.num_transfers - item.num_failed_transfers);
     }
     return item.num_transfers;
   };
@@ -168,7 +169,7 @@ const DetailedTable = ({
               onClick={() => handleSort("size")}
               rowSpan="2"
             >
-              Size of issued
+              Size of successful
               <br />
               transfers
             </Table.HeaderCell>
@@ -196,13 +197,11 @@ const DetailedTable = ({
                 placeholder="Filter by record"
                 defaultValue={recordFilter}
                 onChange={(e) => {
-                  if (isLoading) return;
                   const value = e.target.value;
                   setRecordFilter(value);
                   updateURLParam("record_id", value);
                 }}
                 className="narrow-filter"
-                disabled={isLoading}
               ></Input>
             </Table.HeaderCell>
             <Table.HeaderCell>
@@ -234,7 +233,7 @@ const DetailedTable = ({
                 placeholder="Filter by status"
                 options={statuses.map((status) => ({
                   key: status,
-                  text: status,
+                  text: formatStatus(status),
                   value: status,
                 }))}
                 value={statusFilters}
@@ -267,7 +266,7 @@ const DetailedTable = ({
                     <a href={`/record/${item.recid}`}>{item.recid}</a>
                   </Table.Cell>
                   <Table.Cell>{item.action}</Table.Cell>
-                  <Table.Cell>{item.status}</Table.Cell>
+                  <Table.Cell>{formatStatus(item.status)}</Table.Cell>
                   <Table.Cell>
                     {item.created_at
                       ? new Date(item.created_at).toLocaleString()

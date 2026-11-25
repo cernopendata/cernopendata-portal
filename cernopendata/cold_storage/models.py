@@ -24,12 +24,22 @@
 
 """Cold Storage Transfer requests."""
 from datetime import datetime
+from enum import Enum
 
 from invenio_db import db
 from invenio_records.models import RecordMetadata
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy_utils.types import UUIDType
+
+
+class RequestStatus(str, Enum):
+    """Possible status for a request."""
+
+    WAITING = "WAITING"
+    SUBMITTING = "SUBMITTING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
 
 
 class RequestMetadata(db.Model):
@@ -51,7 +61,9 @@ class RequestMetadata(db.Model):
         # NOTE no unique constrain for better future ...
     )
     action = db.Column(db.String(50), default="stage", nullable=False)
-    status = db.Column(db.String(50), default="submitted", nullable=False)
+    status = db.Column(
+        db.Enum(RequestStatus), default=RequestStatus.WAITING, nullable=False
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
     num_transfers = db.Column(db.Integer, default=0, nullable=True)
@@ -91,6 +103,7 @@ class TransferMetadata(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     record_uuid = db.Column(db.String(36), nullable=False)
+    request_id = db.Column(db.Integer, nullable=True)
     file_id = db.Column(db.String(36), nullable=False)
     action = db.Column(db.String(50), nullable=False)
     new_filename = db.Column(db.String(512), nullable=False)

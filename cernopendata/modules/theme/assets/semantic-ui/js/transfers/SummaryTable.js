@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const SummaryTable = ({ summary, formatBytes, abbreviateNumber }) => {
+const SummaryTable = ({
+  summary,
+  formatBytes,
+  abbreviateNumber,
+  formatStatus,
+}) => {
   return (
     <table className="ui celled table">
       <thead>
@@ -17,7 +22,7 @@ const SummaryTable = ({ summary, formatBytes, abbreviateNumber }) => {
         {summary.map((item) => (
           <tr key="{item.action}_{item.status}">
             <td>{item.action}</td>
-            <td>{item.status}</td>
+            <td>{formatStatus(item.status)}</td>
             <td>{abbreviateNumber(item.count)}</td>
             <td>{abbreviateNumber(item.files)}</td>
             <td>{formatBytes(item.size)}</td>

@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Icon, Pagination } from "semantic-ui-react";
+import { Table, Button, Icon, Pagination, Message } from "semantic-ui-react";
 import AddItemsModal from "../shared/AddItemsModal";
 import EditDocumentModal from "./EditDocumentModal";
 import UploadImagesModal from "./UploadImagesModal";
 import EditImageModal from "./EditImageModal";
 import PreviewImageModal from "./PreviewImageModal";
-import usePagination from "../shared/usePagination";
+import { usePagination } from "../shared/utils";
 import RowActions from "../shared/RowActions";
 
 export default function DocumentsTable({
   experiment,
   releaseId,
-  initialDocuments = [],
+  documents,
+  setDocuments,
   editDisabled = false,
   viewDisabled = false,
+  onContentChanged,
 }) {
-  const [documents, setDocuments] = useState(initialDocuments);
   const [editingDoc, setEditingDoc] = useState(null);
 
   const pageSize = 5;
@@ -27,6 +28,7 @@ export default function DocumentsTable({
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   const [images, setImages] = useState([]);
+  const [imagesError, setImagesError] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [editingImage, setEditingImage] = useState(null);
@@ -34,11 +36,17 @@ export default function DocumentsTable({
   useEffect(() => {
     let cancelled = false;
     fetch(`/releases/${experiment}/${releaseId}/images`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && data) setImages(data.images || []);
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load images");
+        return response.json();
       })
-      .catch(() => {});
+      .then((data) => {
+        if (!cancelled) setImages(data.images || []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setImagesError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -65,9 +73,16 @@ export default function DocumentsTable({
             </Button>
           </div>
         </div>
+        {imagesError && (
+          <Message size="small" warning>
+            <Icon name="warning sign" /> Could not load images. Some rows may be
+            missing.
+          </Message>
+        )}
         <Table celled compact>
           <Table.Header>
             <Table.Row>
+              <Table.HeaderCell collapsing>#</Table.HeaderCell>
               <Table.HeaderCell>Slug / Path</Table.HeaderCell>
               <Table.HeaderCell>Title</Table.HeaderCell>
               <Table.HeaderCell>Type</Table.HeaderCell>
@@ -77,7 +92,7 @@ export default function DocumentsTable({
           <Table.Body>
             {visible.length === 0 ? (
               <Table.Row>
-                <Table.Cell colSpan="4" textAlign="center">
+                <Table.Cell colSpan="5" textAlign="center">
                   No documents in this release.
                 </Table.Cell>
               </Table.Row>
@@ -88,6 +103,9 @@ export default function DocumentsTable({
                 );
                 return [
                   <Table.Row key={`doc-${doc.slug || i}`}>
+                    <Table.Cell collapsing>
+                      {documents.indexOf(doc) + 1}
+                    </Table.Cell>
                     <Table.Cell className="no-glossary">
                       {doc.slug || "—"}
                     </Table.Cell>
@@ -106,6 +124,7 @@ export default function DocumentsTable({
                     <Table.Row
                       key={`img-${image.parent_slug}-${image.filename}`}
                     >
+                      <Table.Cell collapsing />
                       <Table.Cell className="no-glossary">
                         <span className="image-row-url">{image.url}</span>
                         <Button
@@ -158,7 +177,10 @@ export default function DocumentsTable({
         experiment={experiment}
         releaseId={releaseId}
         existingItems={documents}
-        onAdded={(newDocs) => setDocuments((prev) => [...prev, ...newDocs])}
+        onAdded={(newDocs) => {
+          setDocuments((prev) => [...prev, ...newDocs]);
+          onContentChanged();
+        }}
       />
 
       <EditDocumentModal
@@ -166,15 +188,16 @@ export default function DocumentsTable({
         onClose={() => setEditingDoc(null)}
         experiment={experiment}
         releaseId={releaseId}
-        onSaved={(updated) =>
+        onSaved={(updated) => {
           setDocuments((prev) => {
             const idx = prev.indexOf(editingDoc);
             if (idx === -1) return prev;
             const next = [...prev];
             next[idx] = updated;
             return next;
-          })
-        }
+          });
+          onContentChanged();
+        }}
       />
 
       <UploadImagesModal
@@ -183,7 +206,10 @@ export default function DocumentsTable({
         experiment={experiment}
         releaseId={releaseId}
         documents={documents}
-        onUploaded={(newImages) => setImages((prev) => [...prev, ...newImages])}
+        onUploaded={(newImages) => {
+          setImages((prev) => [...prev, ...newImages]);
+          onContentChanged();
+        }}
       />
 
       <PreviewImageModal
@@ -196,7 +222,7 @@ export default function DocumentsTable({
         onClose={() => setEditingImage(null)}
         experiment={experiment}
         releaseId={releaseId}
-        onRenamed={(oldImage, newImage) =>
+        onRenamed={(oldImage, newImage) => {
           setImages((prev) =>
             prev.map((img) =>
               img.parent_slug === oldImage.parent_slug &&
@@ -204,9 +230,10 @@ export default function DocumentsTable({
                 ? newImage
                 : img,
             ),
-          )
-        }
-        onDeleted={(image) =>
+          );
+          onContentChanged();
+        }}
+        onDeleted={(image) => {
           setImages((prev) =>
             prev.filter(
               (img) =>
@@ -215,8 +242,9 @@ export default function DocumentsTable({
                   img.filename === image.filename
                 ),
             ),
-          )
-        }
+          );
+          onContentChanged();
+        }}
       />
     </>
   );

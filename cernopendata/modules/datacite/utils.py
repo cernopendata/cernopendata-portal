@@ -23,11 +23,57 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Utilities for datacite module."""
 
+import os
 import random
 import string
 
+from datacite import schema43
+from flask import current_app
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
+
+from .serializers import DataCiteSerializer
+
+
+def validate_record(record):
+    """Serialize a record to schema43 and validate it."""
+    doc = DataCiteSerializer().dump(record)
+    if not doc.get("creators"):
+        raise ValueError(
+            f"Record {record.get('recid')} has neither authors nor a collaboration, "
+            "so DataCite has no creators to register"
+        )
+    schema43.validate(doc)
+    return schema43.tostring(doc)
+
+
+def register_record_doi(record_data):
+    """Register a record's DOI with DataCite."""
+    from .providers import DataCiteProviderWrapper
+
+    doi = record_data["doi"]
+    experiment = record_data.get("experiment")
+    try:
+        provider = DataCiteProviderWrapper.get(pid_value=doi, pid_type="doi")
+    except PIDDoesNotExistError:
+        provider = DataCiteProviderWrapper.create(pid_value=doi, experiment=experiment)
+    doc = validate_record(record_data)
+    landing_page = os.path.join(
+        current_app.config["PIDSTORE_LANDING_BASE_URL"], str(record_data["recid"])
+    )
+    provider.register(url=landing_page, doc=doc)
+
+
+def update_record_doi(record_data):
+    """Update a record's DOI metadata in DataCite."""
+    from .providers import DataCiteProviderWrapper
+
+    provider = DataCiteProviderWrapper.get(pid_value=record_data["doi"], pid_type="doi")
+    doc = validate_record(record_data)
+    landing_page = os.path.join(
+        current_app.config["PIDSTORE_LANDING_BASE_URL"], str(record_data["recid"])
+    )
+    provider.update(url=landing_page, doc=doc)
 
 
 def generate_doi(prefix, experiment=None):

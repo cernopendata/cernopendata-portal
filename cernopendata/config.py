@@ -295,7 +295,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cold-storage-events": {
         **CheckTransfersTask,
-        "schedule": timedelta(minutes=5),  # Every thirty minutes
+        "schedule": timedelta(minutes=15),  # Every fifteen minutes
+        "options": {"expires": 900},
     },
     "process-eos-dump": {
         **ProcessEosDumpTask,
@@ -313,7 +314,7 @@ JSONSCHEMAS_REPLACE_REFS = True
 #
 # TODO: This is a hack! There is an issue with the resolver. Setting these two things make the test fail
 # If we don't set them, the curation process can't validate the json schema
-if "CERNOPENDATA_CERN_APP_CREDENTIALS" in os.environ:
+if "CERNOPENDATA_USE_RESOLVER" in os.environ:
     RECORDS_REFRESOLVER_STORE = "invenio_jsonschemas.proxies.current_refresolver_store"
     RECORDS_REFRESOLVER_CLS = "invenio_records.resolver.InvenioRefResolver"
 # Records
@@ -595,7 +596,7 @@ RECORDS_REST_FACETS = {
             ),
             file_type=dict(
                 terms=dict(
-                    field="distribution.formats", size=50, order=dict(_key="asc")
+                    field="distribution.formats", size=100, order=dict(_key="asc")
                 )
             ),
             collision_type=dict(
@@ -802,11 +803,14 @@ OAUTHCLIENT_CERN_VERIFY_EXP = True
 OAUTHCLIENT_CERN_VERIFY_AUD = False
 OAUTHCLIENT_CERN_USER_INFO_FROM_ENDPOINT = True
 OAUTHCLIENT_CERN_OPENID_ALLOWED_ROLES = [
-    "cms-curator",
-    "atlas-curator",
-    "delphi-curator",
     "alice-curator",
+    "atlas-curator",
+    "cms-curator",
     "default-role",
+    "delphi-curator",
+    "lhcb-curator",
+    "mcnet-curator",
+    "opal-curator",
 ]
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True
 
@@ -814,8 +818,11 @@ OAUTH_REMOTE_APP_NAME = "cern_openid"
 OAUTHCLIENT_REMOTE_APPS = {
     cern_remote_app_name: cern_keycloak.remote_app,
 }
+
+INSTANCE_NAME = os.environ.get("CERNOPENDATA_CERN_APP_NAME", "opendata-dev")
+
 CERN_APP_CREDENTIALS = {
-    "consumer_key": "opendata-dev",
+    "consumer_key": INSTANCE_NAME,
     "consumer_secret": os.environ.get(
         "CERNOPENDATA_CERN_APP_CREDENTIALS", "<CHANGEME>"
     ),

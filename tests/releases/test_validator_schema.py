@@ -70,6 +70,28 @@ def test_validate_records_not_list(app):
         assert errors == ["The field 'records' is not a list"]
 
 
+def test_validate_returns_error_when_schema_file_missing(app):
+    """OSError reading the schema file returns a clean error message."""
+    with app.app_context():
+        with patch("builtins.open", side_effect=OSError("no such file")):
+            release = MagicMock()
+            release.records = [{"title": "Record 1", "recid": "1"}]
+            errors = ValidRecordSchema().validate(release)
+    assert len(errors) == 1
+    assert "Could not load validation schema" in errors[0]
+
+
+def test_validate_returns_error_when_schema_file_invalid_json(app):
+    """ValueError from json.load returns a clean error message."""
+    with app.app_context():
+        with patch("builtins.open", mock_open(read_data="not valid json {")):
+            release = MagicMock()
+            release.records = [{"title": "Record 1", "recid": "1"}]
+            errors = ValidRecordSchema().validate(release)
+    assert len(errors) == 1
+    assert "Could not load validation schema" in errors[0]
+
+
 def test_validate_returns_error_when_validator_raises(app):
     """Unexpected errors during validation are returned as a single error."""
     with app.app_context():

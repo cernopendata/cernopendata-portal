@@ -304,7 +304,12 @@
                   "type": "keyword"
                 },
                 "note": {
-                  "type": "text"
+                  "properties": {
+                    "description": {
+                      "type": "text"
+                    }
+                  },
+                  "type": "object"
                 },
                 "output_dataset": {
                   "type": "text"
