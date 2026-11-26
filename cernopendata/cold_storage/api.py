@@ -34,10 +34,9 @@ from email_validator import EmailNotValidError, validate_email
 from flask import current_app
 from flask_mail import Message
 from invenio_db import db
-from invenio_files_rest.models import FileInstance, ObjectVersion, ObjectVersionTag
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_records.models import RecordMetadata
-from invenio_records_files.api import FileObject, Record
+from invenio_records_files.api import Record
 from sqlalchemy import func
 
 from .models import RequestMetadata, RequestStatus, TransferMetadata
@@ -67,40 +66,6 @@ class RecordAvailability(Enum):
     ONDEMAND = "on demand"
     PARTIAL = "partial"
     REQUESTED = "requested"
-
-
-class FileObjectCold(FileObject):
-    """Overwrite the fileobject to get multiple URI."""
-
-    @classmethod
-    def create(self, bucket, filename, file_id):
-        """Create a cold file object."""
-        return ObjectVersion.create(bucket, filename, file_id)
-
-    def dumps(self):
-        """This one has the information about the cold URI stored in a ObjectVersionTag."""
-        info = super(FileObjectCold, self).dumps()
-        info["tags"] = {}
-        for tagName in ("uri_cold", "hot_deleted"):
-            tag = ObjectVersionTag.get(str(self.obj.version_id), tagName)
-            if tag:
-                info["tags"][tagName] = tag.value
-        info["availability"] = self.availability
-        if "uri" not in info:
-            file = FileInstance.get(str(self.obj.file_id))
-            info["uri"] = file.uri
-        return info
-
-    @property
-    def availability(self):
-        """Describe the QoS of the file."""
-        if "availability" not in self.data:
-            avl = FileAvailability.ONLINE
-            for t in self.obj.tags:
-                if t.key == "hot_deleted":
-                    avl = FileAvailability.ONDEMAND
-            self.data["availability"] = avl.value
-        return self.data["availability"]
 
 
 class Transfer:
