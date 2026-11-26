@@ -17,12 +17,15 @@ def test_stage_release_task_success(mock_release_cls, mock_user_cls):
     release.mark_staging_failed.assert_not_called()
 
 
-@patch("cernopendata.modules.releases.tasks.current_app")
+@patch(
+    "cernopendata.modules.releases.tasks.current_app",
+    new=MagicMock(),
+)
 @patch("cernopendata.modules.releases.tasks.db")
 @patch("cernopendata.modules.releases.tasks.User")
 @patch("cernopendata.modules.releases.tasks.Release")
 def test_stage_release_task_failure_marks_release(
-    mock_release_cls, mock_user_cls, mock_db, mock_current_app
+    mock_release_cls, mock_user_cls, mock_db
 ):
     release = MagicMock()
     release.stage.side_effect = RuntimeError("Broken release")

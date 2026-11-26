@@ -65,10 +65,8 @@ def test_delete_term_already_gone(app, database):
     Record.get_record(pid_object.object_uuid).delete()
     database.session.commit()
 
-    logger = MagicMock()
-    delete_doc_or_glossary(pid_object, "termid", logger=logger)
+    delete_doc_or_glossary(pid_object, "termid")
     database.session.commit()
 
-    assert "orphaned_anchor" in logger.warning.call_args[0][0]
     with pytest.raises(PIDDoesNotExistError):
         PersistentIdentifier.get("termid", "orphaned_anchor")

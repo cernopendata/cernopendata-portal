@@ -79,7 +79,7 @@ def staged_record(app, database):
         "$schema": app.extensions["invenio-jsonschemas"].path_to_url(
             "records/record-v1.0.0.json"
         ),
-        "recid": "1114",
+        "recid": "alice-1114",
         "date_published": "2024",
         "experiment": ["ALICE"],
         "publisher": "CERN Open Data Portal",

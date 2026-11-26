@@ -10,7 +10,7 @@ from .utils import assert_list_output, run_command
 LIMIT_TEST_CASES = [
     pytest.param(
         {
-            "recid": "1116",
+            "recid": "alice-1116",
             "title": "Multi-File Record for Negative Limit Test",
             "file_specs": [
                 {"name": "data1.txt", "content": b"Content for data file 1."},
@@ -32,7 +32,7 @@ LIMIT_TEST_CASES = [
     ),
     pytest.param(
         {
-            "recid": "1117",
+            "recid": "alice-1117",
             "title": "Multi-File Record for Positive Limit Test",
             "file_specs": [
                 {"name": "data4.txt", "content": b"Content for data file 1."},

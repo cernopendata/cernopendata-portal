@@ -3,6 +3,8 @@
 from flask import current_app
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 
+from cernopendata.api import RecordFilesWithIndex
+
 from ...datacite.utils import generate_doi
 from .base import Validation
 
@@ -24,19 +26,32 @@ class ValidDoi(Validation):
         validate_prefix = self._validate_prefix()
         errors = []
         used_suffixes = {}
-        for i, record in enumerate(release.records or []):
+
+        records = release.records or []
+
+        suffixes = [
+            record["doi"].partition("/")[2]
+            for record in records
+            if record.get("doi") and "/" in record["doi"]
+        ]
+        registered_suffixes = set(self._registered_suffixes(prefix, suffixes))
+
+        for i, record in enumerate(records):
             doi = record.get("doi")
             if not doi:
                 continue
+
             doi_prefix, separator, suffix = doi.partition("/")
             if not separator or not suffix:
                 errors.append(f"Record {i + 1}: Malformed DOI '{doi}'")
                 continue
+
             if validate_prefix and doi_prefix != prefix:
                 errors.append(
                     f"Record {i + 1}: DOI prefix '{doi_prefix}' does not match "
                     f"the prefix '{prefix}'"
                 )
+
             if suffix in used_suffixes:
                 errors.append(
                     f"Record {i + 1}: Duplicate DOI suffix '{suffix}' "
@@ -45,9 +60,8 @@ class ValidDoi(Validation):
             else:
                 used_suffixes[suffix] = i
 
-        for suffix in self._registered_suffixes(prefix, list(used_suffixes)):
-            errors.append(f"DOI suffix already registered: {suffix}")
-
+            if suffix in registered_suffixes:
+                errors.append(f"Record {i + 1}: DOI '{doi}' is already registered")
         return errors
 
     def fix(self, release):

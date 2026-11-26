@@ -4,13 +4,14 @@
 
 {% from 'cernopendata_records_ui/records/macros/links.html' import link_list  with context %}
 
+{% from 'cernopendata_records_ui/records/macros/versions.html' import versions_box with context %}
+
 {%- block page_body %}
 <div class="ui one column centered grid container detail-page">
     <div class="row">
         <div class="sixteen wide column">
           <div class="ui segment">
             <div class="card-body">
-
                 {% block heading %}
                 <h2>
                     {{record.title}}
@@ -72,6 +73,7 @@
                     {{ link_list(record.abstract.links) }}
                 </div>
                 {% endif %}
+                {{ versions_box(record, 'recid', record.recid) }}
                 {% endblock metadata_block %}
 
                 {% block files_block %}

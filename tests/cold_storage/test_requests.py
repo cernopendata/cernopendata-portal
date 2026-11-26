@@ -27,14 +27,14 @@ from .utils import run_command
 
 SINGLE_FILE_RECORDS = [
     {
-        "recid": "1114",
+        "recid": "alice-1114",
         "title": "File Record",
         "file_specs": [
             {"name": "file.txt", "content": b"This is a dummy file for testing."}
         ],
     },
     {
-        "recid": "1116",
+        "recid": "alice-1116",
         "title": "Multi-File Record for Negative Limit Test",
         "file_specs": [
             {"name": "data1.txt", "content": b"Content for data file 1."},
@@ -113,7 +113,7 @@ def test_request_with_failed_transfer(
 ):
     record = record_factory(
         {
-            "recid": "1115",
+            "recid": "alice-1115",
             "title": "Test Record",
             "file_specs": [
                 {"name": "file2.txt", "content": b"This is a dummy file for testing."}
@@ -221,7 +221,7 @@ def test_request_ignores_other_failures(
 ):
     record = record_factory(
         {
-            "recid": "1118",
+            "recid": "alice-1118",
             "title": "Test Record with Other Failures",
             "file_specs": [
                 {"name": "file3.txt", "content": b"This is a dummy file for testing."}
@@ -276,7 +276,7 @@ def test_request_size_counts_only_completed_transfers(
 ):
     record = record_factory(
         {
-            "recid": "1119",
+            "recid": "alice-1119",
             "title": "Test Record with a Failed Transfer",
             "file_specs": [
                 {"name": "file4.txt", "content": b"This is a dummy file for testing."}
@@ -378,14 +378,14 @@ def test_process_transfers_skips_record_that_fails_to_update(
     """A failing transfer or record is skipped, without blocking the others."""
     invalid_record = record_factory(
         {
-            "recid": "2103",
+            "recid": "alice-2103",
             "title": "Invalid",
             "file_specs": [{"name": "file7.txt", "content": b"dummy"}],
         }
     )
     valid_record = record_factory(
         {
-            "recid": "2104",
+            "recid": "alice-2104",
             "title": "Valid",
             "file_specs": [{"name": "file8.txt", "content": b"dummy"}],
         }
@@ -447,14 +447,14 @@ def test_process_requests_skips_request_that_fails(
     """Failing requests are skipped, and the other requests are still processed."""
     invalid_record = record_factory(
         {
-            "recid": "2105",
+            "recid": "alice-2105",
             "title": "Invalid",
             "file_specs": [{"name": "file9.txt", "content": b"dummy"}],
         }
     )
     valid_record = record_factory(
         {
-            "recid": "2106",
+            "recid": "alice-2106",
             "title": "Valid",
             "file_specs": [{"name": "file10.txt", "content": b"dummy"}],
         }
@@ -542,7 +542,7 @@ def test_request_without_issued_transfers_is_not_started(
 ):
     record = record_factory(
         {
-            "recid": "2107",
+            "recid": "alice-2107",
             "title": "Test Record without Issued Transfers",
             "file_specs": [
                 {"name": "file11.txt", "content": b"This is a dummy file for testing."}
@@ -602,7 +602,7 @@ def test_process_transfers_retries_transfer_with_unknown_status(
 ):
     record = record_factory(
         {
-            "recid": "2108",
+            "recid": "alice-2108",
             "title": "Test Record with Unknown Transfer Status",
             "file_specs": [{"name": "file12.txt", "content": b"dummy"}],
         }

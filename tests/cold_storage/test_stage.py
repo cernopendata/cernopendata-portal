@@ -69,7 +69,7 @@ def test_stage_endpoint(
     "recid, files, expected_body",
     [
         (
-            "2201",
+            "alice-2201",
             [
                 {
                     "checksum": "adler32:9719fd6a",
@@ -79,7 +79,7 @@ def test_stage_endpoint(
             ],
             "All files are already available",
         ),
-        ("2202", [], "No files found to stage"),
+        ("alice-2202", [], "No files found to stage"),
     ],
 )
 def test_stage_rejected_without_cold_files(

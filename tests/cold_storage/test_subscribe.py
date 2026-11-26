@@ -85,8 +85,8 @@ def test_send_email(app, database, smtp_server, staged_record):
         data = captured_email["data"]
         assert b"[CERN Open Data]" in data
         assert b"Dummy file" in data
-        assert b"record 1114" in data
-        assert b"/record/1114" in data
+        assert b"record alice-1114" in data
+        assert b"/record/alice-1114" in data
 
 
 def test_mark_as_completed_notifies_each_subscriber(

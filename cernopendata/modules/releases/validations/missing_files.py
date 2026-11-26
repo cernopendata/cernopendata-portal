@@ -14,9 +14,13 @@ class MissingFiles(Validation):
         errors = []
         for i, record in enumerate(release.records):
             number_files = (record.get("distribution") or {}).get("number_files") or 0
+            direct_files = len(record.get("files", []))
+            file_indices = sum(
+                len(item.get("files", [])) for item in record.get("_file_indices", [])
+            )
             if (
                 number_files
-                and not record.get("files")
+                and number_files != direct_files + file_indices
                 and "rucio_dataset" not in record
             ):
                 errors.append(
