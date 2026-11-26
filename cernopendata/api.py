@@ -109,7 +109,7 @@ class FileIndexMetadata:
         return str(self.dumps())
 
     @classmethod
-    def create(cls, record, file_object, description="", logger=None):
+    def create(cls, record, file_object, description="", logger=None, cold_tags=None):
         """Method to create a FileIndex."""
         rb = cls()
         rb.model = record.model
@@ -141,6 +141,7 @@ class FileIndexMetadata:
                 _file_id=entry_file.id,
             )
             f = MultiURIFileObject(o, entry)
+            f.restore_cold_tags(cold_tags)
             if f.availability not in rb._avl:
                 rb._avl[f.availability] = 0
             rb._avl[f.availability] += 1
@@ -252,3 +253,12 @@ class MultiURIFileObject(FileObject):
             else:
                 self.data["availability"] = FileAvailability.ONLINE.value
         return self.data["availability"]
+
+    def restore_cold_tags(self, cold_tags):
+        """Recreate the saved cold storage tags of the object version."""
+        if not cold_tags:
+            return
+        file_instance = self.obj.file
+        saved_tags = cold_tags.get((file_instance.uri, file_instance.checksum), {})
+        for key, value in saved_tags.items():
+            ObjectVersionTag.create(self.obj, key, value)

@@ -31,7 +31,7 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_db import db
-from invenio_files_rest.models import FileInstance, ObjectVersion
+from invenio_files_rest.models import BucketTag, FileInstance, ObjectVersion
 from invenio_indexer.api import RecordIndexer
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
@@ -83,7 +83,27 @@ def get_jsons_from_dir(dir):
     return res
 
 
-def _handle_record_files(record, data, logger=None):
+def _collect_cold_tags(record):
+    """Map the (uri, checksum) of the record files to their cold storage tags."""
+    buckets = [record.bucket] + [
+        bucket_tag.bucket_id
+        for bucket_tag in BucketTag.query.filter_by(key="record", value=str(record.id))
+    ]
+    cold_tags = {}
+    for bucket in buckets:
+        for object_version in ObjectVersion.get_by_bucket(bucket).all():
+            tags = {
+                tag.key: tag.value
+                for tag in object_version.tags
+                if tag.key in ("uri_cold", "hot_deleted")
+            }
+            if tags:
+                file_instance = object_version.file
+                cold_tags[(file_instance.uri, file_instance.checksum)] = tags
+    return cold_tags
+
+
+def _handle_record_files(record, data, logger=None, cold_tags=None):
     """Handles record files."""
     # let's make a copy of files, since we might change it
     logger = logging.getLogger(__name__) if not logger else logger
@@ -125,12 +145,14 @@ def _handle_record_files(record, data, logger=None):
                     obj = MultiURIFileObject.create_version(
                         record.bucket, filename, f.id
                     )
+                    record_file = MultiURIFileObject(obj, {})
+                    record_file.restore_cold_tags(cold_tags)
                     file_info = {
                         "bucket": str(obj.bucket_id),
                         "checksum": obj.file.checksum,
                         "key": obj.key,
                         "version_id": str(obj.version_id),
-                        "availability": "online",
+                        "availability": record_file.availability,
                     }
                     file.update(file_info)
                 except Exception as e:
@@ -152,6 +174,7 @@ def _handle_record_files(record, data, logger=None):
                 f,
                 description=file_index.get("description", filename),
                 logger=logger,
+                cold_tags=cold_tags,
             )
             f.delete()
 
@@ -180,7 +203,10 @@ def update_record(pid, data, skip_files, logger=None):
     """Updates the given record."""
     record = RecordFilesWithIndex.get_record(pid.object_uuid)
     file_keys = ["files", "_files", "file_indices", "_file_indices"]
+    availability_keys = ["availability", "_availability_details"]
+    cold_tags = None
     if not skip_files:
+        cold_tags = _collect_cold_tags(record)
         for o in ObjectVersion.get_by_bucket(record.bucket).all():
             o.remove()
             FileInstance.query.filter_by(id=o.file_id).delete()
@@ -190,7 +216,7 @@ def update_record(pid, data, skip_files, logger=None):
     for k in list(record.keys()):
         if k in ["_bucket", "pids"]:
             continue
-        if skip_files and k in file_keys:
+        if skip_files and k in file_keys + availability_keys:
             continue
         del record[k]
     if skip_files:
@@ -198,7 +224,7 @@ def update_record(pid, data, skip_files, logger=None):
     else:
         record.update(data)
     if not skip_files:
-        _handle_record_files(record, data, logger)
+        _handle_record_files(record, data, logger, cold_tags)
         record.update(data)
         db.session.commit()
     return record
